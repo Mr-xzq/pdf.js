@@ -419,23 +419,26 @@ function getDocument(src = {}) {
           throw new Error("getDocument - no `url` parameter provided.");
         }
         const createPDFNetworkStream = params => {
+          const isFetchSupported = function () {
+            return (
+              typeof fetch !== "undefined" &&
+              typeof Response !== "undefined" &&
+              "body" in Response.prototype
+            );
+          };
+
           if (
             typeof PDFJSDev !== "undefined" &&
             PDFJSDev.test("GENERIC") &&
             isNodeJS
           ) {
-            const isFetchSupported = function () {
-              return (
-                typeof fetch !== "undefined" &&
-                typeof Response !== "undefined" &&
-                "body" in Response.prototype
-              );
-            };
             return isFetchSupported() && isValidFetchUrl(params.url)
               ? new PDFFetchStream(params)
               : new PDFNodeStream(params);
           }
-          return isValidFetchUrl(params.url)
+
+          // TODO xzq: 参考 2.6.347 中判断浏览器对于 fetch, ReadableStream 等的兼容性写法
+          return isFetchSupported() && isValidFetchUrl(params.url)
             ? new PDFFetchStream(params)
             : new PDFNetworkStream(params);
         };

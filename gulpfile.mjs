@@ -92,6 +92,17 @@ const ENV_TARGETS = [
   "> 1%",
   "not IE > 0",
   "not dead",
+
+  // "since 2015",
+  // "fully supports es6-module",
+  "fully supports es6",
+  // "fully supports let",
+  // "fully supports const",
+  // "fully supports es5",
+  // android
+  // "Android >= 10",
+  // ios
+  // "iOS >= 14"
 ];
 
 // Default Autoprefixer config used for generic, components, minified-pre
@@ -103,7 +114,17 @@ const BABEL_TARGETS = ENV_TARGETS.join(", ");
 
 const BABEL_PRESET_ENV_OPTS = Object.freeze({
   corejs: "3.37.1",
-  exclude: ["web.structured-clone"],
+  // exclude: ["web.structured-clone"],
+  // 保留 let, const, {} 块级作用域; 保留 async-await;
+  exclude: [
+    "@babel/plugin-transform-block-scoping",
+    "@babel/plugin-transform-async-to-generator",
+  ],
+  // include: [
+  //   "@babel/plugin-transform-private-methods",
+  //   "@babel/plugin-transform-class-static-block",
+  //   "@babel/plugin-transform-class-properties"
+  // ],
   shippedProposals: true,
   useBuiltIns: "usage",
 });
@@ -134,6 +155,35 @@ function transform(charEncoding, transformFunction) {
       done(null, transformedFile);
     },
   });
+}
+
+function createRenameMjsToJsTask(scanDir) {
+  // rename .mjs to .js
+  return function renameMjsToJs() {
+    return new Promise(resolve => {
+      const walkDir = dir => {
+        const files = fs.readdirSync(dir);
+        files.forEach(file => {
+          const filePath = path.join(dir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.isDirectory()) {
+            walkDir(filePath);
+          } else {
+            const newPath = filePath.replace(/\.mjs/, ".js");
+            fs.renameSync(filePath, newPath);
+          }
+        });
+      };
+
+      try {
+        walkDir(scanDir);
+        resolve();
+      } catch (err) {
+        console.error("Error renaming .mjs files:", err);
+        resolve();
+      }
+    });
+  };
 }
 
 function safeSpawnSync(command, parameters, options = {}) {
@@ -1114,6 +1164,7 @@ gulp.task(
 
       return buildGeneric(defines, GENERIC_LEGACY_DIR);
     }
+    // createRenameMjsToJsTask(GENERIC_LEGACY_DIR)
   )
 );
 

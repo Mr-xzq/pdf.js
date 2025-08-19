@@ -1,0 +1,494 @@
+/**
+ * PDF 查看器组件样式
+ * 基于移动端优化，支持暗色主题
+ */
+
+// 变量定义
+@primary-color: #1989fa;
+@background-color: #f5f5f5;
+@white: #fff;
+@black: #000;
+@gray-1: #f7f8fa;
+@gray-2: #f2f3f5;
+@gray-3: #ebedf0;
+@gray-4: #dcdee0;
+@gray-5: #c8c9cc;
+@gray-6: #969799;
+@gray-7: #646566;
+@gray-8: #323233;
+
+@toolbar-height: 48px;
+@sidebar-width: 280px;
+@border-radius: 8px;
+@box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+@transition: all 0.3s ease;
+
+// 主容器样式
+.vue-pdf-viewer {
+  width: 100%;
+  height: 100vh;
+  background-color: @background-color;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei', sans-serif;
+  
+  // 加载状态
+  &.loading {
+    .viewer-container {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  }
+  
+  // 移动端模式
+  &.mobile-mode {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  // 有工具栏时的布局调整
+  &.has-toolbar {
+    .viewer-container {
+      top: @toolbar-height;
+      bottom: @toolbar-height;
+    }
+  }
+  
+  // 有侧边栏时的布局调整
+  &.has-sidebar {
+    .viewer-container {
+      margin-right: @sidebar-width;
+    }
+  }
+}
+
+// PDF 视图容器
+.viewer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: @white;
+  transition: @transition;
+  
+  // PDF 查看器
+  .pdf-viewer {
+    width: 100%;
+    min-height: 100%;
+    
+    // PDF 页面容器
+    .page {
+      margin: 16px auto;
+      background: @white;
+      box-shadow: @box-shadow;
+      border-radius: @border-radius;
+      overflow: hidden;
+      position: relative;
+      
+      // 页面画布
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      
+      // 文本层
+      .textLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        opacity: 0.2;
+        line-height: 1.0;
+        
+        > span {
+          color: transparent;
+          position: absolute;
+          white-space: pre;
+          cursor: text;
+          transform-origin: 0% 0%;
+        }
+        
+        .highlight {
+          margin: -1px;
+          padding: 1px;
+          background-color: rgba(255, 255, 0, 0.3);
+          border-radius: 4px;
+        }
+        
+        .highlight.selected {
+          background-color: rgba(255, 0, 0, 0.3);
+        }
+      }
+      
+      // 注释层
+      .annotationLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        
+        section {
+          position: absolute;
+        }
+        
+        .linkAnnotation {
+          cursor: pointer;
+          
+          > a {
+            position: absolute;
+            font-size: 1em;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+          }
+        }
+        
+        .buttonWidgetAnnotation {
+          &.checkBox input,
+          &.radioButton input {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 0;
+          }
+        }
+        
+        .textWidgetAnnotation input,
+        .textWidgetAnnotation textarea,
+        .choiceWidgetAnnotation select,
+        .buttonWidgetAnnotation.checkBox input,
+        .buttonWidgetAnnotation.radioButton input {
+          background-color: rgba(0, 54, 255, 0.13);
+          border: 1px solid transparent;
+          box-sizing: border-box;
+          font-size: 9px;
+          height: 100%;
+          margin: 0;
+          padding: 0 3px;
+          vertical-align: top;
+          width: 100%;
+        }
+      }
+    }
+  }
+  
+  // 滚动条样式
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: @gray-2;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: @gray-5;
+    border-radius: 4px;
+    
+    &:hover {
+      background: @gray-6;
+    }
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: @gray-2;
+  }
+}
+
+// 侧边栏容器
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: @sidebar-width;
+  background: @white;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: @transition;
+  z-index: 1000;
+  
+  &.show {
+    transform: translateX(0);
+  }
+  
+  // 有工具栏时的调整
+  .has-toolbar & {
+    top: @toolbar-height;
+    bottom: @toolbar-height;
+  }
+}
+
+// 加载遮罩
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  
+  .loading-content {
+    text-align: center;
+    
+    .loading-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: @gray-7;
+    }
+    
+    .loading-progress {
+      margin-top: 8px;
+      font-size: 12px;
+      color: @primary-color;
+      font-weight: 500;
+    }
+  }
+}
+
+// 错误容器
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  
+  .error-message {
+    margin: 16px 0 24px;
+    font-size: 16px;
+    color: @gray-7;
+    line-height: 1.5;
+  }
+}
+
+// 暗色主题
+.theme-dark {
+  background-color: #1e1e1e;
+  color: #fff;
+  
+  .viewer-container {
+    background: #2c2c2c;
+    
+    .page {
+      background: #3c3c3c;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #404040;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #666;
+      
+      &:hover {
+        background: #888;
+      }
+    }
+    
+    &::-webkit-scrollbar-corner {
+      background: #404040;
+    }
+  }
+  
+  .sidebar-container {
+    background: #2c2c2c;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .loading-overlay {
+    background: rgba(44, 44, 44, 0.9);
+    
+    .loading-text {
+      color: #bbb;
+    }
+  }
+  
+  .error-container {
+    .error-message {
+      color: #bbb;
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .vue-pdf-viewer {
+    .sidebar-container {
+      width: 100vw;
+      
+      &.show {
+        transform: translateX(0);
+      }
+    }
+    
+    &.has-sidebar {
+      .viewer-container {
+        margin-right: 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .viewer-container {
+    .page {
+      margin: 8px;
+      border-radius: 4px;
+    }
+  }
+  
+  .sidebar-container {
+    width: 100vw;
+  }
+}
+
+// 触摸设备优化
+@media (hover: none) and (pointer: coarse) {
+  .vue-pdf-viewer {
+    -webkit-user-select: none;
+    user-select: none;
+    
+    .viewer-container {
+      -webkit-overflow-scrolling: touch;
+      
+      .page {
+        margin: 12px auto;
+        
+        canvas {
+          touch-action: manipulation;
+        }
+      }
+    }
+  }
+}
+
+// 高 DPI 显示屏优化
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .vue-pdf-viewer {
+    .page canvas {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  }
+}
+
+// 打印样式
+@media print {
+  .vue-pdf-viewer {
+    .pdf-top-toolbar,
+    .pdf-bottom-toolbar,
+    .sidebar-container,
+    .loading-overlay {
+      display: none !important;
+    }
+    
+    .viewer-container {
+      position: static;
+      overflow: visible;
+      background: transparent;
+      
+      .page {
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        page-break-after: always;
+        
+        &:last-child {
+          page-break-after: avoid;
+        }
+      }
+    }
+  }
+}
+
+// 动画效果
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+// 页面渲染动画
+.page {
+  animation: fadeIn 0.3s ease-out;
+}
+
+// 侧边栏动画
+.sidebar-container {
+  &.show {
+    animation: slideInRight 0.3s ease-out;
+  }
+}
+
+// 无障碍支持
+.vue-pdf-viewer {
+  *:focus {
+    outline: 2px solid @primary-color;
+    outline-offset: 2px;
+  }
+  
+  // 屏幕阅读器支持
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+// 减少动画（尊重用户的无障碍设置）
+@media (prefers-reduced-motion: reduce) {
+  .vue-pdf-viewer * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
