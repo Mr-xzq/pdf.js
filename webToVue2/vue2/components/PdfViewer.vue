@@ -43,7 +43,7 @@
     </div>
     
     <!-- 底部工具栏 -->
-    <pdf-bottom-toolbar 
+    <pdf-bottom-toolbar
       v-if="showToolbar && toolbarVisible"
       @prev-page="handlePrevPage"
       @next-page="handleNextPage"
@@ -51,6 +51,7 @@
       @zoom-out="handleZoomOut"
       @show-thumbnails="handleShowThumbnails"
       @show-outline="handleShowOutline"
+      @show-info="handleShowInfo"
     />
     
     <!-- 加载状态 -->
@@ -107,8 +108,14 @@
 </template>
 
 <script>
-import { mapState, mapGetters, mapActions } from 'vuex';
-import PdfViewerCore, { ErrorHandler } from '../utils/pdf-viewer-core.js';
+import {
+  mapPdfState,
+  mapPdfGetters,
+  mapPdfMutations,
+  mapPdfActions
+} from '../store/pdf-viewer.js';
+import PdfViewerCore from '../utils/pdf-viewer-core.js';
+import { ErrorHandler } from '../utils/pdf-viewer-core.js';
 import PdfTopToolbar from './PdfTopToolbar.vue';
 import PdfBottomToolbar from './PdfBottomToolbar.vue';
 import PdfThumbnail from './PdfThumbnail.vue';
@@ -161,12 +168,7 @@ export default {
       default: true
     },
     
-    // 主题
-    theme: {
-      type: String,
-      default: 'light',
-      validator: value => ['light', 'dark'].includes(value)
-    }
+
   },
   
   data() {
@@ -188,18 +190,19 @@ export default {
   },
   
   computed: {
-    ...mapState('pdfViewer', [
-      'loading', 
-      'error', 
+    // 使用命名空间辅助函数 - 符合项目 Vuex 规范
+    ...mapPdfState([
+      'loading',
+      'error',
       'passwordRequired',
-      'toolbarVisible'
+      'documentInfo'
     ]),
-    
-    ...mapGetters('pdfViewer', [
+
+    ...mapPdfGetters([
       'isLoading',
       'isDocumentLoaded',
       'isSidebarVisible',
-      'isThumbsVisible', 
+      'isThumbsVisible',
       'isOutlineVisible',
       'loadProgressPercent'
     ]),
@@ -211,14 +214,13 @@ export default {
         'mobile-mode': this.$vant?.isMobile,
         'loading': this.isLoading,
         'has-toolbar': this.showToolbar && this.toolbarVisible,
-        'has-sidebar': this.isSidebarVisible,
-        [`theme-${this.theme}`]: true
+        'has-sidebar': this.isSidebarVisible
       };
     },
     
-    // 工具栏是否可见
+    // 工具栏是否可见（从状态计算属性获取）
     toolbarVisible() {
-      return this.$store.state.pdfViewer.showToolbar;
+      return this.showToolbar === true;
     },
     
     // 错误消息
@@ -259,12 +261,6 @@ export default {
   },
   
   async mounted() {
-    // 注册 Vuex 模块
-    if (!this.$store.hasModule('pdfViewer')) {
-      const pdfViewerStore = await import('../store/pdf-viewer.js');
-      this.$store.registerModule('pdfViewer', pdfViewerStore.default);
-    }
-    
     // 初始化 PDF 查看器
     await this.initializePdfViewer();
     
@@ -275,7 +271,7 @@ export default {
     
     // 设置初始页码
     if (this.initialPage > 1) {
-      this.$store.dispatch('pdfViewer/goToPage', this.initialPage);
+      this.goToPage(this.initialPage);
     }
     
     // 初始化手势
@@ -290,33 +286,46 @@ export default {
   },
   
   methods: {
-    ...mapActions('pdfViewer', [
-      'loadDocument as loadDocumentAction',
-      'goToPage',
-      'nextPage',
-      'prevPage', 
-      'zoomIn',
-      'zoomOut',
-      'showThumbnails',
-      'showOutline',
-      'clearError',
-      'cleanup'
-    ]),
+    // 使用命名空间辅助函数 - 符合项目 Vuex 规范
+    ...mapPdfActions({
+      loadDocumentAction: 'loadDocument',
+      goToPage: 'goToPage',
+      nextPage: 'nextPage',
+      prevPage: 'prevPage',
+      zoomIn: 'zoomIn',
+      zoomOut: 'zoomOut',
+      showThumbnails: 'showThumbnails',
+      showOutline: 'showOutline',
+      clearError: 'clearError',
+      cleanup: 'cleanup'
+    }),
+
+    ...mapPdfMutations({
+      setCurrentPage: 'SET_CURRENT_PAGE',
+      setScale: 'SET_SCALE'
+    }),
     
     /**
      * 初始化 PDF 查看器
      */
     async initializePdfViewer() {
       try {
+        // 确保容器元素已经存在
+        await this.$nextTick();
+
+        if (!this.$refs.viewerContainer) {
+          throw new Error('Viewer container not found');
+        }
+
         this.pdfViewerCore = new PdfViewerCore({
           container: this.$refs.viewerContainer,
           maxCanvasPixels: this.maxCanvasPixels,
           textLayerMode: this.textLayerMode
         });
-        
+
         // 监听事件
         this.setupEventListeners();
-        
+
       } catch (error) {
         console.error('Failed to initialize PDF viewer:', error);
         this.$toast.fail('PDF 查看器初始化失败');
@@ -328,27 +337,41 @@ export default {
      */
     setupEventListeners() {
       if (!this.pdfViewerCore) return;
-      
+
       const eventBus = this.pdfViewerCore.eventBus;
-      
+
+      // 文档加载完成事件
+      eventBus.on('documentloaded', (evt) => {
+        this.$emit('document-loaded', {
+          numPages: evt.numPages,
+          source: evt.source
+        });
+      });
+
+      // 页面初始化事件
+      eventBus.on('pagesinit', () => {
+        // 初始化侧边栏组件
+        this.initializeSidebarComponents();
+      });
+
       // 页面变化事件
       eventBus.on('pagechanging', (evt) => {
-        this.$store.commit('pdfViewer/SET_CURRENT_PAGE', evt.pageNumber);
+        this.setCurrentPage(evt.pageNumber);
         this.$emit('page-changed', {
           pageNumber: evt.pageNumber,
           previous: evt.previous
         });
       });
-      
+
       // 缩放变化事件
       eventBus.on('scalechanging', (evt) => {
-        this.$store.commit('pdfViewer/SET_SCALE', evt.scale);
+        this.setScale(evt.scale);
         this.$emit('scale-changed', {
           scale: evt.scale,
           presetValue: evt.presetValue
         });
       });
-      
+
       // 页面渲染完成事件
       eventBus.on('pagerendered', (evt) => {
         this.$emit('page-rendered', {
@@ -381,7 +404,7 @@ export default {
         
         this.$emit('document-loaded', {
           numPages: this.pdfViewerCore.pagesCount,
-          info: this.$store.state.pdfViewer.documentInfo
+          info: this.documentInfo
         });
         
       } catch (error) {
@@ -536,6 +559,13 @@ export default {
       if (dest && dest.page) {
         this.goToPage(dest.page);
       }
+    },
+
+    /**
+     * 处理显示信息
+     */
+    handleShowInfo() {
+      this.$emit('show-info');
     },
     
     /**

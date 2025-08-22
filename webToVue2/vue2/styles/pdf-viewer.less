@@ -1,27 +1,14 @@
 /**
- * PDF 查看器组件样式
- * 基于移动端优化，支持暗色主题
+ * PDF 查看器组件样式 - MVP 核心版本
+ * 专注移动端基础功能，简洁设计
  */
 
-// 变量定义
-@primary-color: #1989fa;
+// 基础变量
+@primary-color: #1890ff;
 @background-color: #f5f5f5;
 @white: #fff;
-@black: #000;
-@gray-1: #f7f8fa;
-@gray-2: #f2f3f5;
-@gray-3: #ebedf0;
-@gray-4: #dcdee0;
-@gray-5: #c8c9cc;
-@gray-6: #969799;
-@gray-7: #646566;
-@gray-8: #323233;
-
 @toolbar-height: 48px;
 @sidebar-width: 280px;
-@border-radius: 8px;
-@box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-@transition: all 0.3s ease;
 
 // 主容器样式
 .vue-pdf-viewer {
@@ -30,76 +17,74 @@
   background-color: @background-color;
   display: flex;
   flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei', sans-serif;
-  
-  // 加载状态
-  &.loading {
-    .viewer-container {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-  }
-  
-  // 移动端模式
-  &.mobile-mode {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
+
   // 有工具栏时的布局调整
   &.has-toolbar {
+    .pdf-top-toolbar {
+      flex: 0 0 @toolbar-height;
+    }
+
     .viewer-container {
-      top: @toolbar-height;
-      bottom: @toolbar-height;
+      flex: 1;
+      overflow: auto;
+    }
+
+    .pdf-bottom-toolbar {
+      flex: 0 0 @toolbar-height;
+      display: flex !important;
     }
   }
-  
-  // 有侧边栏时的布局调整
-  &.has-sidebar {
+
+  // 没有工具栏时的布局
+  &:not(.has-toolbar) {
     .viewer-container {
-      margin-right: @sidebar-width;
+      flex: 1;
+      overflow: auto;
+    }
+
+    .pdf-top-toolbar,
+    .pdf-bottom-toolbar {
+      display: none;
     }
   }
 }
 
 // PDF 视图容器
 .viewer-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
   background: @white;
-  transition: @transition;
+  overflow-y: auto;
+  overflow-x: hidden;
   
   // PDF 查看器
   .pdf-viewer {
     width: 100%;
     min-height: 100%;
-    
+    padding: 16px 0 32px 0; // 增加底部内边距，确保最后一页能完全显示
+
     // PDF 页面容器
     .page {
       margin: 16px auto;
       background: @white;
-      box-shadow: @box-shadow;
-      border-radius: @border-radius;
-      overflow: hidden;
-      position: relative;
-      
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      max-width: 100%;
+
+      // 页面占位符
+      .page-placeholder {
+        color: #999;
+        font-size: 14px;
+        text-align: center;
+        padding: 20px;
+      }
+
       // 页面画布
       canvas {
         display: block;
         width: 100%;
         height: auto;
+        max-width: 100%;
       }
       
-      // 文本层
+      // 文本层（基础支持）
       .textLayer {
         position: absolute;
         left: 0;
@@ -117,95 +102,33 @@
           cursor: text;
           transform-origin: 0% 0%;
         }
-        
-        .highlight {
-          margin: -1px;
-          padding: 1px;
-          background-color: rgba(255, 255, 0, 0.3);
-          border-radius: 4px;
-        }
-        
-        .highlight.selected {
-          background-color: rgba(255, 0, 0, 0.3);
-        }
-      }
-      
-      // 注释层
-      .annotationLayer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        
-        section {
-          position: absolute;
-        }
-        
-        .linkAnnotation {
-          cursor: pointer;
-          
-          > a {
-            position: absolute;
-            font-size: 1em;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-          }
-        }
-        
-        .buttonWidgetAnnotation {
-          &.checkBox input,
-          &.radioButton input {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            padding: 0;
-          }
-        }
-        
-        .textWidgetAnnotation input,
-        .textWidgetAnnotation textarea,
-        .choiceWidgetAnnotation select,
-        .buttonWidgetAnnotation.checkBox input,
-        .buttonWidgetAnnotation.radioButton input {
-          background-color: rgba(0, 54, 255, 0.13);
-          border: 1px solid transparent;
-          box-sizing: border-box;
-          font-size: 9px;
-          height: 100%;
-          margin: 0;
-          padding: 0 3px;
-          vertical-align: top;
-          width: 100%;
-        }
       }
     }
   }
-  
-  // 滚动条样式
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: @gray-2;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: @gray-5;
-    border-radius: 4px;
-    
-    &:hover {
-      background: @gray-6;
-    }
-  }
-  
-  &::-webkit-scrollbar-corner {
-    background: @gray-2;
-  }
+}
+
+// 顶部工具栏
+.pdf-top-toolbar {
+  height: @toolbar-height;
+  background: @white;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+// 底部工具栏
+.pdf-bottom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: @toolbar-height;
+  background: @white;
+  border-top: 1px solid #eee;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  flex-shrink: 0;
+  min-height: @toolbar-height;
+  width: 100%;
 }
 
 // 侧边栏容器
@@ -218,15 +141,15 @@
   background: @white;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
   transform: translateX(100%);
-  transition: @transition;
-  z-index: 1000;
-  
+  transition: transform 0.3s ease;
+  z-index: 200;
+
   &.show {
     transform: translateX(0);
   }
-  
-  // 有工具栏时的调整
-  .has-toolbar & {
+
+  // 有工具栏时，为工具栏留出空间
+  .vue-pdf-viewer.has-toolbar & {
     top: @toolbar-height;
     bottom: @toolbar-height;
   }
@@ -251,7 +174,7 @@
     .loading-text {
       margin-top: 16px;
       font-size: 14px;
-      color: @gray-7;
+      color: #666;
     }
     
     .loading-progress {
@@ -275,220 +198,9 @@
   .error-message {
     margin: 16px 0 24px;
     font-size: 16px;
-    color: @gray-7;
+    color: #666;
     line-height: 1.5;
   }
 }
 
-// 暗色主题
-.theme-dark {
-  background-color: #1e1e1e;
-  color: #fff;
-  
-  .viewer-container {
-    background: #2c2c2c;
-    
-    .page {
-      background: #3c3c3c;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: #404040;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: #666;
-      
-      &:hover {
-        background: #888;
-      }
-    }
-    
-    &::-webkit-scrollbar-corner {
-      background: #404040;
-    }
-  }
-  
-  .sidebar-container {
-    background: #2c2c2c;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
-  }
-  
-  .loading-overlay {
-    background: rgba(44, 44, 44, 0.9);
-    
-    .loading-text {
-      color: #bbb;
-    }
-  }
-  
-  .error-container {
-    .error-message {
-      color: #bbb;
-    }
-  }
-}
 
-// 响应式设计
-@media (max-width: 768px) {
-  .vue-pdf-viewer {
-    .sidebar-container {
-      width: 100vw;
-      
-      &.show {
-        transform: translateX(0);
-      }
-    }
-    
-    &.has-sidebar {
-      .viewer-container {
-        margin-right: 0;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .viewer-container {
-    .page {
-      margin: 8px;
-      border-radius: 4px;
-    }
-  }
-  
-  .sidebar-container {
-    width: 100vw;
-  }
-}
-
-// 触摸设备优化
-@media (hover: none) and (pointer: coarse) {
-  .vue-pdf-viewer {
-    -webkit-user-select: none;
-    user-select: none;
-    
-    .viewer-container {
-      -webkit-overflow-scrolling: touch;
-      
-      .page {
-        margin: 12px auto;
-        
-        canvas {
-          touch-action: manipulation;
-        }
-      }
-    }
-  }
-}
-
-// 高 DPI 显示屏优化
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .vue-pdf-viewer {
-    .page canvas {
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-    }
-  }
-}
-
-// 打印样式
-@media print {
-  .vue-pdf-viewer {
-    .pdf-top-toolbar,
-    .pdf-bottom-toolbar,
-    .sidebar-container,
-    .loading-overlay {
-      display: none !important;
-    }
-    
-    .viewer-container {
-      position: static;
-      overflow: visible;
-      background: transparent;
-      
-      .page {
-        margin: 0;
-        box-shadow: none;
-        border-radius: 0;
-        page-break-after: always;
-        
-        &:last-child {
-          page-break-after: avoid;
-        }
-      }
-    }
-  }
-}
-
-// 动画效果
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideOutRight {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-// 页面渲染动画
-.page {
-  animation: fadeIn 0.3s ease-out;
-}
-
-// 侧边栏动画
-.sidebar-container {
-  &.show {
-    animation: slideInRight 0.3s ease-out;
-  }
-}
-
-// 无障碍支持
-.vue-pdf-viewer {
-  *:focus {
-    outline: 2px solid @primary-color;
-    outline-offset: 2px;
-  }
-  
-  // 屏幕阅读器支持
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-}
-
-// 减少动画（尊重用户的无障碍设置）
-@media (prefers-reduced-motion: reduce) {
-  .vue-pdf-viewer * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}

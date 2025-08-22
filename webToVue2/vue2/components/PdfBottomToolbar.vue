@@ -3,8 +3,8 @@
     <!-- 左侧按钮组 -->
     <div class="toolbar-left">
       <!-- 缩略图按钮 -->
-      <van-button 
-        icon="photo-o" 
+      <van-button
+        icon="photo-o"
         size="small"
         :type="isThumbsActive ? 'primary' : 'default'"
         @click="handleShowThumbnails"
@@ -12,10 +12,10 @@
       >
         缩略图
       </van-button>
-      
+
       <!-- 目录按钮 -->
-      <van-button 
-        icon="list-switch" 
+      <van-button
+        icon="bars"
         size="small"
         :type="isOutlineActive ? 'primary' : 'default'"
         :disabled="!hasOutline"
@@ -45,8 +45,8 @@
       </div>
       
       <!-- 下一页 -->
-      <van-button 
-        icon="arrow" 
+      <van-button
+        icon="arrow"
         size="small"
         :disabled="!canGoNext"
         @click="handleNextPage"
@@ -57,49 +57,57 @@
     <!-- 右侧缩放控制 -->
     <div class="toolbar-right">
       <!-- 缩小 -->
-      <van-button 
-        icon="minus" 
+      <van-button
+        icon="minus"
         size="small"
         :disabled="!canZoomOut"
         @click="handleZoomOut"
         class="zoom-btn"
       />
-      
+
       <!-- 缩放比例显示 -->
       <div class="scale-info" @click="showScaleOptions">
         {{ scalePercent }}%
       </div>
-      
+
       <!-- 放大 -->
-      <van-button 
-        icon="plus" 
+      <van-button
+        icon="plus"
         size="small"
         :disabled="!canZoomIn"
         @click="handleZoomIn"
         class="zoom-btn"
+      />
+
+      <!-- 文档信息按钮 -->
+      <van-button
+        icon="info-o"
+        size="small"
+        @click="handleShowInfo"
+        class="info-btn"
       />
     </div>
   </div>
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { mapPdfState, mapPdfGetters } from '../store/pdf-viewer.js';
 
 export default {
   name: 'PdfBottomToolbar',
-  
+
   computed: {
-    ...mapState('pdfViewer', [
-      'currentPage', 
-      'totalPages', 
+    ...mapPdfState([
+      'currentPage',
+      'totalPages',
       'scale',
       'sidebarMode',
       'showSidebar'
     ]),
-    
-    ...mapGetters('pdfViewer', [
+
+    ...mapPdfGetters([
       'canGoNext',
-      'canGoPrev', 
+      'canGoPrev',
       'canZoomIn',
       'canZoomOut',
       'scalePercent',
@@ -238,6 +246,13 @@ export default {
           this.$store.dispatch('pdfViewer/setScale', 1.0);
           break;
       }
+    },
+
+    /**
+     * 显示文档信息
+     */
+    handleShowInfo() {
+      this.$emit('show-info');
     }
   }
 };
@@ -245,14 +260,19 @@ export default {
 
 <style lang="less" scoped>
 .pdf-bottom-toolbar {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: space-between;
   height: 48px;
+  min-height: 48px;
   padding: 0 8px;
   background: #fff;
   border-top: 1px solid #eee;
   box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+  width: 100%;
   
   .toolbar-left,
   .toolbar-right {
@@ -270,6 +290,19 @@ export default {
   .toolbar-btn {
     min-width: 60px;
     font-size: 12px;
+    white-space: nowrap;
+
+    // 确保按钮内容可见
+    /deep/ .van-button__content {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    // 确保图标显示
+    /deep/ .van-icon {
+      font-size: 14px;
+    }
   }
   
   .nav-btn {
@@ -288,7 +321,19 @@ export default {
     height: 28px;
     min-width: 28px;
     padding: 0;
-    
+
+    /deep/ .van-icon {
+      font-size: 14px;
+    }
+  }
+
+  .info-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    margin-left: 4px;
+
     /deep/ .van-icon {
       font-size: 14px;
     }
@@ -343,31 +388,6 @@ export default {
     
     &:active {
       background: #e8e8e8;
-    }
-  }
-}
-
-// 暗色主题
-.theme-dark .pdf-bottom-toolbar {
-  background: #2c2c2c;
-  border-top-color: #404040;
-  
-  .page-info,
-  .scale-info {
-    background: #404040;
-    color: #fff;
-    
-    &:active {
-      background: #4a4a4a;
-    }
-    
-    .current-page {
-      color: #409eff;
-    }
-    
-    .separator,
-    .total-pages {
-      color: #bbb;
     }
   }
 }

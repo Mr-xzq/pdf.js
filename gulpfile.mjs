@@ -828,13 +828,22 @@ function createBuildNumber(done) {
   console.log();
   console.log("### Getting extension build number");
 
+  // buildNumber 是 baseVersion 到目前的提交数量，排除 xzq 的提交(排除之后就是 168)
   exec(
-    "git log --format=oneline " + config.baseVersion + "..",
+    `git log --format="%H|%an" ${config.baseVersion}..`,
     function (err, stdout, stderr) {
       let buildNumber = 0;
       if (!err) {
-        // Build number is the number of commits since base version
-        buildNumber = stdout ? stdout.match(/\n/g).length : 0;
+        if (stdout && stdout.trim()) {
+          const commits = stdout.trim().split("\n");
+          const filteredCommits = commits.filter(line => {
+            const author = line.split("|")[1] || "";
+            return !author.toLowerCase().includes("xzq");
+          });
+          buildNumber = filteredCommits.length;
+        } else {
+          buildNumber = 0;
+        }
       } else {
         console.log(
           "This is not a Git repository; using default build number."

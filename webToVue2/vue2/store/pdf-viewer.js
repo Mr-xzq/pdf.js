@@ -1,6 +1,14 @@
 /**
  * PDF 查看器 Vuex 状态管理模块
  * 基于 PDF.js 事件系统的状态管理
+ *
+ * 使用规范：
+ * 1. 模块化设计：使用命名空间模块，避免状态污染
+ * 2. 动态注册：组件创建时动态注册模块
+ * 3. 同步操作：mutations 只处理同步状态更新
+ * 4. 异步操作：actions 处理异步操作和复杂逻辑
+ * 5. 计算属性：使用 getters 提供计算后的状态
+ * 6. 辅助函数：充分利用 createNamespacedHelpers('pdfViewer')
  */
 
 import { createNamespacedHelpers } from 'vuex';
@@ -165,12 +173,12 @@ const mutations = {
       state.sidebarMode = mode;
     }
   },
-  
+
   // 设置侧边栏显示状态
   SET_SIDEBAR_VISIBLE(state, visible) {
     state.showSidebar = visible;
   },
-  
+
   // 设置侧边栏模式
   SET_SIDEBAR_MODE(state, mode) {
     state.sidebarMode = mode;
@@ -410,7 +418,12 @@ const pdfViewerModule = {
   actions
 };
 
-// 导出命名空间辅助函数
-export const pdfViewerHelpers = createNamespacedHelpers('pdfViewer');
+// 导出命名空间辅助函数 - 推荐在组件中使用
+export const {
+  mapState: mapPdfState,
+  mapGetters: mapPdfGetters,
+  mapMutations: mapPdfMutations,
+  mapActions: mapPdfActions
+} = createNamespacedHelpers('pdfViewer');
 
 export default pdfViewerModule;

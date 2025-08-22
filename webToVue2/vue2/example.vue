@@ -15,14 +15,7 @@
         </van-button>
         
         <!-- 主题切换 -->
-        <van-button 
-          :icon="isDarkTheme ? 'sun-o' : 'moon-o'"
-          type="default" 
-          size="small"
-          @click="toggleTheme"
-        >
-          {{ isDarkTheme ? '浅色' : '深色' }}
-        </van-button>
+
       </div>
     </div>
     
@@ -32,12 +25,12 @@
         v-if="currentPdfUrl"
         :src="currentPdfUrl"
         :show-toolbar="showToolbar"
-        :theme="currentTheme"
         :initial-page="initialPage"
         @document-loaded="onDocumentLoaded"
         @load-error="onLoadError"
         @page-changed="onPageChanged"
         @scale-changed="onScaleChanged"
+        @show-info="showDocInfo = true"
       />
       
       <!-- 空状态 -->
@@ -94,32 +87,13 @@
       </div>
     </van-dialog>
     
-    <!-- 状态栏 -->
-    <div v-if="currentPdfUrl" class="status-bar">
-      <div class="status-left">
-        <span class="status-item">
-          第 {{ currentPage }}/{{ totalPages }} 页
-        </span>
-        <span class="status-item">
-          缩放 {{ currentScale }}%
-        </span>
-      </div>
-      <div class="status-right">
-        <van-button 
-          icon="info-o" 
-          type="default" 
-          size="mini"
-          @click="showDocInfo = true"
-        >
-          信息
-        </van-button>
-      </div>
-    </div>
+
   </div>
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+// 使用命名空间辅助函数 - 符合项目 Vuex 规范
+import { mapPdfState, mapPdfGetters } from './store/pdf-viewer.js';
 import PdfViewer from './components/PdfViewer.vue';
 
 export default {
@@ -139,8 +113,7 @@ export default {
       showDocInfo: false,
       showToolbar: true,
       
-      // 主题
-      currentTheme: 'light',
+
       
       // 初始页码
       initialPage: 1,
@@ -149,82 +122,57 @@ export default {
       pdfFiles: [
         {
           name: '示例文档 1 - 技术手册',
-          url: '/assets/pdf/sample1.pdf',
+          url: 'https://www.pdf995.com/samples/pdf.pdf',
           description: 'PDF.js 技术文档示例'
         },
         {
           name: '示例文档 2 - 用户指南', 
-          url: '/assets/pdf/sample2.pdf',
+          url: 'https://www.pdf995.com/samples/pdf.pdf',
           description: '用户操作指南示例'
         },
         {
           name: '示例文档 3 - API 文档',
-          url: '/assets/pdf/sample3.pdf', 
+          url: 'https://www.pdf995.com/samples/pdf.pdf', 
           description: 'API 接口文档示例'
         },
         {
           name: '在线文档示例',
-          url: 'https://mozilla.github.io/pdf.js/helloworld/helloworld.pdf',
+          url: 'https://www.pdf995.com/samples/pdf.pdf',
           description: '来自 PDF.js 官方的示例文档'
         }
       ],
-      
-      // 文档状态
-      documentInfo: {},
-      currentPage: 1,
-      totalPages: 0,
-      currentScale: 100
     };
   },
   
   computed: {
-    ...mapState('pdfViewer', {
-      storeDocumentInfo: 'documentInfo',
-      storeCurrentPage: 'currentPage',
-      storeTotalPages: 'totalPages',
-      storeScale: 'scale'
-    }),
-    
-    ...mapGetters('pdfViewer', ['isDocumentLoaded']),
-    
-    // 是否为暗色主题
-    isDarkTheme() {
-      return this.currentTheme === 'dark';
+    // 使用命名空间辅助函数 - 直接映射状态，无需重命名
+    ...mapPdfState([
+      'documentInfo',
+      'currentPage',
+      'totalPages',
+      'scale'
+    ]),
+
+    ...mapPdfGetters([
+      'isDocumentLoaded',
+      'scalePercent' // 使用 Vuex 中已有的缩放百分比 getter
+    ]),
+
+
+
+    // 缩放百分比（使用 Vuex getter，避免重复计算）
+    currentScale() {
+      return this.scalePercent;
     }
   },
   
-  watch: {
-    // 监听 Vuex 状态变化
-    storeDocumentInfo: {
-      handler(info) {
-        this.documentInfo = info || {};
-      },
-      immediate: true,
-      deep: true
-    },
-    
-    storeCurrentPage(page) {
-      this.currentPage = page;
-    },
-    
-    storeTotalPages(total) {
-      this.totalPages = total;
-    },
-    
-    storeScale(scale) {
-      this.currentScale = Math.round(scale * 100);
-    }
-  },
+  // 移除 watch，因为现在直接使用 Vuex 状态，无需同步到本地状态
   
   mounted() {
     // 自动加载第一个示例文档
     this.loadDefaultDocument();
     
-    // 从本地存储恢复主题设置
-    const savedTheme = localStorage.getItem('pdf-viewer-theme');
-    if (savedTheme) {
-      this.currentTheme = savedTheme;
-    }
+
   },
   
   methods: {
@@ -258,17 +206,7 @@ export default {
       this.$toast.success(`正在加载：${action.name}`);
     },
     
-    /**
-     * 切换主题
-     */
-    toggleTheme() {
-      this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-      
-      // 保存到本地存储
-      localStorage.setItem('pdf-viewer-theme', this.currentTheme);
-      
-      this.$toast.success(`已切换到${this.isDarkTheme ? '深色' : '浅色'}主题`);
-    },
+
     
     /**
      * 文档加载完成
@@ -378,25 +316,7 @@ export default {
     }
   }
   
-  .status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 40px;
-    padding: 0 16px;
-    background: #fff;
-    border-top: 1px solid #eee;
-    font-size: 12px;
-    
-    .status-left {
-      display: flex;
-      gap: 16px;
-      
-      .status-item {
-        color: #666;
-      }
-    }
-  }
+
   
   .doc-info-content {
     padding: 16px 0;
@@ -415,95 +335,6 @@ export default {
         flex: 1;
         color: #666;
         word-break: break-word;
-      }
-    }
-  }
-}
-
-// 暗色主题
-.theme-dark .pdf-viewer-example {
-  background: #1e1e1e;
-  
-  .example-header {
-    background: #2c2c2c;
-    border-bottom-color: #404040;
-    
-    h2 {
-      color: #fff;
-    }
-  }
-  
-  .empty-state {
-    color: #666;
-    
-    p {
-      color: #999;
-    }
-  }
-  
-  .status-bar {
-    background: #2c2c2c;
-    border-top-color: #404040;
-    
-    .status-item {
-      color: #bbb;
-    }
-  }
-  
-  .doc-info-content {
-    .info-item {
-      label {
-        color: #fff;
-      }
-      
-      span {
-        color: #bbb;
-      }
-    }
-  }
-}
-
-// 响应式设计
-@media (max-width: 768px) {
-  .pdf-viewer-example {
-    .example-header {
-      padding: 0 12px;
-      
-      h2 {
-        font-size: 16px;
-      }
-      
-      .header-actions {
-        gap: 4px;
-      }
-    }
-    
-    .status-bar {
-      padding: 0 12px;
-      
-      .status-left {
-        gap: 12px;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .pdf-viewer-example {
-    .example-header {
-      height: 48px;
-      
-      h2 {
-        font-size: 14px;
-      }
-    }
-    
-    .status-bar {
-      height: 36px;
-      font-size: 11px;
-      
-      .status-left {
-        gap: 8px;
       }
     }
   }

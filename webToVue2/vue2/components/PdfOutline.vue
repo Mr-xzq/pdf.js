@@ -44,12 +44,12 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { mapPdfState, mapPdfGetters, mapPdfActions } from '../store/pdf-viewer.js';
 
 // 目录项组件
 const OutlineItem = {
   name: 'OutlineItem',
-  
+
   props: {
     item: {
       type: Object,
@@ -60,24 +60,24 @@ const OutlineItem = {
       default: 0
     }
   },
-  
+
   data() {
     return {
       expanded: this.level < 2 // 默认展开前两层
     };
   },
-  
+
   computed: {
     hasChildren() {
       return this.item.items && this.item.items.length > 0;
     },
-    
+
     itemStyle() {
       return {
         paddingLeft: `${this.level * 16 + 16}px`
       };
     },
-    
+
     itemClasses() {
       return {
         'outline-item': true,
@@ -86,56 +86,94 @@ const OutlineItem = {
       };
     }
   },
-  
+
   methods: {
     handleClick() {
       if (this.hasChildren) {
         this.expanded = !this.expanded;
       }
-      
+
       this.$emit('item-click', this.item);
     }
   },
-  
-  template: `
-    <div class="outline-item-container">
-      <div 
-        :class="itemClasses"
-        :style="itemStyle"
-        @click="handleClick"
-      >
-        <!-- 展开/收起图标 -->
-        <van-icon 
-          v-if="hasChildren"
-          :name="expanded ? 'arrow-down' : 'arrow'"
-          class="expand-icon"
-        />
-        <div v-else class="expand-placeholder"></div>
-        
-        <!-- 目录标题 -->
-        <div class="item-title">{{ item.title }}</div>
-        
-        <!-- 页码 -->
-        <div v-if="item.page" class="item-page">
-          {{ item.page }}
-        </div>
-      </div>
-      
-      <!-- 子项 -->
-      <div 
-        v-if="hasChildren && expanded" 
-        class="outline-children"
-      >
-        <outline-item
-          v-for="(child, index) in item.items"
-          :key="index"
-          :item="child"
-          :level="level + 1"
-          @item-click="$emit('item-click', $event)"
-        />
-      </div>
-    </div>
-  `
+
+  render(h) {
+    const children = [];
+
+    // 创建主要的目录项元素
+    const itemChildren = [];
+
+    // 展开/收起图标或占位符
+    if (this.hasChildren) {
+      itemChildren.push(
+        h('van-icon', {
+          props: {
+            name: this.expanded ? 'arrow-down' : 'arrow'
+          },
+          class: 'expand-icon'
+        })
+      );
+    } else {
+      itemChildren.push(
+        h('div', {
+          class: 'expand-placeholder'
+        })
+      );
+    }
+
+    // 目录标题
+    itemChildren.push(
+      h('div', {
+        class: 'item-title'
+      }, this.item.title)
+    );
+
+    // 页码
+    if (this.item.page) {
+      itemChildren.push(
+        h('div', {
+          class: 'item-page'
+        }, this.item.page)
+      );
+    }
+
+    // 主要的目录项
+    children.push(
+      h('div', {
+        class: this.itemClasses,
+        style: this.itemStyle,
+        on: {
+          click: this.handleClick
+        }
+      }, itemChildren)
+    );
+
+    // 子项
+    if (this.hasChildren && this.expanded) {
+      const childItems = this.item.items.map((child, index) => {
+        return h('outline-item', {
+          key: index,
+          props: {
+            item: child,
+            level: this.level + 1
+          },
+          on: {
+            'item-click': (event) => this.$emit('item-click', event)
+          }
+        });
+      });
+
+      children.push(
+        h('div', {
+          class: 'outline-children'
+        }, childItems)
+      );
+    }
+
+    return h('div', {
+      class: 'outline-item-container'
+    }, children);
+  }
 };
 
 export default {
@@ -149,17 +187,17 @@ export default {
     return {
       // PDF 查看器核心实例
       pdfViewerCore: null,
-      outlineViewer: null,
-      
-      // 目录数据
+
+      // 处理后的目录项数据
       outlineItems: [],
       loading: false
     };
   },
-  
+
   computed: {
-    ...mapState('pdfViewer', ['outline']),
-    ...mapGetters('pdfViewer', ['hasOutline', 'isDocumentLoaded'])
+    // 使用命名空间辅助函数
+    ...mapPdfState(['outline']),
+    ...mapPdfGetters(['hasOutline', 'isDocumentLoaded'])
   },
   
   watch: {
@@ -172,35 +210,23 @@ export default {
   },
   
   methods: {
+    // 使用命名空间辅助函数
+    ...mapPdfActions({
+      hideSidebar: 'hideSidebar'
+    }),
+
     /**
      * 初始化组件
      */
     async initialize(pdfViewerCore) {
       this.pdfViewerCore = pdfViewerCore;
-      
+
       if (!pdfViewerCore || !pdfViewerCore.pdfDocument) {
         return;
       }
-      
-      this.loading = true;
-      
-      try {
-        // 初始化目录查看器
-        this.outlineViewer = pdfViewerCore.initOutlineViewer(
-          this.$refs.outlineContainer
-        );
-        
-        // 处理目录数据
-        if (this.outline) {
-          this.processOutline(this.outline);
-        }
-        
-      } catch (error) {
-        console.error('Failed to initialize outline viewer:', error);
-        this.$toast.fail('目录初始化失败');
-      } finally {
-        this.loading = false;
-      }
+
+      // 注意：目录数据现在通过 Vuex 管理，这里不再直接设置 outlineItems
+      // 目录数据会通过 loadDocument action 自动更新到 Vuex store
     },
     
     /**
@@ -309,7 +335,7 @@ export default {
      * 处理关闭
      */
     handleClose() {
-      this.$store.dispatch('pdfViewer/hideSidebar');
+      this.hideSidebar();
     }
   }
 };
@@ -437,6 +463,7 @@ export default {
       overflow: hidden;
       display: -webkit-box;
       -webkit-line-clamp: 2;
+      line-clamp: 2;
       -webkit-box-orient: vertical;
     }
     
@@ -458,47 +485,6 @@ export default {
   }
 }
 
-// 暗色主题
-.theme-dark .pdf-outline-viewer {
-  background: #2c2c2c;
-  color: #fff;
-  
-  .outline-header {
-    border-bottom-color: #404040;
-    
-    .header-title {
-      color: #fff;
-    }
-  }
-  
-  .empty-state {
-    color: #666;
-  }
-  
-  .outline-item {
-    &:hover {
-      background: #404040;
-    }
-    
-    &:active {
-      background: #4a4a4a;
-    }
-    
-    .expand-icon {
-      color: #bbb;
-    }
-    
-    .item-title {
-      color: #fff;
-    }
-    
-    .item-page {
-      color: #bbb;
-      background: #404040;
-    }
-  }
-}
-
 // 滚动条样式
 .outline-container {
   &::-webkit-scrollbar {
@@ -515,20 +501,6 @@ export default {
     
     &:hover {
       background: #a8a8a8;
-    }
-  }
-}
-
-.theme-dark .outline-container {
-  &::-webkit-scrollbar-track {
-    background: #404040;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: #666;
-    
-    &:hover {
-      background: #888;
     }
   }
 }

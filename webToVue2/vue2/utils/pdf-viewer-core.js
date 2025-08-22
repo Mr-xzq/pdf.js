@@ -3,50 +3,314 @@
  * 封装 PDF.js API，提供 Vue 友好的接口
  */
 
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs'; // 零配置导入
 import { 
   EventBus, 
-  PDFViewer, 
-  PDFLinkService,
-  PDFThumbnailViewer,
-  PDFOutlineViewer
+  PDFLinkService
 } from 'pdfjs-dist/web/pdf_viewer';
 
-// 设置 Worker 路径
-GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.min.js';
-
 /**
- * 移动端优化的 Canvas 工厂
+ * 简化的页面查看器 - 替换复杂的 PDFViewer
+ * 专注 MVP 功能，避免依赖庞大的 web 模块
  */
-class MobileCanvasFactory {
-  create(width, height) {
-    // 移动端 Canvas 尺寸限制
-    const maxSize = 1024 * 1024; // 1M像素限制
-    if (width * height > maxSize) {
-      const scale = Math.sqrt(maxSize / (width * height));
-      width = Math.floor(width * scale);
-      height = Math.floor(height * scale);
-    }
+class SimplePDFPageViewer {
+  constructor(options = {}) {
+    this.container = options.container;
+    this.eventBus = options.eventBus;
+    this.linkService = options.linkService;
     
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    return {
-      canvas,
-      context: canvas.getContext('2d')
+    // 移动端优化配置
+    this.maxCanvasPixels = options.maxCanvasPixels || 0;
+    this.textLayerMode = options.textLayerMode || 1;
+    
+    // 状态管理
+    this.pdfDocument = null;
+    this._currentPageNumber = 1;
+    this._currentScale = 1.0;  // 使用私有属性避免触发 setter
+    this.pages = [];
+    
+    this._initializeContainer();
+  }
+  
+  _initializeContainer() {
+    if (!this.container) return;
+
+    // 移除可能影响布局的样式设置，让 CSS 控制布局
+    this.container.style.position = 'relative';
+    this.container.style.width = '100%';
+  }
+  
+  async setDocument(pdfDocument) {
+    this.pdfDocument = pdfDocument;
+    this._resetPages();
+    await this._renderAllPages();
+
+    this.eventBus.dispatch('documentloaded', {
+      source: this,
+      numPages: pdfDocument.numPages
+    });
+
+    // 触发页面初始化事件
+    this.eventBus.dispatch('pagesinit', {
+      source: this
+    });
+  }
+  
+  _resetPages() {
+    // 清理现有页面
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
+    this.pages = [];
+  }
+  
+  async _renderAllPages() {
+    if (!this.pdfDocument) return;
+
+    const numPages = this.pdfDocument.numPages;
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const pageContainer = this._createPageContainer(pageNum);
+      this.container.appendChild(pageContainer);
+      this.pages.push({
+        pageNum,
+        container: pageContainer,
+        rendered: false
+      });
+    }
+
+    // 渲染前几页和当前页面
+    const initialRenderPages = Math.min(3, numPages); // 初始渲染前3页
+    for (let pageNum = 1; pageNum <= initialRenderPages; pageNum++) {
+      await this._renderPage(pageNum);
+    }
+
+    // 异步渲染剩余页面
+    this._renderRemainingPages(initialRenderPages + 1, numPages);
+  }
+
+  async _renderRemainingPages(startPage, endPage) {
+    // 使用 requestIdleCallback 或 setTimeout 来避免阻塞 UI
+    const renderNextPage = async (pageNum) => {
+      if (pageNum <= endPage) {
+        await this._renderPage(pageNum);
+        // 使用 setTimeout 来让出控制权
+        setTimeout(() => renderNextPage(pageNum + 1), 10);
+      }
     };
-  }
 
-  reset(canvasAndContext, width, height) {
-    canvasAndContext.canvas.width = width;
-    canvasAndContext.canvas.height = height;
+    if (startPage <= endPage) {
+      setTimeout(() => renderNextPage(startPage), 100);
+    }
   }
+  
+  _createPageContainer(pageNum) {
+    const container = document.createElement('div');
+    container.className = 'page';
+    container.dataset.pageNumber = pageNum;
+    container.style.margin = '16px auto';
+    container.style.background = '#fff';
+    container.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+    container.style.position = 'relative';
+    container.style.minHeight = '600px'; // 设置最小高度
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
 
-  destroy(canvasAndContext) {
-    canvasAndContext.canvas.width = 0;
-    canvasAndContext.canvas.height = 0;
-    canvasAndContext.canvas = null;
-    canvasAndContext.context = null;
+    // 添加加载占位符
+    const placeholder = document.createElement('div');
+    placeholder.className = 'page-placeholder';
+    placeholder.style.color = '#999';
+    placeholder.style.fontSize = '14px';
+    placeholder.textContent = `第 ${pageNum} 页加载中...`;
+    container.appendChild(placeholder);
+
+    return container;
+  }
+  
+  async _renderPage(pageNum) {
+    if (!this.pages || !Array.isArray(this.pages)) {
+      return; // 如果 pages 还没初始化，直接返回
+    }
+
+    const pageInfo = this.pages.find(p => p.pageNum === pageNum);
+    if (!pageInfo || pageInfo.rendered) return;
+    
+    try {
+      const page = await this.pdfDocument.getPage(pageNum);
+      const viewport = page.getViewport({ scale: this.currentScale });
+
+      // 移除占位符
+      const placeholder = pageInfo.container.querySelector('.page-placeholder');
+      if (placeholder) {
+        placeholder.remove();
+      }
+
+      // 重置容器样式
+      pageInfo.container.style.minHeight = 'auto';
+      pageInfo.container.style.display = 'block';
+      pageInfo.container.style.alignItems = 'initial';
+      pageInfo.container.style.justifyContent = 'initial';
+
+      // 创建 Canvas
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      canvas.style.display = 'block';
+
+      pageInfo.container.appendChild(canvas);
+      
+      // 渲染页面
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      
+      // 渲染文本层（可选）
+      if (this.textLayerMode > 0) {
+        await this._renderTextLayer(page, pageInfo.container);
+      }
+      
+      pageInfo.rendered = true;
+      
+      this.eventBus.dispatch('pagerendered', {
+        source: this,
+        pageNumber: pageNum
+      });
+      
+    } catch (error) {
+      console.error(`Failed to render page ${pageNum}:`, error);
+    }
+  }
+  
+  async _renderTextLayer(page, container) {
+    try {
+      const textContent = await page.getTextContent();
+      
+      const textLayerDiv = document.createElement('div');
+      textLayerDiv.className = 'textLayer';
+      textLayerDiv.style.position = 'absolute';
+      textLayerDiv.style.left = '0';
+      textLayerDiv.style.top = '0';
+      textLayerDiv.style.right = '0';
+      textLayerDiv.style.bottom = '0';
+      textLayerDiv.style.overflow = 'hidden';
+      textLayerDiv.style.opacity = '0.2';
+      textLayerDiv.style.lineHeight = '1.0';
+      
+      container.appendChild(textLayerDiv);
+      
+      // 简化的文本层渲染
+      textContent.items.forEach((textItem) => {
+        const textSpan = document.createElement('span');
+        textSpan.textContent = textItem.str;
+        textSpan.style.position = 'absolute';
+        textSpan.style.color = 'transparent';
+        textSpan.style.cursor = 'text';
+        textSpan.style.transformOrigin = '0% 0%';
+        
+        // 简化的位置计算
+        textSpan.style.left = textItem.transform[4] + 'px';
+        textSpan.style.top = textItem.transform[5] + 'px';
+        
+        textLayerDiv.appendChild(textSpan);
+      });
+      
+    } catch (error) {
+      console.error('Failed to render text layer:', error);
+    }
+  }
+  
+  // 页面导航
+  set currentPageNumber(pageNum) {
+    if (pageNum < 1 || pageNum > this.pdfDocument?.numPages) return;
+
+    const oldPageNum = this._currentPageNumber;
+    this._currentPageNumber = pageNum;
+
+    // 滚动到指定页面
+    this._scrollToPage(pageNum);
+
+    // 渲染页面（如果还未渲染）
+    this._renderPage(pageNum);
+
+    this.eventBus.dispatch('pagechanging', {
+      source: this,
+      pageNumber: pageNum,
+      previous: oldPageNum
+    });
+  }
+  
+  get currentPageNumber() {
+    return this._currentPageNumber || 1;
+  }
+  
+  set _currentPageNumber(value) {
+    this.__currentPageNumber = value;
+  }
+  
+  get _currentPageNumber() {
+    return this.__currentPageNumber || 1;
+  }
+  
+  // 缩放控制
+  set currentScale(scale) {
+    const newScale = Math.max(0.25, Math.min(5.0, scale));
+    this._currentScale = newScale;
+    
+    // 重新渲染所有已渲染的页面
+    this._reRenderPages();
+    
+    this.eventBus.dispatch('scalechanging', {
+      source: this,
+      scale: newScale,
+      presetValue: newScale
+    });
+  }
+  
+  get currentScale() {
+    return this._currentScale || 1.0;
+  }
+  
+  _scrollToPage(pageNum) {
+    if (!this.pages || !Array.isArray(this.pages)) {
+      return; // 如果 pages 还没初始化，直接返回
+    }
+
+    const pageInfo = this.pages.find(p => p.pageNum === pageNum);
+    if (pageInfo && pageInfo.container) {
+      pageInfo.container.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }
+  
+  async _reRenderPages() {
+    // 标记所有页面为未渲染，重新渲染
+    if (!this.pages || !Array.isArray(this.pages)) {
+      return; // 如果 pages 还没初始化，直接返回
+    }
+
+    this.pages.forEach(page => {
+      page.rendered = false;
+      page.container.innerHTML = '';
+    });
+    
+    // 重新渲染当前页面
+    await this._renderPage(this.currentPageNumber);
+  }
+  
+  cleanup() {
+    this.pages = [];
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
   }
 }
 
@@ -63,15 +327,12 @@ export class PdfViewerCore {
     this.thumbnailViewer = null;
     this.outlineViewer = null;
     
-    // 移动端优化配置
-    this.mobileConfig = {
-      maxCanvasPixels: 0,           // 禁用 Canvas 缩放，使用 CSS 缩放
-      maxImageSize: 1024 * 1024,    // 限制图像大小为 1M 像素
+    // 基础配置 - 移动端优化配置移至后期扩展
+    this.config = {
+      maxCanvasPixels: 0,           // 使用 CSS 缩放
       textLayerMode: 1,             // 启用文本层
       enableScripting: false,       // 禁用 PDF JavaScript
-      annotationMode: 1,            // 仅启用表单注释
-      useOnlyCssZoom: true,         // 仅使用 CSS 缩放
-      removePageBorders: true       // 移除页面边框
+      annotationMode: 1             // 仅启用表单注释
     };
     
     this._initializeViewer();
@@ -86,12 +347,13 @@ export class PdfViewerCore {
       eventBus: this.eventBus 
     });
 
-    // 创建主查看器
-    this.pdfViewer = new PDFViewer({
+    // 创建简化的页面查看器（替换复杂的 PDFViewer）
+    this.pdfViewer = new SimplePDFPageViewer({
       container: this.container,
       eventBus: this.eventBus,
       linkService: this.linkService,
-      ...this.mobileConfig
+      maxCanvasPixels: this.config.maxCanvasPixels,
+      textLayerMode: this.config.textLayerMode
     });
 
     // 链接服务设置查看器
@@ -103,10 +365,10 @@ export class PdfViewerCore {
    */
   async loadDocument(src, options = {}) {
     try {
-      const loadingTask = getDocument({
+      const loadingTask = pdfjsLib.getDocument({
         url: src,
-        maxImageSize: this.mobileConfig.maxImageSize,
         isEvalSupported: false,
+        verbosity: pdfjsLib.VerbosityLevel.ERRORS,
         ...options
       });
 
@@ -129,39 +391,98 @@ export class PdfViewerCore {
   }
 
   /**
-   * 初始化缩略图查看器
+   * 获取缩略图数据 - 供 Vue 组件使用
    */
-  initThumbnailViewer(container) {
-    if (!this.thumbnailViewer) {
-      this.thumbnailViewer = new PDFThumbnailViewer({
-        container,
-        eventBus: this.eventBus,
-        linkService: this.linkService
-      });
-
-      if (this.pdfDocument) {
-        this.thumbnailViewer.setDocument(this.pdfDocument);
-      }
+  async getThumbnailData(pageNumber, options = {}) {
+    if (!this.pdfDocument) return null;
+    
+    try {
+      const page = await this.pdfDocument.getPage(pageNumber);
+      const scale = options.scale || 0.3;
+      const viewport = page.getViewport({ scale });
+      
+      // 创建 Canvas
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      // 渲染页面到 Canvas
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+      
+      return {
+        canvas,
+        width: viewport.width,
+        height: viewport.height,
+        pageNumber
+      };
+    } catch (error) {
+      console.error(`Failed to generate thumbnail for page ${pageNumber}:`, error);
+      return null;
     }
-    return this.thumbnailViewer;
   }
 
   /**
-   * 初始化目录查看器
+   * 获取文档目录数据 - 供 Vue 组件使用
    */
-  initOutlineViewer(container) {
-    if (!this.outlineViewer) {
-      this.outlineViewer = new PDFOutlineViewer({
-        container,
-        eventBus: this.eventBus,
-        linkService: this.linkService
-      });
-
-      if (this.pdfDocument) {
-        this.outlineViewer.setDocument(this.pdfDocument);
+  async getOutlineData() {
+    if (!this.pdfDocument) return null;
+    
+    try {
+      const outline = await this.pdfDocument.getOutline();
+      
+      if (!outline || outline.length === 0) {
+        return null;
       }
+      
+      // 递归处理目录项，添加页码信息
+      const processOutlineItems = async (items) => {
+        const processedItems = [];
+        
+        for (const item of items) {
+          const processedItem = {
+            title: item.title,
+            bold: item.bold,
+            italic: item.italic,
+            color: item.color,
+            dest: item.dest,
+            url: item.url,
+            page: null,
+            items: []
+          };
+          
+          // 获取目标页码
+          if (item.dest) {
+            try {
+              const pageRef = await this.pdfDocument.getPageIndex(item.dest[0]);
+              processedItem.page = pageRef + 1; // PDF.js 页码从 0 开始，UI 从 1 开始
+            } catch (error) {
+              console.warn('Failed to get page for outline item:', error);
+            }
+          }
+          
+          // 递归处理子项
+          if (item.items && item.items.length > 0) {
+            processedItem.items = await processOutlineItems(item.items);
+          }
+          
+          processedItems.push(processedItem);
+        }
+        
+        return processedItems;
+      };
+      
+      return await processOutlineItems(outline);
+    } catch (error) {
+      console.error('Failed to get outline:', error);
+      return null;
     }
-    return this.outlineViewer;
   }
 
   /**

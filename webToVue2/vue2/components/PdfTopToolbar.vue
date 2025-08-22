@@ -25,20 +25,21 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { mapPdfState, mapPdfGetters } from '../store/pdf-viewer.js';
 
 export default {
   name: 'PdfTopToolbar',
-  
+
   data() {
     return {
       searchQuery: ''
     };
   },
-  
+
   computed: {
-    ...mapState('pdfViewer', ['documentInfo']),
-    ...mapGetters('pdfViewer', ['isDocumentLoaded']),
+    // 使用命名空间辅助函数
+    ...mapPdfState(['documentInfo']),
+    ...mapPdfGetters(['isDocumentLoaded']),
     
     // 文档标题
     documentTitle() {
@@ -134,17 +135,6 @@ export default {
         opacity: 0.5;
       }
     }
-  }
-}
-
-// 暗色主题
-.theme-dark .pdf-top-toolbar {
-  background: #2c2c2c;
-  border-bottom-color: #404040;
-  color: #fff;
-  
-  .document-title {
-    color: #fff;
   }
 }
 </style>

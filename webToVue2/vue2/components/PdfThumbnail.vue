@@ -63,7 +63,7 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex';
+import { mapPdfState, mapPdfGetters } from '../store/pdf-viewer.js';
 
 export default {
   name: 'PdfThumbnail',
@@ -72,7 +72,6 @@ export default {
     return {
       // PDF 查看器核心实例
       pdfViewerCore: null,
-      thumbnailViewer: null,
       
       // 页面数据
       pages: [],
@@ -88,8 +87,9 @@ export default {
   },
   
   computed: {
-    ...mapState('pdfViewer', ['currentPage', 'totalPages']),
-    ...mapGetters('pdfViewer', ['isDocumentLoaded'])
+    // 使用命名空间辅助函数
+    ...mapPdfState(['currentPage', 'totalPages']),
+    ...mapPdfGetters(['isDocumentLoaded'])
   },
   
   watch: {
@@ -117,15 +117,10 @@ export default {
       this.loading = true;
       
       try {
-        // 初始化缩略图查看器
-        this.thumbnailViewer = pdfViewerCore.initThumbnailViewer(
-          this.$refs.thumbnailContainer
-        );
-        
         // 初始化页面数据
         this.initializePages();
         
-        // 渲染缩略图
+        // 渲染缩略图（自实现，无需官方组件）
         await this.renderThumbnails();
         
       } catch (error) {
@@ -175,10 +170,10 @@ export default {
     },
     
     /**
-     * 渲染单个缩略图
+     * 渲染单个缩略图 - 完全自实现，支持自定义UI
      */
     async renderThumbnail(pageNumber) {
-      if (!this.pdfViewerCore || !this.pdfViewerCore.pdfDocument) {
+      if (!this.pdfViewerCore) {
         return;
       }
       
@@ -192,13 +187,17 @@ export default {
       page.loading = true;
       
       try {
-        // 获取PDF页面
-        const pdfPage = await this.pdfViewerCore.pdfDocument.getPage(pageNumber);
+        // 使用自实现的缩略图数据获取方法
+        const thumbnailData = await this.pdfViewerCore.getThumbnailData(pageNumber, {
+          scale: this.thumbnailConfig.scale
+        });
         
-        // 计算视口
-        const viewport = pdfPage.getViewport({ scale: this.thumbnailConfig.scale });
+        if (!thumbnailData) {
+          console.warn(`Failed to get thumbnail data for page ${pageNumber}`);
+          return;
+        }
         
-        // 获取canvas元素
+        // 获取目标canvas元素
         const canvas = this.$refs[`thumbnail-${pageNumber}`]?.[0];
         if (!canvas) {
           console.warn(`Canvas not found for page ${pageNumber}`);
@@ -207,19 +206,14 @@ export default {
         
         const context = canvas.getContext('2d');
         
-        // 设置canvas尺寸
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        // 设置canvas尺寸（适配自定义UI需求）
+        canvas.width = thumbnailData.width;
+        canvas.height = thumbnailData.height;
         canvas.style.width = this.thumbnailConfig.width + 'px';
         canvas.style.height = this.thumbnailConfig.height + 'px';
         
-        // 渲染PDF内容到canvas
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        
-        await pdfPage.render(renderContext).promise;
+        // 将渲染好的数据绘制到目标canvas
+        context.drawImage(thumbnailData.canvas, 0, 0);
         
         page.rendered = true;
         
@@ -398,39 +392,6 @@ export default {
   }
 }
 
-// 暗色主题
-.theme-dark .pdf-thumbnail-viewer {
-  background: #2c2c2c;
-  color: #fff;
-  
-  .thumbnail-header {
-    border-bottom-color: #404040;
-    
-    .header-title {
-      color: #fff;
-    }
-  }
-  
-  .thumbnail-item {
-    &:hover {
-      background: #404040;
-    }
-    
-    &.active {
-      background: #1e3a8a;
-      border-color: #409eff;
-    }
-    
-    .thumbnail-canvas-container {
-      border-color: #555;
-    }
-    
-    .thumbnail-page-number {
-      color: #bbb;
-    }
-  }
-}
-
 // 滚动条样式
 .thumbnail-container {
   &::-webkit-scrollbar {
@@ -447,20 +408,6 @@ export default {
     
     &:hover {
       background: #a8a8a8;
-    }
-  }
-}
-
-.theme-dark .thumbnail-container {
-  &::-webkit-scrollbar-track {
-    background: #404040;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: #666;
-    
-    &:hover {
-      background: #888;
     }
   }
 }

@@ -231,10 +231,8 @@ const pdfViewerModule = {
 
 ```javascript
 // core/pdf-viewer-core.js - 核心逻辑封装
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs'; // 零配置导入
 import { EventBus, PDFViewer, PDFLinkService } from 'pdfjs-dist/web/pdf_viewer';
-
-GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.min.js';
 
 export class PdfViewerCore {
   constructor(options = {}) {
@@ -254,7 +252,13 @@ export class PdfViewerCore {
   }
 
   async loadDocument(src) {
-    const loadingTask = getDocument({ url: src });
+    const loadingTask = pdfjsLib.getDocument({ 
+      url: src,
+      maxImageSize: 1024 * 1024, // 移动端优化
+      isEvalSupported: false,
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS
+    });
+    
     this.pdfDocument = await loadingTask.promise;
     this.pdfViewer.setDocument(this.pdfDocument);
     return this.pdfDocument;
@@ -266,6 +270,14 @@ export class PdfViewerCore {
 
   set currentPageNumber(pageNumber) {
     this.pdfViewer.currentPageNumber = pageNumber;
+  }
+
+  get currentScale() {
+    return this.pdfViewer.currentScale;
+  }
+
+  set currentScale(scale) {
+    this.pdfViewer.currentScale = scale;
   }
 }
 ```
@@ -485,10 +497,14 @@ export default {
 }
 ```
 
-#### 2. PDF.js 模块化导入
+#### 2. PDF.js 模块导入和 Worker 配置
+
+基于 `examples/webpack/README.md` 的最佳实践，Webpack 用户推荐使用零配置方法：
+
 ```javascript
-// 核心 API 导入
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+// 零配置导入（Webpack 用户推荐）
+// 自动处理 Worker 路径，避免 "Setting up fake worker" 警告
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 
 // 查看器组件导入
 import { 
@@ -500,10 +516,11 @@ import {
 } from 'pdfjs-dist/web/pdf_viewer';
 ```
 
-#### 3. Worker 配置
-```javascript
-GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.min.js';
-```
+**重要说明**：
+- 使用 `pdfjs-dist/webpack.mjs` 零配置，无需手动设置 Worker 路径
+- 自动避免 "Setting up fake worker" 警告
+- 不再需要安装 `worker-loader`
+- 如需压缩，必须保持原始类/函数名不变
 
 #### 4. 样式处理策略
 ```less
@@ -755,8 +772,7 @@ props: {
   maxCanvasPixels: { type: Number, default: 0 },       // CSS 缩放模式
   textLayerMode: { type: Number, default: 1 },         // 文本层模式
   initialPage: { type: Number, default: 1 },           // 初始页码
-  enableGestures: { type: Boolean, default: true },    // 手势支持
-  theme: { type: String, default: 'light' }            // 主题
+  enableGestures: { type: Boolean, default: true }     // 手势支持
 }
 ```
 
@@ -879,6 +895,8 @@ npm install less less-loader
 ```
 
 #### 2. 在 Vue 项目中集成
+
+**主应用入口 (main.js)**：
 ```javascript
 // main.js - Vue 项目入口
 import Vue from 'vue';
@@ -974,8 +992,9 @@ export default {
 
 #### 4. 依赖管理决策
 - **核心依赖**: 基于 `pdfjs-dist` NPM 包，版本锁定 4.4.168
-- **按需导入**: 仅导入必要的 PDF.js 组件，减少打包体积
-- **工作线程**: 独立的 Worker 配置，避免阻塞主线程
+- **零配置导入**: 使用 `pdfjs-dist/webpack.mjs` 自动处理 Worker
+- **简化配置**: 无需手动设置 Worker 路径，避免配置错误
+- **构建友好**: 自动兼容 Webpack 构建，减少配置负担
 
 ## MVP 核心特性
 

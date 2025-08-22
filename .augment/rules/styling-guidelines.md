@@ -1,12 +1,8 @@
----
-globs: **/*.less,**/*.css,**/*.vue
-description: 样式开发规范和 Less 使用指导
----
 # 样式开发规范
 
 ## Less 样式组织
 - 使用单文件包含所有基础样式：`styles/pdf-viewer.less`
-- 专注核心功能，也要参考功能中的核心 MVP 设计，避免过度复杂的样式设计。可以参考：迁移到 vue2 + vue-cli@5 + vant@2 的技术参考文档：[webToVue2/doc/web02.md](mdc:webToVue2/doc/web02.md)
+- 专注核心功能，也要参考功能中的核心 MVP 设计，避免过度复杂的样式设计。可以参考：迁移到 vue2 + vue-cli@5 + vant@2 的技术参考文档：webToVue2/doc/web02.md
 
 ## 基础样式结构
 ```less
@@ -56,10 +52,10 @@ description: 样式开发规范和 Less 使用指导
 5. **scoped 样式**：所有 Vue 组件使用 scoped 样式避免污染
 
 ## 重要的原版样式参考
-- 主样式文件：[web/viewer.css](mdc:web/viewer.css)
-- PDF 查看器样式：[web/pdf_viewer.css](mdc:web/pdf_viewer.css)
-- 文本层样式：[web/text_layer_builder.css](mdc:web/text_layer_builder.css)
-- 注释层样式：[web/annotation_layer_builder.css](mdc:web/annotation_layer_builder.css)
+- 主样式文件：web/viewer.css
+- PDF 查看器样式：web/pdf_viewer.css
+- 文本层样式：web/text_layer_builder.css
+- 注释层样式：web/annotation_layer_builder.css
 
 ## UI 组件库集成
 - 使用 Vant 2 组件提供基础移动端体验
