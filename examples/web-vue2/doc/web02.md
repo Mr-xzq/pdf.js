@@ -11,7 +11,7 @@
 基于 `project-structure-doc` 源码分析，PDF.js 采用三层架构设计：
 
 #### 1. 核心层 (Core Layer)
-- **位置**: `src/core/`
+- **位置**: `/src/core/`
 - **职责**: PDF 解析、内容流处理、字体/图像处理
 - **关键组件**:
   - `WorkerMessageHandler`: 工作线程消息处理器
@@ -20,21 +20,21 @@
   - `Document`: PDF 文档对象
 
 #### 2. 显示层 (Display Layer)  
-- **位置**: `src/display/`
+- **位置**: `/src/display/`
 - **职责**: 提供浏览器端 API，处理渲染管道
 - **关键组件**:
-  - `getDocument()`: 主要入口函数 (`src/display/api.js`)
+  - `getDocument()`: 主要入口函数 (`/src/display/api.js`)
   - `PDFDocumentProxy`: 文档代理对象
   - `PDFPageProxy`: 页面代理对象
   - 工厂模式类: `DOMCanvasFactory`, `DOMSVGFactory`
 
 #### 3. 查看器层 (Viewer Layer)
-- **位置**: `web/`
+- **位置**: `/web/`
 - **职责**: 完整的 PDF 查看器应用
 - **关键组件**:
-  - `PDFViewerApplication`: 应用控制器 (`web/app.js`)
-  - `PDFViewer`: 文档容器 (`web/pdf_viewer.js`)
-  - `PDFPageView`: 单页渲染器 (`web/pdf_page_view.js`)
+  - `PDFViewerApplication`: 应用控制器 (`/web/app.js`)
+  - `PDFViewer`: 文档容器 (`/web/pdf_viewer.js`)
+  - `PDFPageView`: 单页渲染器 (`/web/pdf_page_view.js`)
 
 ### 页面渲染系统架构
 
@@ -112,7 +112,7 @@ VuePdfViewer/                   # 基于 PDF.js Component System
 │   ├── pdf-component.js        # 通用 PDF 组件 mixin
 │   └── mobile-gestures.js      # 移动端手势处理
 ├── styles/
-│   └── pdf-viewer.less         # 基于 web/viewer.css 简化
+│   └── pdf-viewer.less         # 基于 /web/viewer.css 简化
 └── index.js                    # 组件入口和 install 方法
 ```
 
@@ -232,7 +232,7 @@ const pdfViewerModule = {
 ```javascript
 // core/pdf-viewer-core.js - 核心逻辑封装
 import * as pdfjsLib from 'pdfjs-dist/webpack.mjs'; // 零配置导入
-import { EventBus, PDFViewer, PDFLinkService } from 'pdfjs-dist/web/pdf_viewer';
+import { EventBus, PDFViewer, PDFLinkService } from 'pdfjs-dist//web/pdf_viewer';
 
 export class PdfViewerCore {
   constructor(options = {}) {
@@ -513,7 +513,7 @@ import {
   PDFLinkService,
   PDFThumbnailViewer,
   PDFOutlineViewer
-} from 'pdfjs-dist/web/pdf_viewer';
+} from 'pdfjs-dist//web/pdf_viewer';
 ```
 
 **重要说明**：

@@ -16,15 +16,15 @@ type: "manual"
 - Less 预处理器
 
 ## 主要文档（每次时记得查看这些文档，避免修改内容偏移主线，如果有文档你查不到了及时跟我说，我来补充）
-- 项目架构：project-read-me-doc/
-- 项目架构中的前端案例设计实现参考：project-read-me-doc/Web-Viewer-Application/
-- 迁移到 vue2 + vue-cli@5 + vant@2 的技术参考文档：webToVue2/doc/web02.md
+- 项目架构：project-structure-doc/
+- 项目架构中的前端案例设计实现参考：project-structure-doc/Web-Viewer-Application/
+- 迁移到 vue2 + vue-cli@5 + vant@2 的技术参考文档：examples/web-vue2/doc/doc/web02.md
 - PDF.js 一些简单集成案例：examples/
 - PDF.js 在 webpack 中使用引入可以参考：examples/webpack/README.md
-- 迁移过程记录文档：webToVue2/doc/modify-record.md
+- 迁移过程记录文档：examples/web-vue2/doc/doc/modify-record.md
   如果有 bug 或者之后有需要修改的地方可以将其记录到其中，避免之后反复犯错。按照每次修改来记录，方便记录追踪。
 
-在写 webToVue2/doc/web02.md 时，不用实现具体代码，只用简短代码表示即可
+在写 examples/web-vue2/doc/doc/web02.md 时，不用实现具体代码，只用简短代码表示即可
 
 要抓住重点，以实现核心功能 MVP 为首要目的，不要盲目多写
 

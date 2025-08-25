@@ -21,11 +21,11 @@ if (!pdfjsLib.getDocument || !pdfjsViewer.PDFViewer) {
 const MAX_CANVAS_PIXELS = 0; // CSS-only zooming.
 const TEXT_LAYER_MODE = 0; // DISABLE
 const MAX_IMAGE_SIZE = 1024 * 1024;
-const CMAP_URL = "../../node_modules/pdfjs-dist/cmaps/";
+const CMAP_URL = "../../build/dist/cmaps/";
 const CMAP_PACKED = true;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "../../node_modules/pdfjs-dist/build/pdf.worker.mjs";
+  "../../build/dist/build/pdf.worker.mjs";
 
 const DEFAULT_URL = "../../web/compressed.tracemonkey-pldi-09.pdf";
 const DEFAULT_SCALE_DELTA = 1.1;
