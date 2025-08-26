@@ -8,21 +8,39 @@
     />
 
     <div class="content">
-      <van-cell-group inset title="路由跳转测试">
+      <van-cell-group inset title="PDF.js 迁移测试">
         <van-cell center>
           <template #title>
             <div class="cell-title">
-              <span>PDF阅读器</span>
-              <van-tag plain type="primary">内部路由</van-tag>
+              <span>阶段1测试 - 基础架构</span>
+              <van-tag plain type="success">Stage 1</van-tag>
             </div>
           </template>
           <template #right-icon>
             <van-button
-              type="info"
+              type="primary"
               size="small"
               icon="description"
-              @click="goToPdfReader"
-              >跳转到PDF阅读器</van-button
+              @click="goToStage1Test"
+              >测试基础架构</van-button
+            >
+          </template>
+        </van-cell>
+
+        <van-cell center>
+          <template #title>
+            <div class="cell-title">
+              <span>阶段2测试 - 基础架构</span>
+              <van-tag plain type="success">Stage 2</van-tag>
+            </div>
+          </template>
+          <template #right-icon>
+            <van-button
+              type="primary"
+              size="small"
+              icon="description"
+              @click="goToStage2Test"
+              >测试基础架构</van-button
             >
           </template>
         </van-cell>
@@ -34,9 +52,14 @@
 <script>
 export default {
   methods: {
-    goToPdfReader() {
+    goToStage1Test() {
       this.$router.push({
-        path: "/pdf-reader",
+        path: "/stage1-test",
+      });
+    },
+    goToStage2Test() {
+      this.$router.push({
+        path: "/stage2-test",
       });
     },
   },

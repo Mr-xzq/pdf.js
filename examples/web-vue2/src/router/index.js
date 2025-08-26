@@ -34,6 +34,14 @@ const routes = [
     path: "/",
     component: () => import("@/views/index.vue"),
   },
+  {
+    path: "/stage1-test",
+    component: () => import("@/views/Stage1Test.vue"),
+  },
+    {
+    path: "/stage2-test",
+    component: () => import("@/views/Stage2Test.vue"),
+  },
 ];
 
 Vue.use(VueRouter);

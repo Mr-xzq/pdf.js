@@ -16,6 +16,8 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 //   new VConsole();
 // }
 
+console.log('PDFJS_DIST_BASE_PATH: ', PDFJS_DIST_BASE_PATH)
+
 Vue.config.productionTip = false;
 
 new Vue({
