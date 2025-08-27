@@ -52,6 +52,7 @@ https://mozilla.github.io/pdf.js/legacy/web/compressed.tracemonkey-pldi-09.pdf"
         @page-changed="onPageChanged"
         @scale-changed="onScaleChanged"
         @page-rendered="onPageRendered"
+        @password-required="onPasswordRequired"
       />
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>
@@ -182,6 +183,20 @@ export default {
      */
     onPageRendered(event) {
       this.addLog("success", `页面 ${event.pageNumber} 渲染完成`);
+    },
+
+    /**
+     * 密码请求处理（MVP阶段：简单提示）
+     * 后期扩展：集成密码对话框组件
+     */
+    onPasswordRequired(event) {
+      this.addLog("info", "文档需要密码，MVP阶段暂不支持密码输入");
+      this.statusMessage = "此文档需要密码，当前版本暂不支持";
+      this.statusType = "error";
+
+      // TODO: 阶段6扩展 - 显示密码对话框
+      // 当前MVP阶段只记录事件，不处理密码输入
+      console.log("密码请求事件:", event);
     },
 
     /**

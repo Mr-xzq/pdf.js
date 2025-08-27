@@ -166,7 +166,51 @@ PdfViewer (主容器) 🏠
 - **PDF.js集成**：通过Core层封装，EventBus桥接原生事件
 
 ### 状态管理设计
+
+#### 状态收敛原则
+
+**核心原则：全局状态统一收敛到 Vuex 管理**
+
+如果一个状态在全局很多地方都有使用到，那就建议统一收敛到 Vuex 中来管理，避免分散到各地，还要通过各种方式透传不好维护。
+
+**状态收敛决策矩阵**：
+
+| 状态类型 | 使用范围 | 建议管理方式 | 理由 |
+|---------|----------|-------------|------|
+| **PDF文档状态** | 多个组件 | ✅ Vuex 管理 | 文档信息需要在查看器、工具栏、侧边栏等多处使用 |
+| **当前页码** | 多个组件 | ✅ Vuex 管理 | 导航、缩略图、页码输入等多处需要同步 |
+| **缩放比例** | 多个组件 | ✅ Vuex 管理 | 查看器、缩放控件、工具栏等多处使用 |
+| **加载状态** | 多个组件 | ✅ Vuex 管理 | 进度条、工具栏、错误提示等多处需要 |
+| **侧边栏状态** | 多个组件 | ✅ Vuex 管理 | 主容器、工具栏按钮、侧边栏组件等 |
+| **搜索结果** | 多个组件 | ✅ Vuex 管理 | 搜索框、结果列表、高亮显示等 |
+| **组件内部UI状态** | 单个组件 | ❌ 组件 data | 按钮悬停、输入框焦点等局部状态 |
+| **临时表单数据** | 单个组件 | ❌ 组件 data | 密码输入、搜索关键词等临时数据 |
+
+**反面案例 - 状态分散的问题**：
 ```javascript
+// ❌ 错误：状态分散在各个组件中
+// PdfViewer.vue
+data() {
+  return { currentPage: 1 }
+}
+
+// PdfNavigation.vue
+data() {
+  return { currentPage: 1 }  // 重复定义
+}
+
+// PdfPageInput.vue
+data() {
+  return { pageNumber: 1 }  // 同样的状态，不同命名
+}
+
+// 问题：需要通过 props/events 或 EventBus 在组件间同步状态
+// 维护困难，容易出现状态不一致
+```
+
+**正确案例 - 状态统一管理**：
+```javascript
+// ✅ 正确：统一在 Vuex 中管理全局状态
 // store/pdf-viewer.js - 使用命名空间模块
 const pdfViewerModule = {
   namespaced: true,
@@ -178,9 +222,74 @@ const pdfViewerModule = {
     loading: false,
     showSidebar: false,
     sidebarMode: 'thumbs',
-    outline: null
+    outline: null,
+    searchResults: [],
+    searchQuery: '',
+    searchHighlights: []
+  },
+
+  getters: {
+    isDocumentLoaded: state => !!state.pdfDocument,
+    canGoNext: state => state.currentPage < state.totalPages,
+    canGoPrev: state => state.currentPage > 1,
+    scalePercent: state => Math.round(state.scale * 100),
+    hasSearchResults: state => state.searchResults.length > 0
+  },
+
+  mutations: {
+    SET_PDF_DOCUMENT(state, document) {
+      state.pdfDocument = document;
+      state.totalPages = document ? document.numPages : 0;
+    },
+    SET_CURRENT_PAGE(state, page) {
+      state.currentPage = Math.max(1, Math.min(page, state.totalPages));
+    },
+    SET_SCALE(state, scale) {
+      state.scale = Math.max(0.1, Math.min(scale, 5.0));
+    },
+    SET_LOADING(state, loading) {
+      state.loading = loading;
+    },
+    TOGGLE_SIDEBAR(state, mode) {
+      if (state.showSidebar && state.sidebarMode === mode) {
+        state.showSidebar = false;
+      } else {
+        state.showSidebar = true;
+        state.sidebarMode = mode;
+      }
+    },
+    SET_SEARCH_RESULTS(state, results) {
+      state.searchResults = results;
+    }
+  },
+
+  actions: {
+    async loadDocument({ commit }, src) {
+      commit('SET_LOADING', true);
+      try {
+        const document = await pdfjsLib.getDocument(src).promise;
+        commit('SET_PDF_DOCUMENT', document);
+        commit('SET_CURRENT_PAGE', 1);
+        return document;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+
+    goToPage({ commit, state }, pageNumber) {
+      if (pageNumber >= 1 && pageNumber <= state.totalPages) {
+        commit('SET_CURRENT_PAGE', pageNumber);
+      }
+    },
+
+    nextPage({ dispatch, state }) {
+      dispatch('goToPage', state.currentPage + 1);
+    },
+
+    prevPage({ dispatch, state }) {
+      dispatch('goToPage', state.currentPage - 1);
+    }
   }
-  // ... mutations, actions, getters
 };
 
 // 导出命名空间辅助函数
@@ -191,6 +300,28 @@ export const {
   mapActions: mapPdfActions
 } = createNamespacedHelpers('pdfViewer');
 ```
+
+**组件中的使用**：
+```javascript
+// 各个组件都可以直接使用，无需 props 透传
+export default {
+  computed: {
+    ...mapPdfState(['currentPage', 'totalPages', 'loading']),
+    ...mapPdfGetters(['canGoNext', 'canGoPrev', 'scalePercent'])
+  },
+
+  methods: {
+    ...mapPdfActions(['goToPage', 'nextPage', 'prevPage'])
+  }
+};
+```
+
+**状态收敛的优势**：
+- **单一数据源**：避免状态重复定义和不一致问题
+- **简化组件通信**：无需复杂的 props/events 传递
+- **便于调试**：集中的状态管理，便于使用 Vue DevTools 调试
+- **易于测试**：状态逻辑集中，便于单元测试
+- **扩展性强**：新增功能时，状态管理逻辑清晰可控
 
 ## 3. 迁移经验总结
 
@@ -408,10 +539,8 @@ class PdfDataService {
 ### 性能优化
 
 1. **内存管理**：
-   - Canvas 1M像素限制
-   - 图像大小限制
    - CSS缩放模式
-
+   
 2. **渲染优化**：
    - 简化文本层配置
    - 禁用非必要功能
@@ -771,7 +900,19 @@ export default {
 - 手绘注释（移动端）
 - 注释数据的保存和加载
 
-#### 4. 高级功能
+#### 4. 密码保护功能
+- 密码输入对话框优化
+- 密码验证和错误处理
+- 记住密码功能（可选）
+- 密码强度验证
+
+#### 5. JavaScript 脚本处理
+- PDF 内嵌 JavaScript 脚本执行控制
+- 脚本安全性检查和沙箱机制
+- 脚本执行权限管理
+- 脚本错误处理和日志记录
+
+#### 6. 高级功能
 - 打印功能
 - 文档对比和合并
 - 数字签名验证

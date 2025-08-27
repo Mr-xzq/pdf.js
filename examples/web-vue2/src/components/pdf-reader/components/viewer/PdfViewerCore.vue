@@ -97,6 +97,9 @@ export default {
   async mounted() {
     await this.initializeServices();
 
+    // 设置全局PDF查看器实例，供Vuex actions调用
+    window.pdfViewerInstance = this;
+
     // 注册事件监听器
     // 移除对 pdf-services 直接调用的事件的自监听，避免无限递归
     // 这些事件现在通过 pdf-services 直接调用组件方法：
@@ -115,12 +118,27 @@ export default {
   },
   
   beforeDestroy() {
+    // 清理全局实例
+    if (window.pdfViewerInstance === this) {
+      window.pdfViewerInstance = null;
+    }
     this.destroyServices();
   },
   
   watch: {
     src: {
       handler: 'onSrcChange',
+      immediate: false
+    },
+
+    // 监听Vuex状态变化
+    '$store.state.pdfReader.viewer.currentPage': {
+      handler(newPage, oldPage) {
+        if (newPage !== oldPage && newPage !== this.currentPage) {
+          // 避免循环调用，只有当Vuex状态与组件状态不同步时才更新
+          this.syncPageFromStore(newPage);
+        }
+      },
       immediate: false
     }
   },
@@ -211,14 +229,20 @@ export default {
 
       // 延迟计算最佳缩放比例，确保DOM已完全渲染
       this.$nextTick(() => {
-        setTimeout(() => {
-          const optimalScale = this.calculateOptimalScale();
+        setTimeout(async () => {
+          const optimalScale = await this.calculateOptimalScale(event);
 
           // 设置初始页面和缩放
           this.navigationService.currentPage = this.initialPage;
           this.navigationService.currentScale = optimalScale;
           this.currentPage = this.initialPage;
           this.currentScale = optimalScale;
+
+          // 同步到 Vuex 状态（如果存在）
+          if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+            this.$store.dispatch('pdfReader/viewer/setScale', optimalScale);
+            this.$store.dispatch('pdfReader/viewer/goToPage', this.initialPage);
+          }
 
           console.log(`PDF 文档加载完成，共 ${event.numPages} 页，初始缩放: ${optimalScale}`);
         }, 100); // 100ms延迟确保布局稳定
@@ -280,6 +304,8 @@ export default {
     
     /**
      * 处理密码请求
+     * MVP阶段：基础事件传递
+     * 后期扩展：密码对话框、密码验证、记住密码等功能
      */
     onPasswordRequired(event) {
       this.$emit('password-required', event);
@@ -293,6 +319,30 @@ export default {
     goToPage(pageNumber) {
       if (this.navigationService) {
         return this.navigationService.goToPage(pageNumber);
+      }
+    },
+
+    /**
+     * 从Vuex store同步页面状态
+     */
+    syncPageFromStore(pageNumber) {
+      if (pageNumber !== this.currentPage) {
+        const previousPage = this.currentPage;
+
+        // 直接更新组件状态，不触发Vuex更新，避免循环
+        this.currentPage = pageNumber;
+        if (this.navigationService) {
+          this.navigationService.currentPage = pageNumber;
+        }
+
+        // 触发页面变化事件，但不更新Vuex状态
+        const pageChangedEvent = {
+          pageNumber,
+          previous: previousPage
+        };
+        this.$emit('page-changed', pageChangedEvent);
+
+        console.log(`页面跳转: ${previousPage} -> ${pageNumber}`);
       }
     },
     
@@ -343,9 +393,9 @@ export default {
 
     /**
      * 计算最佳缩放比例
-     * 根据容器高度自动计算合适的缩放比例，确保PDF有足够的显示高度
+     * 根据容器尺寸和实际PDF页面尺寸自动计算合适的缩放比例
      */
-    calculateOptimalScale() {
+    async calculateOptimalScale(documentEvent = null) {
       try {
         const container = this.$refs.viewerContainer;
         if (!container) {
@@ -357,30 +407,48 @@ export default {
         const availableHeight = containerRect.height - 64; // 减去padding和其他元素的空间
         const availableWidth = containerRect.width - 64;
 
-        // PDF页面的标准尺寸（A4: 595x842 points）
-        // 这里使用一个估算值，实际应该从PDF文档获取
-        const estimatedPageWidth = 595; // points
-        const estimatedPageHeight = 842; // points
+        let pageWidth = 595; // 默认A4宽度
+        let pageHeight = 842; // 默认A4高度
+
+        // 尝试获取实际的PDF页面尺寸
+        try {
+          if (this.pdfServices && this.pdfServices.pdfDocument) {
+            const page = await this.pdfServices.pdfDocument.getPage(1);
+            const viewport = page.getViewport({ scale: 1.0 });
+            pageWidth = viewport.width;
+            pageHeight = viewport.height;
+            console.log(`获取到实际页面尺寸: ${pageWidth}x${pageHeight}px`);
+          } else if (documentEvent && documentEvent.getPage) {
+            // 如果从事件中可以获取页面信息
+            const page = await documentEvent.getPage(1);
+            const viewport = page.getViewport({ scale: 1.0 });
+            pageWidth = viewport.width;
+            pageHeight = viewport.height;
+            console.log(`从事件获取页面尺寸: ${pageWidth}x${pageHeight}px`);
+          }
+        } catch (error) {
+          console.warn('无法获取实际页面尺寸，使用默认值:', error);
+        }
 
         // 计算适合容器的缩放比例
-        const scaleToFitHeight = availableHeight / estimatedPageHeight;
-        const scaleToFitWidth = availableWidth / estimatedPageWidth;
+        const scaleToFitHeight = availableHeight / pageHeight;
+        const scaleToFitWidth = availableWidth / pageWidth;
 
         // 选择较小的缩放比例以确保页面完全适合容器
         const autoScale = Math.min(scaleToFitHeight, scaleToFitWidth);
 
-        // 限制缩放范围：最小0.5，最大2.0，但优先保证可见性
+        // 限制缩放范围：最小0.3，最大3.0，优先保证页面适合容器
         let optimalScale;
-        if (autoScale < 0.5) {
-          optimalScale = 0.5;
-        } else if (autoScale > 2.0) {
-          optimalScale = 2.0;
+        if (autoScale < 0.3) {
+          optimalScale = 0.3;
+        } else if (autoScale > 3.0) {
+          optimalScale = 3.0;
         } else {
-          // 如果自动计算的缩放太小，至少保证0.8的最小缩放
-          optimalScale = Math.max(0.8, autoScale);
+          // 确保缩放比例合理，至少0.5
+          optimalScale = Math.max(0.5, autoScale);
         }
 
-        console.log(`容器尺寸: ${availableWidth}x${availableHeight}px, 计算缩放比例: ${optimalScale}`);
+        console.log(`容器尺寸: ${availableWidth}x${availableHeight}px, 页面尺寸: ${pageWidth}x${pageHeight}px, 计算缩放比例: ${optimalScale}`);
 
         return optimalScale;
       } catch (error) {

@@ -98,6 +98,8 @@ export class PdfServices {
           }
         },
         onPassword: (callback, reason) => {
+          // MVP阶段：基础密码事件处理，传递给上层组件
+          // 后期扩展：可在此处集成密码对话框组件
           const passwordEvent = {
             callback,
             reason,

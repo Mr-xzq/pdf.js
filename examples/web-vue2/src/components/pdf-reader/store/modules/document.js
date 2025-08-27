@@ -114,11 +114,12 @@ const mutations = {
     state.src = src;
   },
   
-  // 设置密码状态
+  // 设置密码状态（MVP阶段：基础状态管理）
+  // 后期扩展：密码缓存、重试次数、安全策略等
   SET_PASSWORD_REQUIRED(state, required) {
     state.passwordRequired = required;
   },
-  
+
   SET_PASSWORD_INCORRECT(state, incorrect) {
     state.passwordIncorrect = incorrect;
   },

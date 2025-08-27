@@ -110,7 +110,7 @@ export class PdfApplication {
         loadingTask.onProgress = options.onProgress;
       }
 
-      // 监听密码请求
+      // 监听密码请求（MVP阶段：基础事件传递，后期扩展密码对话框组件）
       if (options.onPassword) {
         loadingTask.onPassword = options.onPassword;
       }

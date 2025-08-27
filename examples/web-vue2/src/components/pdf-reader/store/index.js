@@ -1,6 +1,8 @@
 import { createNamespacedHelpers } from 'vuex';
 import documentModule from './modules/document.js';
 import viewerModule from './modules/viewer.js';
+import uiModule from './modules/ui.js';
+import navigationModule from './modules/navigation.js';
 
 /**
  * PDF 阅读器 Vuex 模块
@@ -9,7 +11,9 @@ export const pdfReaderModule = {
   namespaced: true,
   modules: {
     document: documentModule,
-    viewer: viewerModule
+    viewer: viewerModule,
+    ui: uiModule,
+    navigation: navigationModule
   }
 };
 
@@ -38,10 +42,12 @@ export function uninstallPdfReaderModule(store, moduleName = 'pdfReader') {
  * 创建命名空间辅助函数
  */
 export function createPdfReaderHelpers(moduleName = 'pdfReader') {
-  // 文档模块辅助函数
+  // 模块辅助函数
   const documentHelpers = createNamespacedHelpers(`${moduleName}/document`);
   const viewerHelpers = createNamespacedHelpers(`${moduleName}/viewer`);
-  
+  const uiHelpers = createNamespacedHelpers(`${moduleName}/ui`);
+  const navigationHelpers = createNamespacedHelpers(`${moduleName}/navigation`);
+
   return {
     // 文档相关
     document: {
@@ -50,13 +56,29 @@ export function createPdfReaderHelpers(moduleName = 'pdfReader') {
       mapMutations: documentHelpers.mapMutations,
       mapActions: documentHelpers.mapActions
     },
-    
+
     // 查看器相关
     viewer: {
       mapState: viewerHelpers.mapState,
       mapGetters: viewerHelpers.mapGetters,
       mapMutations: viewerHelpers.mapMutations,
       mapActions: viewerHelpers.mapActions
+    },
+
+    // UI 相关
+    ui: {
+      mapState: uiHelpers.mapState,
+      mapGetters: uiHelpers.mapGetters,
+      mapMutations: uiHelpers.mapMutations,
+      mapActions: uiHelpers.mapActions
+    },
+
+    // 导航相关
+    navigation: {
+      mapState: navigationHelpers.mapState,
+      mapGetters: navigationHelpers.mapGetters,
+      mapMutations: navigationHelpers.mapMutations,
+      mapActions: navigationHelpers.mapActions
     }
   };
 }
@@ -81,6 +103,22 @@ export const {
   mapMutations: mapViewerMutations,
   mapActions: mapViewerActions
 } = defaultHelpers.viewer;
+
+// 导出 UI 相关辅助函数
+export const {
+  mapState: mapUiState,
+  mapGetters: mapUiGetters,
+  mapMutations: mapUiMutations,
+  mapActions: mapUiActions
+} = defaultHelpers.ui;
+
+// 导出导航相关辅助函数
+export const {
+  mapState: mapNavigationState,
+  mapGetters: mapNavigationGetters,
+  mapMutations: mapNavigationMutations,
+  mapActions: mapNavigationActions
+} = defaultHelpers.navigation;
 
 /**
  * 混合辅助函数 - 同时映射文档和查看器状态

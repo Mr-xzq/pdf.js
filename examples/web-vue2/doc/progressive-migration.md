@@ -145,14 +145,13 @@
 ## 阶段 4：功能组件实现 ⚡
 
 ### 目标
-实现独立的功能组件：缩略图、目录、书签等，支持灵活放置。
+实现独立的功能组件：缩略图、目录，支持灵活放置。
 
 ### 任务清单
 
 #### 4.1 功能组件开发
 - [ ] 实现 `components/features/PdfThumbnail.vue` - 缩略图组件
 - [ ] 实现 `components/features/PdfOutline.vue` - 目录组件
-- [ ] 实现 `components/features/PdfBookmarks.vue` - 书签组件
 - [ ] 实现 `components/sidebar/PdfSidebar.vue` - 侧边栏容器
 - [ ] 可选：使用 Vant@2 组件提升体验（如 `van-sidebar`、`van-list`、`van-grid`）
 
@@ -176,7 +175,6 @@
 ### 验收标准
 - [ ] 缩略图正常生成和显示
 - [ ] 目录正常解析和导航
-- [ ] 书签功能正常
 - [ ] 功能组件可以灵活放置在不同位置
 - [ ] 侧边栏容器正常工作
 
@@ -193,7 +191,7 @@
   const mobileConfig = {
     maxCanvasPixels: 0,           // CSS-only zooming
     textLayerMode: 1,             // 启用文本层
-    maxImageSize: 1024 * 1024,    // 1M像素限制
+    enableScripting: false,       // 禁用脚本（安全优先，后期可配置）
   };
   ```
 
@@ -231,24 +229,33 @@
 
 #### 6.1 高级功能
 - [ ] 实现 `components/features/PdfSearch.vue` - 搜索组件
-- [ ] 实现 `components/dialogs/PdfPasswordDialog.vue` - 密码对话框
-- [ ] 实现 `components/dialogs/PdfErrorDialog.vue` - 错误对话框
-- [ ] 实现打印功能（可选）
 - [ ] 可选：使用 Vant@2 高级组件增强功能（如 `van-search`、`van-dialog`、`van-toast`）
 
-#### 6.2 完善样式系统
+#### 6.2 密码保护功能（后期扩展）
+- [ ] 密码输入对话框优化和用户体验提升
+- [ ] 密码验证错误处理和重试机制
+- [ ] 记住密码功能实现（可选，需考虑安全性）
+- [ ] 密码强度验证和安全提示
+
+#### 6.3 JavaScript 脚本处理（后期扩展）
+- [ ] PDF 内嵌 JavaScript 脚本执行控制开关
+- [ ] 脚本安全性检查和沙箱机制实现
+- [ ] 脚本执行权限管理和用户确认
+- [ ] 脚本错误处理、日志记录和调试支持
+
+#### 6.4 完善样式系统
 - [ ] 完善 `styles/index.less` - 主样式文件
 - [ ] 实现主题支持（可选）
 - [ ] 优化响应式设计
 - [ ] 完善动画效果
 
-#### 6.3 文档和示例
+#### 6.5 文档和示例
 - [ ] 创建完整的使用示例
 - [ ] 编写 API 文档
 - [ ] 创建不同布局的演示
 - [ ] 编写最佳实践指南
 
-#### 6.4 测试和优化
+#### 6.6 测试和优化
 - [ ] 编写单元测试
 - [ ] 进行性能测试
 - [ ] 兼容性测试
@@ -317,9 +324,8 @@ mkdir -p src/components/pdf-reader/components/{viewer,toolbar,sidebar,features,c
 export const PDF_CONFIG = {
   // 移动端优化配置
   maxCanvasPixels: 0,           // 使用 CSS 缩放
-  maxImageSize: 1024 * 1024,    // 1M像素限制
   textLayerMode: 1,             // 启用文本层
-  enableScripting: false,       // 禁用 PDF JavaScript
+  enableScripting: false,       // 禁用 PDF JavaScript（安全考虑，后期可扩展）
   annotationMode: 1             // 仅启用表单注释
 };
 
@@ -569,7 +575,6 @@ export default {
 ### 功能验证
 - [ ] 核心功能正常工作
 - [ ] 无控制台错误
-- [ ] 移动端测试通过
 - [ ] 性能表现良好
 
 ### 代码质量

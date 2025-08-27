@@ -1,64 +1,83 @@
 <template>
   <div class="pdf-viewer">
     <div class="pdf-viewer__container">
-      <!-- 阶段2：集成核心查看器 -->
-      <pdf-viewer-core
-        :src="src"
-        :initial-page="initialPage"
-        :initial-scale="initialScale"
-        :max-canvas-pixels="maxCanvasPixels"
-        :text-layer-mode="textLayerMode"
-        @document-loaded="onDocumentLoaded"
-        @document-error="onDocumentError"
-        @load-progress="onLoadProgress"
-        @page-changed="onPageChanged"
-        @scale-changed="onScaleChanged"
-        @page-rendered="onPageRendered"
-        @password-required="onPasswordRequired"
-        ref="viewerCore"
+      <!-- 阶段3：顶部工具栏 -->
+      <pdf-top-toolbar
+        v-if="showControls"
+        :document-loaded="isDocumentLoaded"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :search-active="searchActive"
+        @search-toggle="onSearchToggle"
+        class="pdf-viewer__top-toolbar"
       />
 
-      <!-- 简单的导航控制（阶段2基础功能） -->
-      <div v-if="showControls && isDocumentLoaded" class="pdf-viewer__controls">
-        <button
-          @click="prevPage"
-          :disabled="!canGoPrev"
-          class="control-button"
-        >
-          上一页
-        </button>
-
-        <span class="page-info">
-          {{ currentPage }} / {{ totalPages }}
-        </span>
-
-        <button
-          @click="nextPage"
-          :disabled="!canGoNext"
-          class="control-button"
-        >
-          下一页
-        </button>
-
-        <div class="zoom-controls">
-          <button @click="zoomOut" :disabled="!canZoomOut" class="control-button">-</button>
-          <span class="zoom-info">{{ scalePercent }}%</span>
-          <button @click="zoomIn" :disabled="!canZoomIn" class="control-button">+</button>
-        </div>
+      <!-- 阶段2：核心查看器 -->
+      <div class="pdf-viewer__content">
+        <pdf-viewer-core
+          :src="src"
+          :initial-page="initialPage"
+          :initial-scale="initialScale"
+          :max-canvas-pixels="maxCanvasPixels"
+          :text-layer-mode="textLayerMode"
+          @document-loaded="onDocumentLoaded"
+          @document-error="onDocumentError"
+          @load-progress="onLoadProgress"
+          @page-changed="onPageChanged"
+          @scale-changed="onScaleChanged"
+          @page-rendered="onPageRendered"
+          @password-required="onPasswordRequired"
+          ref="viewerCore"
+        />
       </div>
+
+      <!-- 阶段3：底部工具栏 -->
+      <pdf-bottom-toolbar
+        v-if="showControls && isDocumentLoaded"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :scale="currentScale"
+        :can-go-prev="canGoPrev"
+        :can-go-next="canGoNext"
+        :can-zoom-in="canZoomIn"
+        :can-zoom-out="canZoomOut"
+        @prev-page="onPrevPage"
+        @next-page="onNextPage"
+        @go-to-page="onGoToPage"
+        @zoom-in="onZoomIn"
+        @zoom-out="onZoomOut"
+        @set-scale="onSetScale"
+        @set-scale-mode="onSetScaleMode"
+        class="pdf-viewer__bottom-toolbar"
+      />
     </div>
   </div>
 </template>
 
 <script>
 import PdfViewerCore from './viewer/PdfViewerCore.vue';
-import { installPdfReaderModule } from '../store/index.js';
+import PdfTopToolbar from './toolbar/PdfTopToolbar.vue';
+import PdfBottomToolbar from './toolbar/PdfBottomToolbar.vue';
+import {
+  installPdfReaderModule,
+  mapDocumentState,
+  mapViewerState,
+  mapUiState,
+  mapDocumentGetters,
+  mapViewerGetters,
+  mapUiGetters,
+  mapDocumentActions,
+  mapViewerActions,
+  mapUiActions
+} from '../store/index.js';
 
 export default {
   name: 'PdfViewer',
 
   components: {
-    PdfViewerCore
+    PdfViewerCore,
+    PdfTopToolbar,
+    PdfBottomToolbar
   },
 
   props: {
@@ -88,37 +107,41 @@ export default {
     }
   },
 
-  data() {
-    return {
-      // 本地状态
-      currentPage: this.initialPage,
-      totalPages: 0,
-      currentScale: this.initialScale,
-      isDocumentLoaded: false
-    };
-  },
-
   computed: {
-    // 导航状态
+    // 映射Vuex状态 - 遵循状态收敛原则，全局状态统一从Vuex获取
+    ...mapDocumentState(['pdfDocument', 'loading', 'error']),
+    ...mapViewerState(['currentPage', 'scale']),
+    ...mapUiState(['searchActive']),
+
+    // 映射Vuex getters
+    ...mapDocumentGetters(['isDocumentLoaded', 'totalPages']),
+    ...mapViewerGetters(['navigationState', 'zoomState']),
+
+    // 为了兼容现有代码，提供别名
+    currentScale() {
+      return this.scale;
+    },
+
+    // 导航状态 - 从Vuex getters获取
     canGoPrev() {
-      return this.currentPage > 1;
+      return this.navigationState.canGoPrev;
     },
 
     canGoNext() {
-      return this.currentPage < this.totalPages;
+      return this.navigationState.canGoNext;
     },
 
-    // 缩放状态
+    // 缩放状态 - 从Vuex getters获取
     scalePercent() {
-      return Math.round(this.currentScale * 100);
+      return this.zoomState.scalePercent;
     },
 
     canZoomIn() {
-      return this.currentScale < 10;
+      return this.zoomState.canZoomIn;
     },
 
     canZoomOut() {
-      return this.currentScale > 0.1;
+      return this.zoomState.canZoomOut;
     }
   },
 
@@ -130,19 +153,24 @@ export default {
   },
 
   methods: {
-    // 事件处理
+    // 映射Vuex actions - 遵循状态收敛原则，状态变更统一通过Vuex actions
+    ...mapDocumentActions(['loadDocument', 'setDocumentLoaded', 'setDocumentError']),
+    ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'zoomIn', 'zoomOut', 'setScaleMode']),
+    ...mapUiActions(['toggleSearch']),
+
+    // 事件处理 - 更新为使用Vuex actions
     onDocumentLoaded(event) {
-      this.isDocumentLoaded = true;
-      this.totalPages = event.numPages;
-      this.currentPage = this.initialPage;
-      this.currentScale = this.initialScale;
+      // 通过Vuex action更新状态
+      this.setDocumentLoaded(event);
 
       console.log('PDF 文档加载完成:', event);
       this.$emit('document-loaded', event);
     },
 
     onDocumentError(event) {
-      this.isDocumentLoaded = false;
+      // 通过Vuex action更新错误状态
+      this.setDocumentError(event);
+
       console.error('PDF 文档加载错误:', event);
       this.$emit('document-error', event);
     },
@@ -152,12 +180,14 @@ export default {
     },
 
     onPageChanged(event) {
-      this.currentPage = event.pageNumber;
+      // 只更新Vuex状态，不要再次调用goToPage避免循环
+      this.$store.commit('pdfReader/viewer/SET_CURRENT_PAGE', event.pageNumber);
       this.$emit('page-changed', event);
     },
 
     onScaleChanged(event) {
-      this.currentScale = event.scale;
+      // 通过Vuex action更新缩放
+      this.setScale(event.scale);
       this.$emit('scale-changed', event);
     },
 
@@ -166,56 +196,64 @@ export default {
     },
 
     onPasswordRequired(event) {
+      // MVP阶段：简单事件传递，由使用方处理密码输入
+      // 后期扩展：可在此处显示密码对话框组件
+      // TODO: 集成 PdfPasswordDialog 组件（阶段6扩展功能）
       this.$emit('password-required', event);
     },
 
-    // 导航方法
-    prevPage() {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.prevPage();
-      }
+    // 搜索相关方法 - 使用Vuex action
+    onSearchToggle() {
+      this.toggleSearch();
+      this.$emit('search-toggle', this.searchActive);
     },
 
-    nextPage() {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.nextPage();
-      }
+    // 工具栏事件处理 - 直接使用映射的Vuex actions
+    onPrevPage() {
+      this.prevPage();
     },
 
-    goToPage(pageNumber) {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.goToPage(pageNumber);
-      }
+    onNextPage() {
+      this.nextPage();
     },
 
-    // 缩放方法
-    zoomIn() {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.zoomIn();
-      }
+    onGoToPage(pageNumber) {
+      this.goToPage(pageNumber);
     },
 
-    zoomOut() {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.zoomOut();
-      }
+    onZoomIn() {
+      this.zoomIn();
     },
 
-    setScale(scale) {
-      if (this.$refs.viewerCore) {
-        this.$refs.viewerCore.setScale(scale);
-      }
+    onZoomOut() {
+      this.zoomOut();
+    },
+
+    onSetScale(scale) {
+      this.setScale(scale);
+    },
+
+    onSetScaleMode(mode) {
+      this.setScaleMode(mode);
     }
+
+    // 注意：不再定义重复的方法，直接使用映射的Vuex actions
+    // prevPage, nextPage, goToPage, zoomIn, zoomOut, setScale, setScaleMode
+    // 这些方法已经通过 mapViewerActions 映射，避免无限递归
   }
 };
 </script>
 
 <style lang="less" scoped>
+// 引入样式变量
+@import '../styles/variables.less';
+
 .pdf-viewer {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: @pdf-viewer-background;
 
   &__container {
     width: 100%;
@@ -225,122 +263,43 @@ export default {
     position: relative;
   }
 
-  &__controls {
-    position: absolute;
-    bottom: 20px; // 稍微增加距离底部的间距
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 8px 16px;
-    border-radius: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(4px);
-    z-index: 1000; // 增加z-index确保控制条在最上层
+  &__top-toolbar {
+    flex: 0 0 auto;
+    z-index: @pdf-z-index-toolbar;
+  }
 
-    .control-button {
-      padding: 6px 12px;
-      background: #1890ff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.3s;
-      min-width: 60px;
+  &__content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
 
-      &:hover:not(:disabled) {
-        background: #40a9ff;
-        transform: translateY(-1px);
-      }
-
-      &:active:not(:disabled) {
-        background: #096dd9;
-        transform: translateY(0);
-      }
-
-      &:disabled {
-        background: #d9d9d9;
-        color: #999;
-        cursor: not-allowed;
-      }
-    }
-
-    .page-info {
-      font-size: 14px;
-      color: #333;
-      font-weight: 500;
-      min-width: 60px;
-      text-align: center;
-    }
-
-    .zoom-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: 8px;
-      padding-left: 8px;
-      border-left: 1px solid #e8e8e8;
-
-      .control-button {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        font-size: 16px;
-        font-weight: bold;
-        min-width: auto;
-      }
-
-      .zoom-info {
-        font-size: 12px;
-        color: #666;
-        min-width: 40px;
-        text-align: center;
-      }
-    }
+  &__bottom-toolbar {
+    flex: 0 0 auto;
+    z-index: @pdf-z-index-toolbar;
   }
 }
 
 // 移动端适配
-@media (max-width: 768px) {
+@media (max-width: @pdf-breakpoint-md) {
   .pdf-viewer {
-    &__controls {
-      bottom: 16px; // 稍微增加距离底部的间距
-      left: 12px;
-      right: 12px;
-      transform: none;
-      justify-content: space-between;
-      padding: 12px 16px;
+    &__container {
+      // 为移动端底部工具栏预留空间
+      padding-bottom: @pdf-safe-area-bottom;
+    }
 
-      .control-button {
-        min-height: 44px;
-        min-width: 44px;
-        font-size: 12px;
-      }
+    &__bottom-toolbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      // 考虑安全区域
+      padding-bottom: @pdf-safe-area-bottom;
+    }
 
-      .page-info {
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .zoom-controls {
-        .control-button {
-          width: 40px;
-          height: 40px;
-          font-size: 18px;
-        }
-
-        .zoom-info {
-          font-size: 14px;
-          min-width: 50px;
-        }
-      }
+    &__content {
+      // 为固定的底部工具栏预留空间
+      margin-bottom: @pdf-bottom-toolbar-height-mobile;
     }
   }
 }

@@ -172,14 +172,22 @@ const actions = {
   /**
    * 跳转到指定页面
    */
-  goToPage({ commit, rootGetters }, pageNumber) {
+  goToPage({ commit, rootGetters, rootState }, pageNumber) {
     const totalPages = rootGetters['document/totalPages'];
-    
+
     if (pageNumber < 1 || pageNumber > totalPages) {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
-    
+
     commit('SET_CURRENT_PAGE', pageNumber);
+
+    // 通知底层PDF查看器进行实际的页面跳转
+    // 通过事件总线或直接调用查看器方法
+    if (window.pdfViewerInstance && window.pdfViewerInstance.syncPageFromStore) {
+      window.pdfViewerInstance.syncPageFromStore(pageNumber);
+    }
+
+    console.log(`Vuex goToPage: 跳转到页面 ${pageNumber}`);
     return pageNumber;
   },
   

@@ -1,0 +1,261 @@
+/**
+ * PDF 阅读器样式变量
+ * 基于 Vant@2 设计令牌，扩展 PDF 阅读器专用变量
+ */
+
+// 引入 Vant@2 变量（如果需要）
+// @import '~vant/lib/style/var.less';
+
+// ==================== 颜色系统 ====================
+
+// 主色调
+@pdf-primary-color: #1890ff;
+@pdf-primary-light: #40a9ff;
+@pdf-primary-dark: #096dd9;
+
+// 辅助色
+@pdf-success-color: #52c41a;
+@pdf-warning-color: #faad14;
+@pdf-error-color: #ff4d4f;
+@pdf-info-color: #1890ff;
+
+// 中性色
+@pdf-text-color: #333333;
+@pdf-text-color-secondary: #666666;
+@pdf-text-color-disabled: #bfbfbf;
+@pdf-border-color: #e8e8e8;
+@pdf-border-color-light: #f0f0f0;
+@pdf-background-color: #ffffff;
+@pdf-background-color-light: #fafafa;
+@pdf-background-color-dark: #f5f5f5;
+
+// 阴影色
+@pdf-shadow-color: rgba(0, 0, 0, 0.1);
+@pdf-shadow-color-light: rgba(0, 0, 0, 0.05);
+@pdf-shadow-color-dark: rgba(0, 0, 0, 0.15);
+
+// ==================== 尺寸系统 ====================
+
+// 工具栏尺寸
+@pdf-toolbar-height: 48px;
+@pdf-toolbar-height-mobile: 44px;
+@pdf-bottom-toolbar-height: 56px;
+@pdf-bottom-toolbar-height-mobile: 60px;
+
+// 侧边栏尺寸
+@pdf-sidebar-width: 280px;
+@pdf-sidebar-width-mobile: 320px;
+
+// 按钮尺寸
+@pdf-button-height-small: 28px;
+@pdf-button-height-medium: 36px;
+@pdf-button-height-large: 44px;
+@pdf-button-height-mobile: 44px; // 移动端最小触摸目标
+
+// 间距系统
+@pdf-spacing-xs: 4px;
+@pdf-spacing-sm: 8px;
+@pdf-spacing-md: 12px;
+@pdf-spacing-lg: 16px;
+@pdf-spacing-xl: 20px;
+@pdf-spacing-xxl: 24px;
+
+// 圆角
+@pdf-border-radius-sm: 2px;
+@pdf-border-radius-md: 4px;
+@pdf-border-radius-lg: 8px;
+@pdf-border-radius-xl: 12px;
+@pdf-border-radius-round: 50%;
+
+// ==================== 字体系统 ====================
+
+// 字体大小
+@pdf-font-size-xs: 10px;
+@pdf-font-size-sm: 12px;
+@pdf-font-size-md: 14px;
+@pdf-font-size-lg: 16px;
+@pdf-font-size-xl: 18px;
+@pdf-font-size-xxl: 20px;
+
+// 字体粗细
+@pdf-font-weight-normal: 400;
+@pdf-font-weight-medium: 500;
+@pdf-font-weight-bold: 600;
+
+// 行高
+@pdf-line-height-sm: 1.2;
+@pdf-line-height-md: 1.4;
+@pdf-line-height-lg: 1.6;
+
+// ==================== 层级系统 ====================
+
+@pdf-z-index-toolbar: 1000;
+@pdf-z-index-sidebar: 999;
+@pdf-z-index-modal: 2000;
+@pdf-z-index-popup: 1500;
+@pdf-z-index-tooltip: 1100;
+
+// ==================== 动画系统 ====================
+
+// 过渡时间
+@pdf-transition-fast: 0.2s;
+@pdf-transition-normal: 0.3s;
+@pdf-transition-slow: 0.5s;
+
+// 缓动函数
+@pdf-ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+@pdf-ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+@pdf-ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+
+// ==================== PDF 专用变量 ====================
+
+// PDF 页面样式
+@pdf-page-background: #ffffff;
+@pdf-page-border: 1px solid #e8e8e8;
+@pdf-page-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+@pdf-page-margin: 8px;
+
+// PDF 查看器背景
+@pdf-viewer-background: #f5f5f5;
+@pdf-viewer-background-dark: #2f2f2f;
+
+// 文本层样式
+@pdf-text-layer-opacity: 0.2;
+@pdf-text-selection-color: rgba(24, 144, 255, 0.3);
+
+// 注释层样式
+@pdf-annotation-border: 1px solid #1890ff;
+@pdf-annotation-background: rgba(24, 144, 255, 0.1);
+
+// 搜索高亮
+@pdf-search-highlight: rgba(255, 255, 0, 0.6);
+@pdf-search-highlight-current: rgba(255, 165, 0, 0.8);
+
+// 加载状态
+@pdf-loading-background: rgba(255, 255, 255, 0.9);
+@pdf-loading-spinner-color: @pdf-primary-color;
+
+// ==================== 响应式断点 ====================
+
+@pdf-breakpoint-xs: 480px;
+@pdf-breakpoint-sm: 576px;
+@pdf-breakpoint-md: 768px;
+@pdf-breakpoint-lg: 992px;
+@pdf-breakpoint-xl: 1200px;
+@pdf-breakpoint-xxl: 1600px;
+
+// ==================== 主题变量 ====================
+
+// 浅色主题（默认）
+@pdf-theme-light-bg: #ffffff;
+@pdf-theme-light-text: #333333;
+@pdf-theme-light-border: #e8e8e8;
+
+// 深色主题
+@pdf-theme-dark-bg: #1f1f1f;
+@pdf-theme-dark-text: #ffffff;
+@pdf-theme-dark-border: #404040;
+
+// ==================== 工具栏专用变量 ====================
+
+// 工具栏背景
+@pdf-toolbar-background: rgba(255, 255, 255, 0.95);
+@pdf-toolbar-background-mobile: rgba(255, 255, 255, 0.98);
+@pdf-toolbar-backdrop-filter: blur(4px);
+
+// 工具栏边框
+@pdf-toolbar-border: 1px solid #e8e8e8;
+@pdf-toolbar-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+
+// 按钮间距
+@pdf-toolbar-button-gap: 8px;
+@pdf-toolbar-button-gap-mobile: 12px;
+
+// ==================== 移动端专用变量 ====================
+
+// 触摸目标最小尺寸
+@pdf-touch-target-min: 44px;
+
+// 移动端安全区域
+@pdf-safe-area-top: env(safe-area-inset-top);
+@pdf-safe-area-bottom: env(safe-area-inset-bottom);
+@pdf-safe-area-left: env(safe-area-inset-left);
+@pdf-safe-area-right: env(safe-area-inset-right);
+
+// ==================== 混入函数 ====================
+
+// 居中对齐
+.pdf-flex-center() {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 移动端触摸优化
+.pdf-mobile-touch() {
+  min-height: @pdf-touch-target-min;
+  min-width: @pdf-touch-target-min;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+// 文本省略
+.pdf-text-ellipsis() {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 多行文本省略
+.pdf-text-ellipsis-multiline(@lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: @lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// 清除浮动
+.pdf-clearfix() {
+  &::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+// 阴影效果
+.pdf-shadow-sm() {
+  box-shadow: 0 1px 3px @pdf-shadow-color-light;
+}
+
+.pdf-shadow-md() {
+  box-shadow: 0 2px 8px @pdf-shadow-color;
+}
+
+.pdf-shadow-lg() {
+  box-shadow: 0 4px 16px @pdf-shadow-color-dark;
+}
+
+// 过渡动画
+.pdf-transition(@property: all, @duration: @pdf-transition-normal, @timing: @pdf-ease-out) {
+  transition: @property @duration @timing;
+}
+
+// 响应式媒体查询
+.pdf-mobile() {
+  @media (max-width: @pdf-breakpoint-md) {
+    @content();
+  }
+}
+
+.pdf-tablet() {
+  @media (min-width: @pdf-breakpoint-md) and (max-width: @pdf-breakpoint-lg) {
+    @content();
+  }
+}
+
+.pdf-desktop() {
+  @media (min-width: @pdf-breakpoint-lg) {
+    @content();
+  }
+}
