@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import PdfButton from '../shared/PdfButton.vue';
+import PdfButton from './PdfButton.vue';
 import PdfPageInput from './PdfPageInput.vue';
 
 export default {

@@ -181,18 +181,16 @@
 
 <script>
 import PdfViewer from '../components/pdf-reader/components/PdfViewer.vue';
-import PdfSidebar from '../components/pdf-reader/components/sidebar/PdfSidebar.vue';
-import PdfOutline from '../components/pdf-reader/components/features/PdfOutline.vue';
-import PdfThumbnail from '../components/pdf-reader/components/features/PdfThumbnail.vue';
+import PdfSidebar from '../components/pdf-reader/components/ui/PdfSidebar.vue';
+import PdfOutline from '../components/pdf-reader/components/ui/PdfOutline.vue';
+import PdfThumbnail from '../components/pdf-reader/components/ui/PdfThumbnail.vue';
 import {
   mapDocumentState,
   mapViewerState,
-  mapUiState,
   mapDocumentActions,
   mapViewerActions,
-  mapUiActions,
   mapDocumentGetters,
-  mapUiGetters
+  mapViewerGetters
 } from '../components/pdf-reader/store/index.js';
 
 export default {
@@ -211,19 +209,23 @@ export default {
       pdfUrl: '/assets/sample.pdf', // 默认测试PDF
 
       // 测试页码输入
-      testPageNumber: 1
+      testPageNumber: 1,
+
+      // UI状态本地管理
+      showSidebar: false,
+      sidebarMode: 'thumbnails',
+      errorMessage: null,
+      showErrorDialog: false
     };
   },
 
   computed: {
-    // 映射Vuex状态 - 按照状态收敛原则，全局状态统一从Vuex获取
+    // 映射Vuex状态 - 只保留核心状态
     ...mapDocumentState(['pdfDocument', 'loading', 'error']),
     ...mapViewerState(['currentPage']),
-    ...mapUiState(['showSidebar', 'sidebarMode', 'errorMessage', 'showErrorDialog']),
 
     // 映射Vuex getters
     ...mapDocumentGetters(['totalPages']),
-    ...mapUiGetters(['hasError', 'sidebarConfig']),
 
     // 为了兼容模板，提供别名
     sidebarVisible() {
@@ -232,6 +234,10 @@ export default {
 
     sidebarTab() {
       return this.sidebarMode;
+    },
+
+    hasError() {
+      return !!this.error || !!this.errorMessage;
     }
   },
 
@@ -243,10 +249,9 @@ export default {
   },
 
   methods: {
-    // 映射Vuex actions - 按照状态收敛原则，状态变更统一通过Vuex actions
+    // 映射Vuex actions - 只保留核心状态管理
     ...mapDocumentActions(['loadDocument']),
     ...mapViewerActions(['goToPage']),
-    ...mapUiActions(['toggleSidebar', 'showError', 'clearError']),
 
     /**
      * 加载PDF文档
@@ -287,10 +292,26 @@ export default {
     },
 
     /**
-     * 切换侧边栏显示 - 使用Vuex action
+     * 切换侧边栏显示 - UI状态本地管理
      */
     toggleSidebarDisplay() {
-      this.toggleSidebar();
+      this.showSidebar = !this.showSidebar;
+    },
+
+    /**
+     * 显示错误 - UI状态本地管理
+     */
+    showError(message) {
+      this.errorMessage = message;
+      this.showErrorDialog = true;
+    },
+
+    /**
+     * 清除错误 - UI状态本地管理
+     */
+    clearError() {
+      this.errorMessage = null;
+      this.showErrorDialog = false;
     },
 
     /**

@@ -7,17 +7,12 @@ const state = {
   // 文档实例
   pdfDocument: null,
   
-  // 文档基本信息
+  // 文档基本信息（MVP版本：只保留核心信息）
   documentInfo: {
     numPages: 0,
     fingerprint: null,
     title: '',
-    author: '',
-    subject: '',
-    creator: '',
-    producer: '',
-    creationDate: null,
-    modificationDate: null
+    author: ''
   },
   
   // 文档元数据
@@ -42,14 +37,10 @@ const state = {
   passwordRequired: false,
   passwordIncorrect: false,
   
-  // 文档特性
+  // 文档特性（简化版）
   features: {
     hasOutline: false,
-    hasAnnotations: false,
-    hasJavaScript: false,
-    hasAcroForm: false,
-    isEncrypted: false,
-    isLinearized: false
+    isEncrypted: false
   }
 };
 
@@ -139,12 +130,7 @@ const mutations = {
       numPages: 0,
       fingerprint: null,
       title: '',
-      author: '',
-      subject: '',
-      creator: '',
-      producer: '',
-      creationDate: null,
-      modificationDate: null
+      author: ''
     };
     state.metadata = null;
     state.outline = null;
@@ -158,11 +144,7 @@ const mutations = {
     state.passwordIncorrect = false;
     state.features = {
       hasOutline: false,
-      hasAnnotations: false,
-      hasJavaScript: false,
-      hasAcroForm: false,
-      isEncrypted: false,
-      isLinearized: false
+      isEncrypted: false
     };
   }
 };
@@ -247,16 +229,11 @@ const actions = {
       const metadata = await state.pdfDocument.getMetadata();
       commit('SET_METADATA', metadata.metadata);
       
-      // 更新文档信息
+      // 更新文档信息（MVP版本：只保留核心信息）
       if (metadata.info) {
         commit('SET_DOCUMENT_INFO', {
           title: metadata.info.Title || '',
-          author: metadata.info.Author || '',
-          subject: metadata.info.Subject || '',
-          creator: metadata.info.Creator || '',
-          producer: metadata.info.Producer || '',
-          creationDate: metadata.info.CreationDate || null,
-          modificationDate: metadata.info.ModDate || null
+          author: metadata.info.Author || ''
         });
       }
       

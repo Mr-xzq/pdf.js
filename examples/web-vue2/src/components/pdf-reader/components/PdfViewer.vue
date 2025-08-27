@@ -55,20 +55,17 @@
 </template>
 
 <script>
-import PdfViewerCore from './viewer/PdfViewerCore.vue';
-import PdfTopToolbar from './toolbar/PdfTopToolbar.vue';
-import PdfBottomToolbar from './toolbar/PdfBottomToolbar.vue';
+import PdfViewerCore from './PdfViewerCore.vue';
+import PdfTopToolbar from './ui/PdfTopToolbar.vue';
+import PdfBottomToolbar from './ui/PdfBottomToolbar.vue';
 import {
   installPdfReaderModule,
   mapDocumentState,
   mapViewerState,
-  mapUiState,
   mapDocumentGetters,
   mapViewerGetters,
-  mapUiGetters,
   mapDocumentActions,
-  mapViewerActions,
-  mapUiActions
+  mapViewerActions
 } from '../store/index.js';
 
 export default {
@@ -107,11 +104,17 @@ export default {
     }
   },
 
+  data() {
+    return {
+      // UI状态下沉到组件本地
+      searchActive: false
+    };
+  },
+
   computed: {
-    // 映射Vuex状态 - 遵循状态收敛原则，全局状态统一从Vuex获取
+    // 映射Vuex状态 - 只保留真正需要全局共享的状态
     ...mapDocumentState(['pdfDocument', 'loading', 'error']),
     ...mapViewerState(['currentPage', 'scale']),
-    ...mapUiState(['searchActive']),
 
     // 映射Vuex getters
     ...mapDocumentGetters(['isDocumentLoaded', 'totalPages']),
@@ -153,10 +156,9 @@ export default {
   },
 
   methods: {
-    // 映射Vuex actions - 遵循状态收敛原则，状态变更统一通过Vuex actions
+    // 映射Vuex actions - 只保留核心状态管理
     ...mapDocumentActions(['loadDocument', 'setDocumentLoaded', 'setDocumentError']),
     ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'zoomIn', 'zoomOut', 'setScaleMode']),
-    ...mapUiActions(['toggleSearch']),
 
     // 事件处理 - 更新为使用Vuex actions
     onDocumentLoaded(event) {
@@ -202,9 +204,9 @@ export default {
       this.$emit('password-required', event);
     },
 
-    // 搜索相关方法 - 使用Vuex action
+    // 搜索相关方法 - UI状态本地管理
     onSearchToggle() {
-      this.toggleSearch();
+      this.searchActive = !this.searchActive;
       this.$emit('search-toggle', this.searchActive);
     },
 

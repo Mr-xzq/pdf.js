@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import { PageRenderService } from '../../core/pdf-services.js';
+import { PageRenderService } from '../core/pdf-services.js';
 
 export default {
   name: 'PdfPageContainer',

@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import PdfButton from '../shared/PdfButton.vue';
+import PdfButton from './PdfButton.vue';
 
 export default {
   name: 'PdfTopToolbar',

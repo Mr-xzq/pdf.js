@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import PdfButton from '../shared/PdfButton.vue';
+import PdfButton from './PdfButton.vue';
 
 export default {
   name: 'PdfZoomControl',
@@ -111,16 +111,14 @@ export default {
     return {
       showScaleSelector: false,
       customScale: '',
+      // MVP版本：简化缩放预设
       scalePresets: [
         { label: '适合宽度', value: 'page-width' },
         { label: '适合页面', value: 'page-fit' },
-        { label: '实际大小', value: 1.0 },
         { label: '50%', value: 0.5 },
-        { label: '75%', value: 0.75 },
-        { label: '125%', value: 1.25 },
+        { label: '100%', value: 1.0 },
         { label: '150%', value: 1.5 },
-        { label: '200%', value: 2.0 },
-        { label: '300%', value: 3.0 }
+        { label: '200%', value: 2.0 }
       ]
     };
   },

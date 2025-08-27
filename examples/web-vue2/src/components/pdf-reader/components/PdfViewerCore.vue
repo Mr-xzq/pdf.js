@@ -34,9 +34,9 @@
 </template>
 
 <script>
-import { PdfServices, NavigationService } from '../../core/pdf-services.js';
+import { PdfServices, NavigationService } from '../core/pdf-services.js';
 import PdfPageContainer from './PdfPageContainer.vue';
-import PdfLoadingProgress from './PdfLoadingProgress.vue';
+import PdfLoadingProgress from './ui/PdfLoadingProgress.vue';
 
 export default {
   name: 'PdfViewerCore',

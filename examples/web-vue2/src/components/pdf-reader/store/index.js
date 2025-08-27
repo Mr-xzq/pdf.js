@@ -1,19 +1,16 @@
 import { createNamespacedHelpers } from 'vuex';
 import documentModule from './modules/document.js';
 import viewerModule from './modules/viewer.js';
-import uiModule from './modules/ui.js';
-import navigationModule from './modules/navigation.js';
 
 /**
- * PDF 阅读器 Vuex 模块
+ * PDF 阅读器 Vuex 模块 - 简化版
+ * 只保留真正需要全局共享的状态：文档和查看器核心状态
  */
 export const pdfReaderModule = {
   namespaced: true,
   modules: {
     document: documentModule,
-    viewer: viewerModule,
-    ui: uiModule,
-    navigation: navigationModule
+    viewer: viewerModule
   }
 };
 
@@ -39,14 +36,12 @@ export function uninstallPdfReaderModule(store, moduleName = 'pdfReader') {
 }
 
 /**
- * 创建命名空间辅助函数
+ * 创建命名空间辅助函数 - 简化版
  */
 export function createPdfReaderHelpers(moduleName = 'pdfReader') {
   // 模块辅助函数
   const documentHelpers = createNamespacedHelpers(`${moduleName}/document`);
   const viewerHelpers = createNamespacedHelpers(`${moduleName}/viewer`);
-  const uiHelpers = createNamespacedHelpers(`${moduleName}/ui`);
-  const navigationHelpers = createNamespacedHelpers(`${moduleName}/navigation`);
 
   return {
     // 文档相关
@@ -63,22 +58,6 @@ export function createPdfReaderHelpers(moduleName = 'pdfReader') {
       mapGetters: viewerHelpers.mapGetters,
       mapMutations: viewerHelpers.mapMutations,
       mapActions: viewerHelpers.mapActions
-    },
-
-    // UI 相关
-    ui: {
-      mapState: uiHelpers.mapState,
-      mapGetters: uiHelpers.mapGetters,
-      mapMutations: uiHelpers.mapMutations,
-      mapActions: uiHelpers.mapActions
-    },
-
-    // 导航相关
-    navigation: {
-      mapState: navigationHelpers.mapState,
-      mapGetters: navigationHelpers.mapGetters,
-      mapMutations: navigationHelpers.mapMutations,
-      mapActions: navigationHelpers.mapActions
     }
   };
 }
@@ -104,165 +83,14 @@ export const {
   mapActions: mapViewerActions
 } = defaultHelpers.viewer;
 
-// 导出 UI 相关辅助函数
-export const {
-  mapState: mapUiState,
-  mapGetters: mapUiGetters,
-  mapMutations: mapUiMutations,
-  mapActions: mapUiActions
-} = defaultHelpers.ui;
 
-// 导出导航相关辅助函数
-export const {
-  mapState: mapNavigationState,
-  mapGetters: mapNavigationGetters,
-  mapMutations: mapNavigationMutations,
-  mapActions: mapNavigationActions
-} = defaultHelpers.navigation;
 
 /**
- * 混合辅助函数 - 同时映射文档和查看器状态
- */
-export function createMixedHelpers(moduleName = 'pdfReader') {
-  const helpers = createPdfReaderHelpers(moduleName);
-  
-  return {
-    // 混合状态映射
-    mapMixedState(documentStates = [], viewerStates = []) {
-      return {
-        ...helpers.document.mapState(documentStates),
-        ...helpers.viewer.mapState(viewerStates)
-      };
-    },
-    
-    // 混合 getters 映射
-    mapMixedGetters(documentGetters = [], viewerGetters = []) {
-      return {
-        ...helpers.document.mapGetters(documentGetters),
-        ...helpers.viewer.mapGetters(viewerGetters)
-      };
-    },
-    
-    // 混合 actions 映射
-    mapMixedActions(documentActions = [], viewerActions = []) {
-      return {
-        ...helpers.document.mapActions(documentActions),
-        ...helpers.viewer.mapActions(viewerActions)
-      };
-    }
-  };
-}
-
-/**
- * 常用状态组合
- */
-export const commonStateHelpers = {
-  // 基础状态
-  basic: () => ({
-    ...mapDocumentState(['loading', 'error']),
-    ...mapViewerState(['currentPage', 'scale']),
-    ...mapDocumentGetters(['isDocumentLoaded', 'totalPages']),
-    ...mapViewerGetters(['navigationState', 'zoomState'])
-  }),
-  
-  // 导航状态
-  navigation: () => ({
-    ...mapViewerState(['currentPage']),
-    ...mapDocumentGetters(['totalPages']),
-    ...mapViewerGetters(['navigationState']),
-    ...mapViewerActions(['goToPage', 'nextPage', 'prevPage'])
-  }),
-  
-  // 缩放状态
-  zoom: () => ({
-    ...mapViewerState(['scale', 'scaleMode']),
-    ...mapViewerGetters(['zoomState']),
-    ...mapViewerActions(['setScale', 'zoomIn', 'zoomOut', 'setScaleMode'])
-  }),
-  
-  // 文档状态
-  document: () => ({
-    ...mapDocumentState(['loading', 'error', 'src']),
-    ...mapDocumentGetters(['isDocumentLoaded', 'documentTitle', 'hasError']),
-    ...mapDocumentActions(['loadDocument', 'resetDocument'])
-  })
-};
-
-/**
- * 状态监听器工厂
- */
-export function createStateWatcher(store, moduleName = 'pdfReader') {
-  return {
-    // 监听文档加载状态
-    watchDocumentLoading(callback) {
-      return store.watch(
-        state => state[moduleName].document.loading,
-        callback
-      );
-    },
-    
-    // 监听当前页面变化
-    watchCurrentPage(callback) {
-      return store.watch(
-        state => state[moduleName].viewer.currentPage,
-        callback
-      );
-    },
-    
-    // 监听缩放变化
-    watchScale(callback) {
-      return store.watch(
-        state => state[moduleName].viewer.scale,
-        callback
-      );
-    },
-    
-    // 监听错误状态
-    watchError(callback) {
-      return store.watch(
-        state => state[moduleName].document.error,
-        callback
-      );
-    }
-  };
-}
-
-/**
- * 状态验证器
- */
-export const stateValidators = {
-  // 验证页码
-  validatePageNumber(store, pageNumber, moduleName = 'pdfReader') {
-    const totalPages = store.getters[`${moduleName}/document/totalPages`];
-    return Number.isInteger(pageNumber) && 
-           pageNumber >= 1 && 
-           pageNumber <= totalPages;
-  },
-  
-  // 验证缩放比例
-  validateScale(store, scale, moduleName = 'pdfReader') {
-    const { minScale, maxScale } = store.state[moduleName].viewer;
-    return typeof scale === 'number' && 
-           scale >= minScale && 
-           scale <= maxScale;
-  },
-  
-  // 验证文档是否已加载
-  validateDocumentLoaded(store, moduleName = 'pdfReader') {
-    return store.getters[`${moduleName}/document/isDocumentLoaded`];
-  }
-};
-
-/**
- * 默认导出
+ * 默认导出 - 简化版
  */
 export default {
   pdfReaderModule,
   installPdfReaderModule,
   uninstallPdfReaderModule,
-  createPdfReaderHelpers,
-  createMixedHelpers,
-  commonStateHelpers,
-  createStateWatcher,
-  stateValidators
+  createPdfReaderHelpers
 };

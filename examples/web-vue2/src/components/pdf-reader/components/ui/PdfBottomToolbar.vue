@@ -38,8 +38,8 @@
 </template>
 
 <script>
-import PdfNavigation from '../controls/PdfNavigation.vue';
-import PdfZoomControl from '../controls/PdfZoomControl.vue';
+import PdfNavigation from './PdfNavigation.vue';
+import PdfZoomControl from './PdfZoomControl.vue';
 
 export default {
   name: 'PdfBottomToolbar',

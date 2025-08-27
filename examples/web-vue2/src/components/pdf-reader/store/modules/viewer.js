@@ -6,61 +6,49 @@
 const state = {
   // 当前页面
   currentPage: 1,
-  
+
   // 缩放相关
   scale: 1.0,
   scaleMode: 'auto', // 'auto', 'page-width', 'page-fit', 'custom'
   minScale: 0.1,
   maxScale: 10.0,
-  
-  // 视图模式
-  viewMode: 'single', // 'single', 'continuous', 'facing'
-  
+
   // 旋转角度
   rotation: 0, // 0, 90, 180, 270
-  
+
   // 渲染状态
   rendering: false,
   renderingPages: new Set(),
-  
+
   // 页面尺寸信息
   pageInfo: {
     width: 0,
     height: 0,
     aspectRatio: 1
   },
-  
+
   // 滚动位置
   scrollPosition: {
     x: 0,
     y: 0
   },
-  
-  // 查看器配置
+
+  // 基础配置（MVP版本）
   config: {
-    textLayerMode: 1, // 0=禁用, 1=启用, 2=增强
-    annotationMode: 1, // 0=禁用, 1=启用
-    maxCanvasPixels: 0, // 0=CSS缩放, >0=Canvas像素限制
-    enableScripting: false,
-    disableAutoFetch: false,
-    disableStream: false,
-    disableRange: false
+    textLayerMode: 1, // 0=禁用, 1=启用
+    maxCanvasPixels: 0 // 0=CSS缩放
   },
-  
-  // 移动端配置
-  mobileConfig: {
-    enableGestures: true,
-    enablePinchZoom: true,
-    enableSwipeNavigation: true,
-    touchSensitivity: 1.0
-  },
-  
-  // 性能配置
-  performance: {
-    renderQuality: 1.0,
-    cacheSize: 10, // 缓存页面数
-    preloadPages: 1 // 预加载页面数
-  }
+
+  // 缩略图相关（从navigation模块合并）
+  thumbnails: {},
+  thumbnailSize: 120,
+  thumbnailScale: 0.5,
+  loadingThumbnails: new Set(),
+
+  // 导航历史（从navigation模块合并）
+  navigationHistory: [],
+  historyIndex: -1,
+  maxHistorySize: 20 // 减少历史记录大小
 };
 
 const mutations = {
@@ -84,10 +72,7 @@ const mutations = {
     state.scaleMode = mode;
   },
   
-  // 设置视图模式
-  SET_VIEW_MODE(state, mode) {
-    state.viewMode = mode;
-  },
+
   
   // 设置旋转角度
   SET_ROTATION(state, rotation) {
@@ -134,21 +119,41 @@ const mutations = {
       ...config
     };
   },
-  
-  // 更新移动端配置
-  UPDATE_MOBILE_CONFIG(state, config) {
-    state.mobileConfig = {
-      ...state.mobileConfig,
-      ...config
+
+  // 缩略图相关mutations（从navigation模块合并）
+  SET_THUMBNAIL(state, { pageNumber, thumbnail }) {
+    state.thumbnails = {
+      ...state.thumbnails,
+      [pageNumber]: thumbnail
     };
   },
-  
-  // 更新性能配置
-  UPDATE_PERFORMANCE_CONFIG(state, config) {
-    state.performance = {
-      ...state.performance,
-      ...config
-    };
+
+  ADD_LOADING_THUMBNAIL(state, pageNumber) {
+    state.loadingThumbnails.add(pageNumber);
+  },
+
+  REMOVE_LOADING_THUMBNAIL(state, pageNumber) {
+    state.loadingThumbnails.delete(pageNumber);
+  },
+
+  // 导航历史mutations（从navigation模块合并）
+  ADD_NAVIGATION_HISTORY(state, entry) {
+    // 移除当前位置之后的历史记录
+    state.navigationHistory = state.navigationHistory.slice(0, state.historyIndex + 1);
+
+    // 添加新记录
+    state.navigationHistory.push(entry);
+
+    // 限制历史记录大小
+    if (state.navigationHistory.length > state.maxHistorySize) {
+      state.navigationHistory.shift();
+    } else {
+      state.historyIndex++;
+    }
+  },
+
+  SET_HISTORY_INDEX(state, index) {
+    state.historyIndex = Math.max(-1, Math.min(index, state.navigationHistory.length - 1));
   },
   
   // 重置查看器状态
@@ -165,6 +170,10 @@ const mutations = {
       aspectRatio: 1
     };
     state.scrollPosition = { x: 0, y: 0 };
+    state.thumbnails = {};
+    state.loadingThumbnails.clear();
+    state.navigationHistory = [];
+    state.historyIndex = -1;
   }
 };
 
@@ -289,7 +298,63 @@ const actions = {
   updateConfig({ commit }, config) {
     commit('UPDATE_CONFIG', config);
   },
-  
+
+  /**
+   * 加载缩略图（从navigation模块合并）
+   */
+  async loadThumbnail({ commit, rootState }, { pageNumber, scale }) {
+    const pdfDocument = rootState.document.pdfDocument;
+    if (!pdfDocument || state.thumbnails[pageNumber]) {
+      return;
+    }
+
+    try {
+      commit('ADD_LOADING_THUMBNAIL', pageNumber);
+
+      const page = await pdfDocument.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: scale || state.thumbnailScale });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+
+      const thumbnail = {
+        canvas: canvas,
+        width: viewport.width,
+        height: viewport.height,
+        scale: scale || state.thumbnailScale
+      };
+
+      commit('SET_THUMBNAIL', { pageNumber, thumbnail });
+      return thumbnail;
+    } catch (error) {
+      console.error('加载缩略图失败:', error);
+      throw error;
+    } finally {
+      commit('REMOVE_LOADING_THUMBNAIL', pageNumber);
+    }
+  },
+
+  /**
+   * 添加导航历史（从navigation模块合并）
+   */
+  addNavigationHistory({ commit }, { pageNumber, source, timestamp }) {
+    const entry = {
+      pageNumber,
+      source: source || 'unknown',
+      timestamp: timestamp || Date.now()
+    };
+    commit('ADD_NAVIGATION_HISTORY', entry);
+  },
+
   /**
    * 重置查看器
    */
@@ -345,22 +410,30 @@ const getters = {
   
   // 查看器配置
   viewerConfig: state => state.config,
-  
-  // 移动端配置
-  mobileConfig: state => state.mobileConfig,
-  
-  // 性能配置
-  performanceConfig: state => state.performance,
-  
+
   // 当前视图状态
   viewState: state => ({
     currentPage: state.currentPage,
     scale: state.scale,
     scaleMode: state.scaleMode,
-    viewMode: state.viewMode,
     rotation: state.rotation,
     rendering: state.rendering
-  })
+  }),
+
+  // 缩略图相关getters（从navigation模块合并）
+  thumbnailCount: state => Object.keys(state.thumbnails).length,
+  isLoadingThumbnail: state => pageNumber => state.loadingThumbnails.has(pageNumber),
+  getThumbnail: state => pageNumber => state.thumbnails[pageNumber],
+
+  // 导航历史getters（从navigation模块合并）
+  canGoBack: state => state.historyIndex > 0,
+  canGoForward: state => state.historyIndex < state.navigationHistory.length - 1,
+  currentHistoryEntry: state => {
+    if (state.historyIndex >= 0 && state.historyIndex < state.navigationHistory.length) {
+      return state.navigationHistory[state.historyIndex];
+    }
+    return null;
+  }
 };
 
 export default {

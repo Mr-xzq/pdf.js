@@ -58,7 +58,7 @@
         class="pdf-sidebar__panel"
       >
         <pdf-outline
-          :auto-expand-to-current="autoExpandOutline"
+          :auto-expand-to-current="true"
           @navigate-to-page="onNavigateToPage"
           @navigate-to-url="onNavigateToUrl"
           @item-click="onOutlineItemClick"
@@ -99,9 +99,9 @@
 </template>
 
 <script>
-import PdfThumbnail from '../features/PdfThumbnail.vue';
-import PdfOutline from '../features/PdfOutline.vue';
-import { mapDocumentState, mapViewerState, mapUiState, mapUiActions } from '../../store/index.js';
+import PdfThumbnail from './PdfThumbnail.vue';
+import PdfOutline from './PdfOutline.vue';
+import { mapDocumentState, mapViewerState } from '../../store/index.js';
 
 export default {
   name: 'PdfSidebar',
@@ -122,26 +122,19 @@ export default {
       type: String,
       default: 'thumbnails'
     },
-    // 缩略图尺寸
+    // 缩略图尺寸（简化配置）
     thumbnailSize: {
       type: Number,
       default: 120
-    },
-    // 是否自动展开目录到当前页
-    autoExpandOutline: {
-      type: Boolean,
-      default: true
-    },
-    // 可用的标签页
-    enabledTabs: {
-      type: Array,
-      default: () => ['thumbnails', 'outline', 'bookmarks', 'search']
     }
   },
 
   data() {
     return {
-      // 所有可用的标签配置 - 静态配置数据，不是状态
+      // UI状态本地管理
+      activeTab: this.defaultTab,
+
+      // MVP版本：只保留核心标签页
       allTabs: [
         {
           key: 'thumbnails',
@@ -152,84 +145,59 @@ export default {
           key: 'outline',
           title: '目录',
           icon: 'notes-o'
-        },
-        {
-          key: 'bookmarks',
-          title: '书签',
-          icon: 'bookmark-o'
-        },
-        {
-          key: 'search',
-          title: '搜索',
-          icon: 'search'
         }
       ]
     };
   },
 
   computed: {
-    // 可用的标签页
+    // 可用的标签页（MVP版本：直接返回所有标签）
     availableTabs() {
-      return this.allTabs.filter(tab => this.enabledTabs.includes(tab.key));
+      return this.allTabs;
     },
 
-    // 是否为移动端
+    // 是否为移动端（简化检测）
     isMobile() {
-      return this.$store ? this.$store.getters['pdfReader/ui/mobileConfig'].isMobile : false;
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     },
 
-    // 当前激活的标签 - 从Vuex状态获取，遵循状态收敛原则
-    activeTab: {
-      get() {
-        return this.sidebarMode || this.defaultTab;
-      },
-      set(value) {
-        // 通过Vuex action更新状态
-        this.setSidebarMode(value);
-      }
-    },
-
-    // Vuex 状态映射
+    // Vuex 状态映射 - 只保留核心状态
     ...mapDocumentState(['pdfDocument']),
-    ...mapViewerState(['currentPage']),
-    ...mapUiState(['sidebarMode'])
+    ...mapViewerState(['currentPage'])
   },
 
   watch: {
     // 监听默认标签变化
     defaultTab(newTab) {
-      if (this.enabledTabs.includes(newTab)) {
-        this.setSidebarMode(newTab);
-      }
+      // MVP版本：所有标签都可用，直接切换
+      this.activeTab = newTab;
     },
 
     // 监听可见性变化
     visible(newVisible) {
-      if (newVisible && !this.enabledTabs.includes(this.activeTab)) {
-        // 如果当前标签不可用，切换到第一个可用标签
-        const firstAvailableTab = this.availableTabs[0]?.key || 'thumbnails';
-        this.setSidebarMode(firstAvailableTab);
+      if (newVisible && !this.allTabs.find(tab => tab.key === this.activeTab)) {
+        // 如果当前标签不存在，切换到第一个标签
+        const firstAvailableTab = this.allTabs[0]?.key || 'thumbnails';
+        this.activeTab = firstAvailableTab;
       }
     }
   },
 
   methods: {
-    // 映射Vuex actions - 遵循状态收敛原则
-    ...mapUiActions(['setSidebarMode', 'setSidebarVisible']),
+    // UI状态本地管理，不再需要Vuex actions
 
     /**
-     * 处理标签切换
+     * 处理标签切换 - UI状态本地管理
      */
     onTabChange(tabKey) {
-      this.setSidebarMode(tabKey);
+      this.activeTab = tabKey;
       this.$emit('tab-change', tabKey);
     },
 
     /**
-     * 处理关闭 - 使用Vuex action
+     * 处理关闭 - 通过事件通知父组件
      */
     onClose() {
-      this.setSidebarVisible(false);
       this.$emit('close');
     },
 
@@ -269,11 +237,12 @@ export default {
     },
 
     /**
-     * 切换到指定标签 - 使用Vuex action
+     * 切换到指定标签 - UI状态本地管理
      */
     switchToTab(tabKey) {
-      if (this.enabledTabs.includes(tabKey)) {
-        this.setSidebarMode(tabKey);
+      // MVP版本：所有标签都可用，直接切换
+      if (this.allTabs.find(tab => tab.key === tabKey)) {
+        this.activeTab = tabKey;
       }
     },
 
