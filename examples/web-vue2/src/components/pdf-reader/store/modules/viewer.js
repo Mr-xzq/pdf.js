@@ -18,7 +18,7 @@ const state = {
 
   // 渲染状态
   rendering: false,
-  renderingPages: new Set(),
+  renderingPages: [], // ✅ 使用数组替代Set，支持Vue2响应式
 
   // 页面尺寸信息
   pageInfo: {
@@ -43,7 +43,7 @@ const state = {
   thumbnails: {},
   thumbnailSize: 120,
   thumbnailScale: 0.5,
-  loadingThumbnails: new Set(),
+  loadingThumbnails: [], // ✅ 使用数组替代Set，支持Vue2响应式
 
   // 导航历史（从navigation模块合并）
   navigationHistory: [],
@@ -86,17 +86,22 @@ const mutations = {
   
   // 添加正在渲染的页面
   ADD_RENDERING_PAGE(state, pageNumber) {
-    state.renderingPages.add(pageNumber);
+    if (!state.renderingPages.includes(pageNumber)) {
+      state.renderingPages.push(pageNumber);
+    }
   },
-  
+
   // 移除正在渲染的页面
   REMOVE_RENDERING_PAGE(state, pageNumber) {
-    state.renderingPages.delete(pageNumber);
+    const index = state.renderingPages.indexOf(pageNumber);
+    if (index > -1) {
+      state.renderingPages.splice(index, 1);
+    }
   },
-  
+
   // 清除所有渲染状态
   CLEAR_RENDERING_PAGES(state) {
-    state.renderingPages.clear();
+    state.renderingPages = [];
   },
   
   // 设置页面信息
@@ -129,11 +134,16 @@ const mutations = {
   },
 
   ADD_LOADING_THUMBNAIL(state, pageNumber) {
-    state.loadingThumbnails.add(pageNumber);
+    if (!state.loadingThumbnails.includes(pageNumber)) {
+      state.loadingThumbnails.push(pageNumber);
+    }
   },
 
   REMOVE_LOADING_THUMBNAIL(state, pageNumber) {
-    state.loadingThumbnails.delete(pageNumber);
+    const index = state.loadingThumbnails.indexOf(pageNumber);
+    if (index > -1) {
+      state.loadingThumbnails.splice(index, 1);
+    }
   },
 
   // 导航历史mutations（从navigation模块合并）
@@ -163,7 +173,7 @@ const mutations = {
     state.scaleMode = 'auto';
     state.rotation = 0;
     state.rendering = false;
-    state.renderingPages.clear();
+    state.renderingPages = [];
     state.pageInfo = {
       width: 0,
       height: 0,
@@ -171,7 +181,7 @@ const mutations = {
     };
     state.scrollPosition = { x: 0, y: 0 };
     state.thumbnails = {};
-    state.loadingThumbnails.clear();
+    state.loadingThumbnails = [];
     state.navigationHistory = [];
     state.historyIndex = -1;
   }
@@ -377,10 +387,10 @@ const getters = {
   currentRotation: state => state.rotation,
   
   // 是否正在渲染
-  isRendering: state => state.rendering || state.renderingPages.size > 0,
-  
+  isRendering: state => state.rendering || state.renderingPages.length > 0,
+
   // 特定页面是否正在渲染
-  isPageRendering: state => pageNumber => state.renderingPages.has(pageNumber),
+  isPageRendering: state => pageNumber => state.renderingPages.includes(pageNumber),
   
   // 导航状态
   navigationState: (state, getters, rootState, rootGetters) => {
@@ -422,7 +432,7 @@ const getters = {
 
   // 缩略图相关getters（从navigation模块合并）
   thumbnailCount: state => Object.keys(state.thumbnails).length,
-  isLoadingThumbnail: state => pageNumber => state.loadingThumbnails.has(pageNumber),
+  isLoadingThumbnail: state => pageNumber => state.loadingThumbnails.includes(pageNumber),
   getThumbnail: state => pageNumber => state.thumbnails[pageNumber],
 
   // 导航历史getters（从navigation模块合并）

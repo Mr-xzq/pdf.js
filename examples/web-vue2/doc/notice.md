@@ -29,6 +29,53 @@ import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 - 避免 "Setting up fake worker" 警告
 - 符合官方推荐的最佳实践
 
+### Vue 2 响应式系统注意事项
+
+⚠️ **重要提醒**：Vue2的响应式系统基于`Object.defineProperty`，无法监听Map、Set等ES6数据结构的变化。
+
+```javascript
+// ❌ 错误：Vue2无法监听Map/Set的变化
+data() {
+  return {
+    pageCache: new Map(),        // 不会触发响应式更新
+    loadingPages: new Set(),     // 不会触发响应式更新
+    renderTasks: new WeakMap()   // 不会触发响应式更新
+  };
+}
+
+// ✅ 正确：使用普通对象和数组
+data() {
+  return {
+    pageCache: {},               // 响应式对象
+    loadingPages: [],            // 响应式数组
+    renderTasks: {}              // 响应式对象
+  };
+}
+
+// ✅ 正确的响应式操作
+methods: {
+  addToCache(key, value) {
+    this.$set(this.pageCache, key, value);  // 添加新属性
+  },
+
+  removeFromCache(key) {
+    this.$delete(this.pageCache, key);      // 删除属性
+  },
+
+  addToLoadingPages(pageNumber) {
+    if (!this.loadingPages.includes(pageNumber)) {
+      this.loadingPages.push(pageNumber);   // 数组操作是响应式的
+    }
+  }
+}
+```
+
+**核心原则**：
+- 使用普通对象`{}`替代`Map`
+- 使用数组`[]`替代`Set`
+- 使用`this.$set()`和`this.$delete()`操作对象属性
+- 在Vuex中使用`Vue.set()`和`Vue.delete()`
+
 ### Vue 2 组件架构设计
 
 基于 PDF.js 组件系统和官方示例的最佳实践，采用分层架构和组件化设计：
@@ -879,6 +926,85 @@ export default {
   }
 };
 ```
+
+#### Vue2 响应式最佳实践
+
+在开发过程中，务必遵循以下Vue2响应式系统的最佳实践：
+
+```javascript
+// ✅ 正确的Vuex状态设计
+const state = {
+  // 使用普通对象和数组
+  thumbnails: {},              // 替代 Map
+  loadingPages: [],            // 替代 Set
+  pageCache: {},               // 缓存数据
+  renderQueue: []              // 渲染队列
+};
+
+const mutations = {
+  // ✅ 正确的状态更新方式
+  SET_THUMBNAIL(state, { pageNumber, thumbnail }) {
+    Vue.set(state.thumbnails, pageNumber, thumbnail);
+  },
+
+  ADD_LOADING_PAGE(state, pageNumber) {
+    if (!state.loadingPages.includes(pageNumber)) {
+      state.loadingPages.push(pageNumber);
+    }
+  },
+
+  REMOVE_LOADING_PAGE(state, pageNumber) {
+    const index = state.loadingPages.indexOf(pageNumber);
+    if (index > -1) {
+      state.loadingPages.splice(index, 1);
+    }
+  },
+
+  CLEAR_CACHE(state) {
+    state.pageCache = {};
+    state.loadingPages = [];
+  }
+};
+
+// ✅ 组件中的正确用法
+export default {
+  data() {
+    return {
+      localCache: {},           // 本地缓存
+      processingPages: []       // 处理中的页面
+    };
+  },
+
+  methods: {
+    addToLocalCache(key, value) {
+      this.$set(this.localCache, key, value);
+    },
+
+    removeFromLocalCache(key) {
+      this.$delete(this.localCache, key);
+    },
+
+    addProcessingPage(pageNumber) {
+      if (!this.processingPages.includes(pageNumber)) {
+        this.processingPages.push(pageNumber);
+      }
+    }
+  },
+
+  beforeDestroy() {
+    // 清理资源
+    this.localCache = {};
+    this.processingPages = [];
+  }
+};
+```
+
+**关键要点**：
+- 🚫 避免使用 `Map`、`Set`、`WeakMap`、`WeakSet`
+- ✅ 使用 `this.$set()` 和 `this.$delete()` 操作对象
+- ✅ 在 Vuex 中使用 `Vue.set()` 和 `Vue.delete()`
+- ✅ 数组操作使用响应式方法：`push`、`pop`、`splice`
+- ✅ 在组件销毁时正确清理资源
 
 ## 6. 后续扩展方向
 

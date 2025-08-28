@@ -219,7 +219,9 @@ export class PdfServices {
 export class PageRenderService {
   constructor(pdfServices) {
     this.pdfServices = pdfServices;
-    this.renderCache = new Map();
+    // ✅ 使用普通对象替代Map，保持代码一致性
+    this.renderCache = {};
+    this.cacheKeys = []; // 维护键的顺序
   }
 
   /**
@@ -333,7 +335,46 @@ export class PageRenderService {
    * 清理渲染缓存
    */
   clearCache() {
-    this.renderCache.clear();
+    // ✅ 使用对象清理方法
+    this.renderCache = {};
+    this.cacheKeys = [];
+  }
+
+  /**
+   * 设置缓存
+   */
+  setCache(key, value) {
+    if (!this.renderCache[key]) {
+      this.cacheKeys.push(key);
+    }
+    this.renderCache[key] = value;
+  }
+
+  /**
+   * 获取缓存
+   */
+  getCache(key) {
+    return this.renderCache[key];
+  }
+
+  /**
+   * 检查缓存是否存在
+   */
+  hasCache(key) {
+    return key in this.renderCache;
+  }
+
+  /**
+   * 删除缓存
+   */
+  deleteCache(key) {
+    if (this.renderCache[key]) {
+      delete this.renderCache[key];
+      const index = this.cacheKeys.indexOf(key);
+      if (index > -1) {
+        this.cacheKeys.splice(index, 1);
+      }
+    }
   }
 }
 

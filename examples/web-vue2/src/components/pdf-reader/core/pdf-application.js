@@ -37,7 +37,7 @@ export class PdfApplication {
         globalThis.pdfjsLib = pdfjsLib;
       }
 
-      // 然后导入 PDF.js 查看器组件
+      // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
       const pdfjsViewer = await import('pdfjs-dist/legacy/web/pdf_viewer.mjs');
 
       // 创建事件总线
@@ -142,16 +142,13 @@ export class PdfApplication {
     }
 
     try {
-      const [info, metadata] = await Promise.all([
-        this.pdfDocument.getMetadata(),
-        this.pdfDocument.getMetadata()
-      ]);
+      const metadataResult = await this.pdfDocument.getMetadata();
 
       return {
         numPages: this.pdfDocument.numPages,
         fingerprint: this.pdfDocument.fingerprint,
-        info: info.info,
-        metadata: metadata.metadata
+        info: metadataResult.info,
+        metadata: metadataResult.metadata
       };
     } catch (error) {
       console.error('获取文档信息失败:', error);

@@ -67,7 +67,9 @@ export class EventBridge {
   constructor(eventBus, vueComponent) {
     this.eventBus = eventBus;
     this.vueComponent = vueComponent;
-    this.listeners = new Map();
+    // ✅ 使用普通对象替代Map，保持代码一致性
+    this.listeners = {};
+    this.listenerKeys = []; // 维护键的顺序
   }
 
   /**
@@ -130,22 +132,35 @@ export class EventBridge {
    * 添加事件监听器
    */
   addListener(eventName, handler) {
-    if (this.listeners.has(eventName)) {
+    // ✅ 使用对象方法检查和设置
+    if (eventName in this.listeners) {
       this.removeListener(eventName);
     }
 
     this.eventBus.on(eventName, handler);
-    this.listeners.set(eventName, handler);
+
+    // 添加到监听器对象和键数组
+    if (!this.listeners[eventName]) {
+      this.listenerKeys.push(eventName);
+    }
+    this.listeners[eventName] = handler;
   }
 
   /**
    * 移除事件监听器
    */
   removeListener(eventName) {
-    const handler = this.listeners.get(eventName);
+    // ✅ 使用对象方法获取和删除
+    const handler = this.listeners[eventName];
     if (handler) {
       this.eventBus.off(eventName, handler);
-      this.listeners.delete(eventName);
+      delete this.listeners[eventName];
+
+      // 从键数组中移除
+      const index = this.listenerKeys.indexOf(eventName);
+      if (index > -1) {
+        this.listenerKeys.splice(index, 1);
+      }
     }
   }
 
@@ -153,10 +168,14 @@ export class EventBridge {
    * 销毁事件桥接器
    */
   destroy() {
-    for (const [eventName] of this.listeners) {
+    // ✅ 使用键数组遍历
+    for (const eventName of this.listenerKeys) {
       this.removeListener(eventName);
     }
-    this.listeners.clear();
+
+    // 清理所有数据
+    this.listeners = {};
+    this.listenerKeys = [];
     console.log('PDF 事件桥接器已销毁');
   }
 }

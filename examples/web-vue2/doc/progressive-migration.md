@@ -16,6 +16,46 @@
 - **本地库优势**：使用本地 PDF.js 库，避免网络依赖和版本冲突
 - **Vant@2 可选集成**：在合适的场景下使用 Vant@2 组件，提升开发效率和用户体验
 
+### ⚠️ Vue2 响应式系统重要提醒
+
+在整个迁移过程中，务必注意Vue2响应式系统的限制：
+
+```javascript
+// ❌ 错误：Vue2无法监听这些ES6数据结构
+data() {
+  return {
+    pageCache: new Map(),        // 不响应式
+    loadingPages: new Set(),     // 不响应式
+    renderTasks: new WeakMap()   // 不响应式
+  };
+}
+
+// ✅ 正确：使用Vue2响应式友好的数据结构
+data() {
+  return {
+    pageCache: {},               // 响应式对象
+    loadingPages: [],            // 响应式数组
+    renderTasks: {}              // 响应式对象
+  };
+}
+
+// ✅ 正确的操作方式
+methods: {
+  addToCache(key, value) {
+    this.$set(this.pageCache, key, value);
+  },
+  removeFromCache(key) {
+    this.$delete(this.pageCache, key);
+  }
+}
+```
+
+**核心原则**：
+- 🚫 避免 `Map`、`Set`、`WeakMap`、`WeakSet`
+- ✅ 使用普通对象 `{}` 和数组 `[]`
+- ✅ 使用 `this.$set()` 和 `this.$delete()`
+- ✅ 在 Vuex 中使用 `Vue.set()` 和 `Vue.delete()`
+
 ## 阶段 1：环境搭建与基础架构 🏗️
 
 ### 目标
@@ -503,30 +543,75 @@ export class PdfApplication {
 }
 ```
 
-#### 2.2 状态管理基础
+#### 2.2 状态管理基础 - Vue2响应式友好版本
 
 **store/modules/document.js**
 ```javascript
+// ⚠️ 重要：遵循Vue2响应式系统最佳实践
 const state = {
   pdfDocument: null,
   documentInfo: null,
   fingerprint: null,
   loading: false,
-  error: null
+  error: null,
+
+  // ✅ 使用普通对象替代Map
+  pageCache: {},              // 页面缓存
+  loadingPages: [],           // 正在加载的页面（替代Set）
+
+  // ✅ 响应式友好的数据结构
+  thumbnails: {},             // 缩略图缓存
+  outline: [],                // 文档目录
+  metadata: {}                // 文档元数据
 };
 
 const mutations = {
   SET_DOCUMENT(state, document) {
     state.pdfDocument = document;
   },
+
   SET_DOCUMENT_INFO(state, info) {
     state.documentInfo = info;
   },
+
   SET_LOADING(state, loading) {
     state.loading = loading;
   },
+
   SET_ERROR(state, error) {
     state.error = error;
+  },
+
+  // ✅ 正确的响应式操作
+  SET_PAGE_CACHE(state, { pageNumber, pageData }) {
+    Vue.set(state.pageCache, pageNumber, pageData);
+  },
+
+  REMOVE_PAGE_CACHE(state, pageNumber) {
+    Vue.delete(state.pageCache, pageNumber);
+  },
+
+  ADD_LOADING_PAGE(state, pageNumber) {
+    if (!state.loadingPages.includes(pageNumber)) {
+      state.loadingPages.push(pageNumber);
+    }
+  },
+
+  REMOVE_LOADING_PAGE(state, pageNumber) {
+    const index = state.loadingPages.indexOf(pageNumber);
+    if (index > -1) {
+      state.loadingPages.splice(index, 1);
+    }
+  },
+
+  SET_THUMBNAIL(state, { pageNumber, thumbnail }) {
+    Vue.set(state.thumbnails, pageNumber, thumbnail);
+  },
+
+  CLEAR_CACHE(state) {
+    state.pageCache = {};
+    state.loadingPages = [];
+    state.thumbnails = {};
   }
 };
 
@@ -535,6 +620,7 @@ const actions = {
     try {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
+      commit('CLEAR_CACHE'); // 清理旧缓存
 
       const { PdfApplication } = await import('../../core/pdf-application.js');
       const app = new PdfApplication();
@@ -549,12 +635,33 @@ const actions = {
       commit('SET_LOADING', false);
       throw error;
     }
+  },
+
+  async loadPage({ commit, state }, pageNumber) {
+    if (state.pageCache[pageNumber]) {
+      return state.pageCache[pageNumber];
+    }
+
+    commit('ADD_LOADING_PAGE', pageNumber);
+
+    try {
+      const page = await state.pdfDocument.getPage(pageNumber);
+      commit('SET_PAGE_CACHE', { pageNumber, pageData: page });
+      commit('REMOVE_LOADING_PAGE', pageNumber);
+      return page;
+    } catch (error) {
+      commit('REMOVE_LOADING_PAGE', pageNumber);
+      throw error;
+    }
   }
 };
 
 const getters = {
   isDocumentLoaded: state => !!state.pdfDocument,
-  totalPages: state => state.pdfDocument?.numPages || 0
+  totalPages: state => state.pdfDocument?.numPages || 0,
+  isPageLoading: state => pageNumber => state.loadingPages.includes(pageNumber),
+  getPageFromCache: state => pageNumber => state.pageCache[pageNumber],
+  getThumbnail: state => pageNumber => state.thumbnails[pageNumber]
 };
 
 export default {
@@ -742,3 +849,140 @@ methods: {
 4. **核心功能优先**: 优先保证 PDF 核心功能，UI 组件作为增强
 5. **主题定制**: 可利用 Vant 的 CSS 变量系统进行主题定制
 6. **移动端优化**: 在需要时利用 Vant 的移动端优化特性
+
+## 📋 Vue2 响应式系统开发检查清单
+
+在整个迁移过程中，请严格遵循以下Vue2响应式系统的开发规范：
+
+### ✅ 数据结构选择
+- [ ] 避免在`data()`、Vuex state中使用`Map`、`Set`、`WeakMap`、`WeakSet`
+- [ ] 使用普通对象`{}`替代`Map`
+- [ ] 使用数组`[]`替代`Set`
+- [ ] 对于复杂的键值对，使用`{ [key]: value }`格式
+
+### ✅ 响应式操作
+- [ ] 使用`this.$set(object, key, value)`添加新属性
+- [ ] 使用`this.$delete(object, key)`删除属性
+- [ ] 在Vuex mutations中使用`Vue.set()`和`Vue.delete()`
+- [ ] 数组操作使用响应式方法：`push`、`pop`、`splice`、`sort`、`reverse`
+
+### ✅ 常见错误避免
+```javascript
+// ❌ 错误示例
+data() {
+  return {
+    pageCache: new Map(),           // 不响应式
+    loadingPages: new Set(),        // 不响应式
+    obj: {}
+  };
+},
+methods: {
+  addProperty() {
+    this.obj.newProp = 'value';     // 不响应式
+  }
+}
+
+// ✅ 正确示例
+data() {
+  return {
+    pageCache: {},                  // 响应式
+    loadingPages: [],               // 响应式
+    obj: {}
+  };
+},
+methods: {
+  addProperty() {
+    this.$set(this.obj, 'newProp', 'value'); // 响应式
+  }
+}
+```
+
+### ✅ Vuex最佳实践
+```javascript
+// ✅ 正确的Vuex mutations
+const mutations = {
+  SET_CACHE(state, { key, value }) {
+    Vue.set(state.cache, key, value);
+  },
+
+  REMOVE_CACHE(state, key) {
+    Vue.delete(state.cache, key);
+  },
+
+  ADD_TO_LIST(state, item) {
+    state.list.push(item);
+  },
+
+  REMOVE_FROM_LIST(state, index) {
+    state.list.splice(index, 1);
+  }
+};
+```
+
+### ✅ 组件清理
+- [ ] 在`beforeDestroy`中清理所有非响应式资源
+- [ ] 正确移除事件监听器
+- [ ] 清理定时器和异步任务
+- [ ] 重置组件状态
+
+### ✅ 性能优化
+- [ ] 使用`Object.freeze()`冻结不需要响应式的大对象
+- [ ] 合理使用`v-once`指令
+- [ ] 避免在`computed`中使用非响应式数据
+- [ ] 使用`$nextTick`处理DOM更新时序
+
+### 🔧 实用工具函数
+```javascript
+// 响应式友好的工具函数
+export const reactiveUtils = {
+  // Map替代方案
+  createReactiveMap() {
+    return {
+      data: {},
+      set(vm, key, value) {
+        vm.$set(this.data, key, value);
+      },
+      get(key) {
+        return this.data[key];
+      },
+      has(key) {
+        return key in this.data;
+      },
+      delete(vm, key) {
+        vm.$delete(this.data, key);
+      },
+      clear(vm) {
+        Object.keys(this.data).forEach(key => {
+          vm.$delete(this.data, key);
+        });
+      }
+    };
+  },
+
+  // Set替代方案
+  createReactiveSet() {
+    return {
+      data: [],
+      add(item) {
+        if (!this.has(item)) {
+          this.data.push(item);
+        }
+      },
+      has(item) {
+        return this.data.includes(item);
+      },
+      delete(item) {
+        const index = this.data.indexOf(item);
+        if (index > -1) {
+          this.data.splice(index, 1);
+        }
+      },
+      clear() {
+        this.data = [];
+      }
+    };
+  }
+};
+```
+
+遵循这些规范，确保整个迁移过程中的代码质量和响应式系统的正确工作。
