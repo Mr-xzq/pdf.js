@@ -9,8 +9,8 @@
     <!-- 侧边栏头部 -->
     <div class="pdf-sidebar__header">
       <!-- 标签切换 -->
-      <van-tabs 
-        v-model="activeTab"
+      <van-tabs
+        :value="activeTab"
         class="pdf-sidebar__tabs"
         :swipeable="false"
         :animated="false"
@@ -90,10 +90,11 @@
     </div>
 
     <!-- 移动端遮罩 -->
-    <div 
+    <div
       v-if="isMobile && visible"
       class="pdf-sidebar__overlay"
       @click="onClose"
+      @touchmove.prevent
     ></div>
   </div>
 </template>
@@ -101,7 +102,13 @@
 <script>
 import PdfThumbnail from './PdfThumbnail.vue';
 import PdfOutline from './PdfOutline.vue';
-import { mapDocumentState, mapViewerState } from '../../store/index.js';
+import {
+  mapDocumentState,
+  mapViewerState,
+  mapSidebarState,
+  mapSidebarGetters,
+  mapSidebarActions
+} from '../../store/index.js';
 
 export default {
   name: 'PdfSidebar',
@@ -131,73 +138,98 @@ export default {
 
   data() {
     return {
-      // UI状态本地管理
-      activeTab: this.defaultTab,
-
-      // MVP版本：只保留核心标签页
-      allTabs: [
-        {
-          key: 'thumbnails',
-          title: '缩略图',
-          icon: 'photo-o'
-        },
-        {
-          key: 'outline',
-          title: '目录',
-          icon: 'notes-o'
-        }
-      ]
+      // 本地状态已移至全局管理，这里只保留临时状态
     };
   },
 
   computed: {
-    // 可用的标签页（MVP版本：直接返回所有标签）
-    availableTabs() {
-      return this.allTabs;
-    },
-
-    // 是否为移动端（简化检测）
-    isMobile() {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    },
-
-    // Vuex 状态映射 - 只保留核心状态
+    // Vuex 状态映射 - 包含侧边栏状态
     ...mapDocumentState(['pdfDocument']),
-    ...mapViewerState(['currentPage'])
+    ...mapViewerState(['currentPage']),
+    ...mapSidebarState(['activeTab', 'isMobile']),
+    ...mapSidebarGetters(['enabledTabs', 'currentTab']),
+
+    // 可用的标签页（从全局状态获取）
+    availableTabs() {
+      return this.enabledTabs;
+    }
   },
 
   watch: {
     // 监听默认标签变化
     defaultTab(newTab) {
-      // MVP版本：所有标签都可用，直接切换
-      this.activeTab = newTab;
+      // 使用全局状态管理
+      if (typeof this.switchToTab === 'function') {
+        this.switchToTab(newTab);
+      } else if (this.$store) {
+        this.$store.dispatch('pdfReader/sidebar/switchToTab', newTab);
+      }
     },
 
-    // 监听可见性变化
+    // 监听侧边栏显示状态，处理滚动穿透
     visible(newVisible) {
-      if (newVisible && !this.allTabs.find(tab => tab.key === this.activeTab)) {
-        // 如果当前标签不存在，切换到第一个标签
-        const firstAvailableTab = this.allTabs[0]?.key || 'thumbnails';
-        this.activeTab = firstAvailableTab;
-      }
+      this.$nextTick(() => {
+        if (newVisible) {
+          this.preventScrollThrough();
+        } else {
+          this.restoreScrollThrough();
+        }
+      });
     }
   },
 
+  mounted() {
+    // 如果侧边栏默认显示，则防止滚动穿透
+    if (this.visible) {
+      this.$nextTick(() => {
+        this.preventScrollThrough();
+      });
+    }
+  },
+
+  beforeDestroy() {
+    // 组件销毁时恢复滚动
+    this.restoreScrollThrough();
+  },
+
   methods: {
-    // UI状态本地管理，不再需要Vuex actions
+    // 映射全局状态管理actions
+    ...mapSidebarActions(['switchToTab', 'hide']),
 
     /**
-     * 处理标签切换 - UI状态本地管理
+     * 处理标签切换 - 使用全局状态管理
      */
     onTabChange(tabKey) {
-      this.activeTab = tabKey;
+      console.log('PdfSidebar.onTabChange 被调用，参数:', tabKey);
+      console.log('switchToTab 方法存在:', typeof this.switchToTab);
+
+      if (typeof this.switchToTab === 'function') {
+        this.switchToTab(tabKey);
+      } else {
+        // 备用方案：直接调用 store
+        if (this.$store) {
+          this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+        }
+      }
+
       this.$emit('tab-change', tabKey);
     },
 
     /**
-     * 处理关闭 - 通过事件通知父组件
+     * 处理关闭 - 使用全局状态管理
      */
     onClose() {
+      console.log('PdfSidebar.onClose 被调用');
+
+      if (typeof this.hide === 'function') {
+        this.hide();
+      } else {
+        // 备用方案：直接调用 store
+        if (this.$store) {
+          this.$store.dispatch('pdfReader/sidebar/hide');
+        }
+      }
+
       this.$emit('close');
     },
 
@@ -237,20 +269,38 @@ export default {
     },
 
     /**
-     * 切换到指定标签 - UI状态本地管理
+     * 获取当前标签信息
      */
-    switchToTab(tabKey) {
-      // MVP版本：所有标签都可用，直接切换
-      if (this.allTabs.find(tab => tab.key === tabKey)) {
-        this.activeTab = tabKey;
+    getCurrentTab() {
+      return this.currentTab;
+    },
+
+    /**
+     * 防止滚动穿透 - 简化版本
+     */
+    preventScrollThrough() {
+      // 在移动端，当侧边栏显示时禁用 body 滚动
+      if (this.isMobile && document.body) {
+        document.body.classList.add('sidebar-open');
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
       }
     },
 
     /**
-     * 获取当前标签信息
+     * 恢复滚动穿透 - 简化版本
      */
-    getCurrentTab() {
-      return this.allTabs.find(tab => tab.key === this.activeTab);
+    restoreScrollThrough() {
+      // 恢复 body 滚动
+      if (document.body) {
+        document.body.classList.remove('sidebar-open');
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+      }
     }
   }
 };
@@ -267,6 +317,9 @@ export default {
   flex-direction: column;
   transform: translateX(-100%);
   transition: transform 0.3s ease;
+  /* 防止滚动穿透 */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 
   &--visible {
     transform: translateX(0);
@@ -323,7 +376,11 @@ export default {
     left: 0;
     right: 0;
     bottom: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* 防止滚动穿透 */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   &__placeholder {
@@ -349,6 +406,9 @@ export default {
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: -1;
+    /* 防止滚动穿透 */
+    touch-action: none;
+    overscroll-behavior: contain;
   }
 }
 
@@ -358,5 +418,14 @@ export default {
     width: 100vw;
     max-width: 320px;
   }
+}
+
+/* 全局样式：防止滚动穿透 */
+:global(body.sidebar-open) {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none !important;
 }
 </style>

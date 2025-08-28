@@ -3,16 +3,7 @@
     <h2>阶段4验证 - 功能组件实现</h2>
     
     <div class="test-container">
-      <!-- 侧边栏 -->
-      <pdf-sidebar
-        ref="sidebar"
-        :visible="sidebarVisible"
-        :default-tab="sidebarTab"
-        @close="onSidebarClose"
-        @navigate-to-page="onNavigateToPage"
-        @tab-change="onTabChange"
-        class="test-sidebar"
-      />
+
 
       <!-- 主内容区 -->
       <div class="test-main">
@@ -23,7 +14,7 @@
             size="small"
             @click="toggleSidebarDisplay"
           >
-            {{ sidebarVisible ? '隐藏侧边栏' : '显示侧边栏' }}
+            切换侧边栏
           </van-button>
 
           <van-button
@@ -124,6 +115,7 @@
         <div class="test-viewer">
           <pdf-viewer
             v-if="pdfUrl"
+            ref="pdfViewer"
             :src="pdfUrl"
             :show-controls="true"
             @document-loaded="onDocumentLoaded"
@@ -181,7 +173,6 @@
 
 <script>
 import PdfViewer from '../components/pdf-reader/components/PdfViewer.vue';
-import PdfSidebar from '../components/pdf-reader/components/ui/PdfSidebar.vue';
 import PdfOutline from '../components/pdf-reader/components/ui/PdfOutline.vue';
 import PdfThumbnail from '../components/pdf-reader/components/ui/PdfThumbnail.vue';
 import {
@@ -189,8 +180,7 @@ import {
   mapViewerState,
   mapDocumentActions,
   mapViewerActions,
-  mapDocumentGetters,
-  mapViewerGetters
+  mapDocumentGetters
 } from '../components/pdf-reader/store/index.js';
 
 export default {
@@ -198,7 +188,6 @@ export default {
 
   components: {
     PdfViewer,
-    PdfSidebar,
     PdfOutline,
     PdfThumbnail
   },
@@ -211,30 +200,19 @@ export default {
       // 测试页码输入
       testPageNumber: 1,
 
-      // UI状态本地管理
-      showSidebar: false,
-      sidebarMode: 'thumbnails',
+      // UI状态本地管理（不涉及全局状态的）
       errorMessage: null,
       showErrorDialog: false
     };
   },
 
   computed: {
-    // 映射Vuex状态 - 只保留核心状态
+    // 映射Vuex状态 - 只保留测试页面需要的状态
     ...mapDocumentState(['pdfDocument', 'loading', 'error']),
     ...mapViewerState(['currentPage']),
 
     // 映射Vuex getters
     ...mapDocumentGetters(['totalPages']),
-
-    // 为了兼容模板，提供别名
-    sidebarVisible() {
-      return this.showSidebar;
-    },
-
-    sidebarTab() {
-      return this.sidebarMode;
-    },
 
     hasError() {
       return !!this.error || !!this.errorMessage;
@@ -292,10 +270,15 @@ export default {
     },
 
     /**
-     * 切换侧边栏显示 - UI状态本地管理
+     * 切换侧边栏显示 - 通过 PdfViewer 控制
      */
     toggleSidebarDisplay() {
-      this.showSidebar = !this.showSidebar;
+      const pdfViewer = this.$refs.pdfViewer;
+      if (pdfViewer && pdfViewer.toggleSidebar) {
+        pdfViewer.toggleSidebar();
+      } else {
+        console.warn('PdfViewer 组件未找到或未加载');
+      }
     },
 
     /**
@@ -315,32 +298,27 @@ export default {
     },
 
     /**
-     * 关闭侧边栏 - 使用Vuex action
-     */
-    onSidebarClose() {
-      this.toggleSidebar(); // 如果已显示则关闭
-    },
-
-    /**
-     * 标签页变化 - 使用Vuex action切换模式
-     */
-    onTabChange(tabKey) {
-      this.toggleSidebar(tabKey);
-      console.log('标签页变化:', tabKey);
-    },
-
-    /**
-     * 切换到缩略图 - 使用Vuex action
+     * 切换到缩略图 - 通过 PdfViewer 控制
      */
     switchToThumbnails() {
-      this.toggleSidebar('thumbs');
+      const pdfViewer = this.$refs.pdfViewer;
+      if (pdfViewer && pdfViewer.showSidebar) {
+        pdfViewer.showSidebar('thumbnails');
+      } else {
+        console.warn('PdfViewer 组件未找到或未加载');
+      }
     },
 
     /**
-     * 切换到目录 - 使用Vuex action
+     * 切换到目录 - 通过 PdfViewer 控制
      */
     switchToOutline() {
-      this.toggleSidebar('outline');
+      const pdfViewer = this.$refs.pdfViewer;
+      if (pdfViewer && pdfViewer.showSidebar) {
+        pdfViewer.showSidebar('outline');
+      } else {
+        console.warn('PdfViewer 组件未找到或未加载');
+      }
     },
 
     /**
@@ -365,9 +343,10 @@ export default {
      * 测试展开全部目录
      */
     testExpandAll() {
-      // 通过ref访问侧边栏中的目录组件
-      const sidebar = this.$refs.sidebar || this.$children.find(child => child.$options.name === 'PdfSidebar');
-      if (sidebar) {
+      // 通过 PdfViewer 访问侧边栏中的目录组件
+      const pdfViewer = this.$refs.pdfViewer;
+      if (pdfViewer && pdfViewer.$refs.sidebar) {
+        const sidebar = pdfViewer.$refs.sidebar;
         console.log('找到侧边栏组件:', sidebar);
         // 尝试找到目录组件
         const outlineComponent = sidebar.$children.find(child => child.$options.name === 'PdfOutline');
@@ -378,7 +357,7 @@ export default {
           console.log('未找到目录组件');
         }
       } else {
-        console.log('未找到侧边栏组件');
+        console.log('未找到 PdfViewer 或侧边栏组件');
       }
     },
 
@@ -415,8 +394,9 @@ export default {
      * 调试目录展开功能
      */
     debugOutlineExpansion() {
-      const sidebar = this.$refs.sidebar;
-      if (sidebar) {
+      const pdfViewer = this.$refs.pdfViewer;
+      if (pdfViewer && pdfViewer.$refs.sidebar) {
+        const sidebar = pdfViewer.$refs.sidebar;
         // 尝试找到目录组件
         const outlineComponent = sidebar.$children.find(child => child.$options.name === 'PdfOutline');
         if (outlineComponent) {
@@ -441,7 +421,7 @@ export default {
           console.log('未找到目录组件');
         }
       } else {
-        console.log('未找到侧边栏组件');
+        console.log('未找到 PdfViewer 或侧边栏组件');
       }
     }
   }

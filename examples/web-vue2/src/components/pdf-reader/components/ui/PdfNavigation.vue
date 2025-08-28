@@ -63,6 +63,8 @@ export default {
     }
   },
 
+
+
   methods: {
     onPrevPage() {
       this.$emit('prev-page');

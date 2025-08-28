@@ -12,23 +12,38 @@
         class="pdf-viewer__top-toolbar"
       />
 
-      <!-- 阶段2：核心查看器 -->
+      <!-- 阶段2：主内容区（侧边栏 + 核心查看器） -->
       <div class="pdf-viewer__content">
-        <pdf-viewer-core
-          :src="src"
-          :initial-page="initialPage"
-          :initial-scale="initialScale"
-          :max-canvas-pixels="maxCanvasPixels"
-          :text-layer-mode="textLayerMode"
-          @document-loaded="onDocumentLoaded"
-          @document-error="onDocumentError"
-          @load-progress="onLoadProgress"
-          @page-changed="onPageChanged"
-          @scale-changed="onScaleChanged"
-          @page-rendered="onPageRendered"
-          @password-required="onPasswordRequired"
-          ref="viewerCore"
+        <!-- 侧边栏 -->
+        <pdf-sidebar
+          v-if="showControls"
+          ref="sidebar"
+          :visible="sidebarVisible"
+          :default-tab="sidebarActiveTab"
+          @close="onSidebarClose"
+          @navigate-to-page="onNavigateToPage"
+          @tab-change="onSidebarTabChange"
+          class="pdf-viewer__sidebar"
         />
+
+        <!-- 核心查看器 -->
+        <div class="pdf-viewer__main">
+          <pdf-viewer-core
+            :src="src"
+            :initial-page="initialPage"
+            :initial-scale="initialScale"
+            :max-canvas-pixels="maxCanvasPixels"
+            :text-layer-mode="textLayerMode"
+            @document-loaded="onDocumentLoaded"
+            @document-error="onDocumentError"
+            @load-progress="onLoadProgress"
+            @page-changed="onPageChanged"
+            @scale-changed="onScaleChanged"
+            @page-rendered="onPageRendered"
+            @password-required="onPasswordRequired"
+            ref="viewerCore"
+          />
+        </div>
       </div>
 
       <!-- 阶段3：底部工具栏 -->
@@ -58,14 +73,18 @@
 import PdfViewerCore from './PdfViewerCore.vue';
 import PdfTopToolbar from './ui/PdfTopToolbar.vue';
 import PdfBottomToolbar from './ui/PdfBottomToolbar.vue';
+import PdfSidebar from './ui/PdfSidebar.vue';
 import {
   installPdfReaderModule,
   mapDocumentState,
   mapViewerState,
+  mapSidebarState,
   mapDocumentGetters,
   mapViewerGetters,
+  mapSidebarGetters,
   mapDocumentActions,
-  mapViewerActions
+  mapViewerActions,
+  mapSidebarActions
 } from '../store/index.js';
 
 export default {
@@ -74,7 +93,8 @@ export default {
   components: {
     PdfViewerCore,
     PdfTopToolbar,
-    PdfBottomToolbar
+    PdfBottomToolbar,
+    PdfSidebar
   },
 
   props: {
@@ -112,13 +132,15 @@ export default {
   },
 
   computed: {
-    // 映射Vuex状态 - 只保留真正需要全局共享的状态
+    // 映射Vuex状态 - 包含侧边栏状态
     ...mapDocumentState(['pdfDocument', 'loading', 'error']),
     ...mapViewerState(['currentPage', 'scale']),
+    ...mapSidebarState(['visible', 'activeTab']),
 
     // 映射Vuex getters
     ...mapDocumentGetters(['isDocumentLoaded', 'totalPages']),
     ...mapViewerGetters(['navigationState', 'zoomState']),
+    ...mapSidebarGetters(['enabledTabs', 'currentTab']),
 
     // 为了兼容现有代码，提供别名
     currentScale() {
@@ -145,6 +167,15 @@ export default {
 
     canZoomOut() {
       return this.zoomState.canZoomOut;
+    },
+
+    // 侧边栏相关计算属性
+    sidebarVisible() {
+      return this.visible;
+    },
+
+    sidebarActiveTab() {
+      return this.activeTab;
     }
   },
 
@@ -152,13 +183,25 @@ export default {
     // 确保 Vuex store 中有 PDF 阅读器模块
     if (this.$store) {
       installPdfReaderModule(this.$store);
+
+      // 初始化侧边栏移动端状态
+      this.$store.dispatch('pdfReader/sidebar/updateMobileState');
     }
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', this.handleResize);
+  },
+
+  beforeDestroy() {
+    // 清理事件监听器
+    window.removeEventListener('resize', this.handleResize);
   },
 
   methods: {
-    // 映射Vuex actions - 只保留核心状态管理
+    // 映射Vuex actions - 包含侧边栏控制
     ...mapDocumentActions(['loadDocument', 'setDocumentLoaded', 'setDocumentError']),
     ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'zoomIn', 'zoomOut', 'setScaleMode']),
+    ...mapSidebarActions(['toggle', 'show', 'hide', 'switchToTab']),
 
     // 事件处理 - 更新为使用Vuex actions
     onDocumentLoaded(event) {
@@ -166,6 +209,9 @@ export default {
       this.setDocumentLoaded(event);
 
       console.log('PDF 文档加载完成:', event);
+      console.log('文档总页数:', event.document?.numPages || event.info?.numPages);
+      console.log('当前导航状态:', this.navigationState);
+
       this.$emit('document-loaded', event);
     },
 
@@ -237,6 +283,86 @@ export default {
 
     onSetScaleMode(mode) {
       this.setScaleMode(mode);
+    },
+
+    // 侧边栏控制方法 - 提供给外部调用
+    /**
+     * 切换侧边栏显示状态
+     * @param {string} tabKey - 可选，指定要切换到的标签页
+     */
+    toggleSidebar(tabKey = null) {
+      console.log('PdfViewer.toggleSidebar 被调用');
+
+      // 直接使用 store dispatch，避免映射问题
+      if (this.$store) {
+        return this.$store.dispatch('pdfReader/sidebar/toggle', tabKey);
+      } else {
+        console.error('Vuex store 未找到');
+      }
+    },
+
+    /**
+     * 显示侧边栏
+     * @param {string} tabKey - 可选，指定要显示的标签页
+     */
+    showSidebar(tabKey = null) {
+      if (this.$store) {
+        return this.$store.dispatch('pdfReader/sidebar/show', tabKey);
+      }
+    },
+
+    /**
+     * 隐藏侧边栏
+     */
+    hideSidebar() {
+      if (this.$store) {
+        return this.$store.dispatch('pdfReader/sidebar/hide');
+      }
+    },
+
+    /**
+     * 切换到指定标签页
+     * @param {string} tabKey - 标签页键名
+     */
+    switchSidebarTab(tabKey) {
+      if (this.$store) {
+        return this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+      }
+    },
+
+    // 侧边栏事件处理方法
+    /**
+     * 处理侧边栏关闭事件
+     */
+    onSidebarClose() {
+      if (this.$store) {
+        this.$store.dispatch('pdfReader/sidebar/hide');
+      }
+    },
+
+    /**
+     * 处理侧边栏标签页变化事件
+     */
+    onSidebarTabChange(tabKey) {
+      if (this.$store) {
+        this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+      }
+    },
+
+    /**
+     * 处理页面导航事件（从侧边栏触发）
+     */
+    onNavigateToPage(pageNumber) {
+      this.goToPage(pageNumber);
+    },
+
+    /**
+     * 处理窗口大小变化
+     */
+    handleResize() {
+      if (this.$store) {
+        this.$store.dispatch('pdfReader/sidebar/updateMobileState');
+      }
     }
 
     // 注意：不再定义重复的方法，直接使用映射的Vuex actions
@@ -271,6 +397,19 @@ export default {
   }
 
   &__content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+  }
+
+  &__sidebar {
+    flex: 0 0 auto;
+    z-index: @pdf-z-index-sidebar;
+  }
+
+  &__main {
     flex: 1;
     overflow: hidden;
     position: relative;

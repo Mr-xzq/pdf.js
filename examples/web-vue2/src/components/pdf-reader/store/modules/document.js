@@ -176,11 +176,21 @@ const actions = {
   /**
    * 设置文档加载完成
    */
-  setDocumentLoaded({ commit }, { document, info }) {
+  setDocumentLoaded({ commit, dispatch }, { document, info }) {
     commit('SET_DOCUMENT', document);
     commit('SET_DOCUMENT_INFO', info);
     commit('SET_LOADING', false);
     commit('CLEAR_ERROR');
+
+    // 确保文档信息正确设置
+    const totalPages = document?.numPages || info?.numPages || 0;
+    console.log('文档加载完成，总页数:', totalPages);
+
+    // 确保当前页面状态正确初始化
+    if (totalPages > 0) {
+      // 初始化当前页面为第1页
+      dispatch('viewer/goToPage', 1, { root: true });
+    }
   },
   
   /**

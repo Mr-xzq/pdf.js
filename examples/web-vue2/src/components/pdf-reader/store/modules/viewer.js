@@ -230,6 +230,28 @@ const actions = {
     }
     return state.currentPage;
   },
+
+  /**
+   * 确保当前页面在有效范围内
+   */
+  ensureValidCurrentPage({ state, commit, rootGetters }) {
+    const totalPages = rootGetters['document/totalPages'];
+
+    if (totalPages > 0) {
+      // 确保当前页面在有效范围内
+      if (state.currentPage < 1) {
+        commit('SET_CURRENT_PAGE', 1);
+      } else if (state.currentPage > totalPages) {
+        commit('SET_CURRENT_PAGE', totalPages);
+      }
+
+      console.log('确保页面有效性:', {
+        currentPage: state.currentPage,
+        totalPages,
+        isValid: state.currentPage >= 1 && state.currentPage <= totalPages
+      });
+    }
+  },
   
   /**
    * 设置缩放
@@ -393,13 +415,15 @@ const getters = {
   isPageRendering: state => pageNumber => state.renderingPages.includes(pageNumber),
   
   // 导航状态
-  navigationState: (state, getters, rootState, rootGetters) => {
+  navigationState: (state, _getters, _rootState, rootGetters) => {
     const totalPages = rootGetters['document/totalPages'];
+    const currentPage = state.currentPage;
+
     return {
-      currentPage: state.currentPage,
+      currentPage,
       totalPages,
-      canGoNext: state.currentPage < totalPages,
-      canGoPrev: state.currentPage > 1,
+      canGoNext: currentPage < totalPages && totalPages > 0,
+      canGoPrev: currentPage > 1,
       hasPages: totalPages > 0
     };
   },

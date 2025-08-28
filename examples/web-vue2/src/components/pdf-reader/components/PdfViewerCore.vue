@@ -74,23 +74,28 @@ export default {
       // 服务实例
       pdfServices: null,
       navigationService: null,
-      
+
       // 状态
       loading: false,
       error: null,
       documentLoaded: false,
-      
+
       // 加载进度
       loadProgress: 0,
       loadMessage: '正在加载...',
-      
+
       // 当前状态
       currentPage: this.initialPage,
       currentScale: this.initialScale,
       totalPages: 0,
-      
+
       // 文档信息
-      documentInfo: null
+      documentInfo: null,
+
+      // 容器尺寸监听器
+      resizeObserver: null,
+      windowResizeHandler: null,
+      lastContainerSize: null
     };
   },
   
@@ -112,6 +117,9 @@ export default {
 
     // 如果有其他子组件的事件需要监听，可以在这里添加
 
+    // 监听容器尺寸变化，重新计算缩放
+    this.setupResizeObserver();
+
     if (this.src) {
       await this.loadDocument();
     }
@@ -122,6 +130,19 @@ export default {
     if (window.pdfViewerInstance === this) {
       window.pdfViewerInstance = null;
     }
+
+    // 清理 ResizeObserver
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
+    // 清理 window resize 监听器
+    if (this.windowResizeHandler) {
+      window.removeEventListener('resize', this.windowResizeHandler);
+      this.windowResizeHandler = null;
+    }
+
     this.destroyServices();
   },
   
@@ -137,6 +158,22 @@ export default {
         if (newPage !== oldPage && newPage !== this.currentPage) {
           // 避免循环调用，只有当Vuex状态与组件状态不同步时才更新
           this.syncPageFromStore(newPage);
+        }
+      },
+      immediate: false
+    },
+
+    // 监听侧边栏状态变化
+    '$store.state.pdfReader.sidebar.visible': {
+      handler(newVisible, oldVisible) {
+        if (newVisible !== oldVisible) {
+          // 侧边栏显示状态变化，延迟检查缩放以等待布局完成
+          this.$nextTick(() => {
+            // 使用 requestAnimationFrame 确保在浏览器重绘后执行
+            requestAnimationFrame(() => {
+              this.checkAndUpdateScale();
+            });
+          });
         }
       },
       immediate: false
@@ -227,28 +264,24 @@ export default {
       this.totalPages = event.numPages;
       this.documentInfo = event;
 
-      // 延迟计算最佳缩放比例，确保DOM已完全渲染
+
+
+      // 响应式计算最佳缩放比例
       this.$nextTick(() => {
-        setTimeout(async () => {
-          const optimalScale = await this.calculateOptimalScale(event);
-
-          // 设置初始页面和缩放
-          this.navigationService.currentPage = this.initialPage;
-          this.navigationService.currentScale = optimalScale;
-          this.currentPage = this.initialPage;
-          this.currentScale = optimalScale;
-
-          // 同步到 Vuex 状态（如果存在）
-          if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-            this.$store.dispatch('pdfReader/viewer/setScale', optimalScale);
-            this.$store.dispatch('pdfReader/viewer/goToPage', this.initialPage);
-          }
-
-          console.log(`PDF 文档加载完成，共 ${event.numPages} 页，初始缩放: ${optimalScale}`);
-        }, 100); // 100ms延迟确保布局稳定
+        this.initializeScaleForDocument(event);
       });
 
-      this.$emit('document-loaded', event);
+      // 传递完整的文档信息给父组件
+      // event 结构: { document, numPages, fingerprint, info, metadata }
+      this.$emit('document-loaded', {
+        document: event.document,
+        info: {
+          numPages: event.numPages,
+          title: event.info?.Title || '',
+          author: event.info?.Author || '',
+          fingerprint: event.fingerprint
+        }
+      });
     },
     
     /**
@@ -392,6 +425,76 @@ export default {
     },
 
     /**
+     * 初始化文档的缩放比例
+     */
+    initializeScaleForDocument(event) {
+      // 设置初始页面
+      this.navigationService.currentPage = this.initialPage;
+      this.currentPage = this.initialPage;
+
+      // 先使用默认缩放，等容器尺寸稳定后再调整
+      this.navigationService.currentScale = this.initialScale;
+      this.currentScale = this.initialScale;
+
+      // 同步到 Vuex 状态
+      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+        this.$store.dispatch('pdfReader/viewer/setScale', this.initialScale);
+        this.$store.dispatch('pdfReader/viewer/goToPage', this.initialPage);
+      }
+
+      // 触发容器尺寸检查，这会自动计算最佳缩放
+      this.checkAndUpdateScale();
+
+      console.log(`PDF 文档加载完成，共 ${event?.numPages || 'unknown'} 页，初始缩放: ${this.initialScale}`);
+    },
+
+    /**
+     * 检查并更新缩放比例
+     */
+    async checkAndUpdateScale() {
+      if (!this.documentLoaded || !this.documentInfo) {
+        return;
+      }
+
+      const container = this.$refs.viewerContainer;
+      if (!container) {
+        return;
+      }
+
+      // 检查容器是否有有效尺寸
+      const containerRect = container.getBoundingClientRect();
+      if (containerRect.width === 0 || containerRect.height === 0) {
+        // 容器尺寸无效，等待下次检查
+        return;
+      }
+
+      const optimalScale = await this.calculateOptimalScale(this.documentInfo);
+
+      // 只有当缩放变化较大时才更新
+      if (Math.abs(optimalScale - this.currentScale) > 0.05) {
+        this.applyScale(optimalScale);
+      }
+    },
+
+    /**
+     * 应用缩放比例
+     */
+    applyScale(scale) {
+      this.navigationService.currentScale = scale;
+      this.currentScale = scale;
+
+      // 同步到 Vuex 状态
+      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+        this.$store.dispatch('pdfReader/viewer/setScale', scale);
+      }
+
+      // 触发页面重新渲染
+      this.onPageChanged({ pageNumber: this.currentPage });
+
+      console.log(`缩放比例更新为: ${scale}`);
+    },
+
+    /**
      * 计算最佳缩放比例
      * 根据容器尺寸和实际PDF页面尺寸自动计算合适的缩放比例
      */
@@ -402,10 +505,23 @@ export default {
           return this.initialScale;
         }
 
-        // 获取容器的可用高度和宽度
+        // 获取容器的实际尺寸
         const containerRect = container.getBoundingClientRect();
-        const availableHeight = containerRect.height - 64; // 减去padding和其他元素的空间
-        const availableWidth = containerRect.width - 64;
+
+        // 检查容器是否有有效尺寸
+        if (containerRect.width === 0 || containerRect.height === 0) {
+          return this.initialScale;
+        }
+
+        // 计算可用空间，考虑内边距和滚动条
+        const computedStyle = window.getComputedStyle(container);
+        const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+        const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+        const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+
+        const availableHeight = containerRect.height - paddingTop - paddingBottom - 20; // 额外预留20px
+        const availableWidth = containerRect.width - paddingLeft - paddingRight - 20;
 
         let pageWidth = 595; // 默认A4宽度
         let pageHeight = 842; // 默认A4高度
@@ -455,6 +571,66 @@ export default {
         console.warn('计算最佳缩放比例失败:', error);
         return this.initialScale;
       }
+    },
+
+    /**
+     * 设置容器尺寸监听器
+     */
+    setupResizeObserver() {
+      if (!window.ResizeObserver) {
+        console.warn('ResizeObserver 不支持，将使用 window resize 事件');
+        // 降级到 window resize 事件
+        this.windowResizeHandler = () => {
+          this.checkAndUpdateScale();
+        };
+        window.addEventListener('resize', this.windowResizeHandler);
+        return;
+      }
+
+      this.resizeObserver = new ResizeObserver(this.handleContainerResize.bind(this));
+
+      // 等待 DOM 更新后再开始监听
+      this.$nextTick(() => {
+        const container = this.$refs.viewerContainer;
+        if (container && this.resizeObserver) {
+          this.resizeObserver.observe(container);
+
+          // 记录初始尺寸
+          const rect = container.getBoundingClientRect();
+          this.lastContainerSize = { width: rect.width, height: rect.height };
+
+          console.log(`开始监听容器尺寸变化: ${rect.width}x${rect.height}`);
+        }
+      });
+    },
+
+    /**
+     * 处理容器尺寸变化
+     */
+    handleContainerResize(entries) {
+      // 检查容器尺寸是否真的发生了变化
+      const entry = entries[0];
+      if (!entry) return;
+
+      const { width, height } = entry.contentRect;
+
+      // 忽略无效尺寸
+      if (width === 0 || height === 0) return;
+
+      // 检查尺寸是否真的变化了
+      if (this.lastContainerSize &&
+          Math.abs(this.lastContainerSize.width - width) < 1 &&
+          Math.abs(this.lastContainerSize.height - height) < 1) {
+        return;
+      }
+
+      // 记录新的容器尺寸
+      this.lastContainerSize = { width, height };
+
+      console.log(`容器尺寸变化: ${width}x${height}`);
+
+      // 响应式更新缩放
+      this.checkAndUpdateScale();
     }
   }
 };
