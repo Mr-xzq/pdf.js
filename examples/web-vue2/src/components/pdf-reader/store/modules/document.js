@@ -188,8 +188,8 @@ const actions = {
 
     // 确保当前页面状态正确初始化
     if (totalPages > 0) {
-      // 初始化当前页面为第1页
-      dispatch('viewer/goToPage', 1, { root: true });
+      // 初始化当前页面为第1页（使用绝对命名空间路径）
+      dispatch('pdfReader/viewer/goToPage', 1, { root: true });
     }
   },
   

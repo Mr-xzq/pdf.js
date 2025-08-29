@@ -96,13 +96,13 @@ export default {
     },
     
     onDocumentLoaded(event) {
-      this.loadStatus = '✅ PDF加载成功';
+      this.loadStatus = 'PDF加载成功';
       this.documentInfo = `页数: ${event.numPages}, 指纹: ${event.fingerprint.substring(0, 8)}...`;
       console.log('Stage1 Test - 文档加载成功:', event);
     },
     
     onLoadError(error) {
-      this.loadStatus = '❌ PDF加载失败';
+      this.loadStatus = 'PDF加载失败';
       this.documentInfo = `错误: ${error.message}`;
       console.error('Stage1 Test - 文档加载失败:', error);
     }

@@ -18,7 +18,7 @@ const state = {
 
   // 渲染状态
   rendering: false,
-  renderingPages: [], // ✅ 使用数组替代Set，支持Vue2响应式
+  renderingPages: [],
 
   // 页面尺寸信息
   pageInfo: {
@@ -43,7 +43,7 @@ const state = {
   thumbnails: {},
   thumbnailSize: 120,
   thumbnailScale: 0.5,
-  loadingThumbnails: [], // ✅ 使用数组替代Set，支持Vue2响应式
+  loadingThumbnails: [],
 
   // 导航历史（从navigation模块合并）
   navigationHistory: [],
@@ -191,8 +191,8 @@ const actions = {
   /**
    * 跳转到指定页面
    */
-  goToPage({ commit, rootGetters, rootState }, pageNumber) {
-    const totalPages = rootGetters['document/totalPages'];
+  goToPage({ commit, rootGetters }, pageNumber) {
+    const totalPages = rootGetters['pdfReader/document/totalPages'];
 
     if (pageNumber < 1 || pageNumber > totalPages) {
       throw new Error(`页码超出范围: ${pageNumber}`);
@@ -214,7 +214,7 @@ const actions = {
    * 下一页
    */
   nextPage({ state, dispatch, rootGetters }) {
-    const totalPages = rootGetters['document/totalPages'];
+    const totalPages = rootGetters['pdfReader/document/totalPages'];
     if (state.currentPage < totalPages) {
       return dispatch('goToPage', state.currentPage + 1);
     }
@@ -235,7 +235,7 @@ const actions = {
    * 确保当前页面在有效范围内
    */
   ensureValidCurrentPage({ state, commit, rootGetters }) {
-    const totalPages = rootGetters['document/totalPages'];
+    const totalPages = rootGetters['pdfReader/document/totalPages'];
 
     if (totalPages > 0) {
       // 确保当前页面在有效范围内
@@ -334,8 +334,8 @@ const actions = {
   /**
    * 加载缩略图（从navigation模块合并）
    */
-  async loadThumbnail({ commit, rootState }, { pageNumber, scale }) {
-    const pdfDocument = rootState.document.pdfDocument;
+  async loadThumbnail({ state, commit, rootState }, { pageNumber, scale }) {
+    const pdfDocument = rootState.pdfReader.document.pdfDocument;
     if (!pdfDocument || state.thumbnails[pageNumber]) {
       return;
     }
@@ -416,7 +416,7 @@ const getters = {
   
   // 导航状态
   navigationState: (state, _getters, _rootState, rootGetters) => {
-    const totalPages = rootGetters['document/totalPages'];
+    const totalPages = rootGetters['pdfReader/document/totalPages'];
     const currentPage = state.currentPage;
 
     return {

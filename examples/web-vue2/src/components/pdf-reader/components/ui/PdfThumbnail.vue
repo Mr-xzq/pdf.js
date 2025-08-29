@@ -84,7 +84,7 @@ export default {
       loading: false,
       // 缩略图数据
       thumbnails: {},
-      // 正在加载的页面 - ✅ 使用数组替代Set，支持Vue2响应式
+      // 正在加载的页面
       loadingPages: [],
       // 观察器
       intersectionObserver: null
@@ -189,7 +189,7 @@ export default {
       }
 
       try {
-        // ✅ 使用数组方法添加加载状态
+        // 添加加载状态
         if (!this.loadingPages.includes(pageNumber)) {
           this.loadingPages.push(pageNumber);
         }
@@ -235,7 +235,7 @@ export default {
       } catch (error) {
         console.error(`加载第${pageNumber}页缩略图失败:`, error);
       } finally {
-        // ✅ 使用数组方法移除加载状态
+        // 移除加载状态
         const index = this.loadingPages.indexOf(pageNumber);
         if (index > -1) {
           this.loadingPages.splice(index, 1);
@@ -249,7 +249,7 @@ export default {
      * 检查页面是否正在加载
      */
     isPageLoading(pageNumber) {
-      return this.loadingPages.includes(pageNumber); // ✅ 使用数组方法检查
+      return this.loadingPages.includes(pageNumber);
     },
 
     /**

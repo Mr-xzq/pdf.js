@@ -67,7 +67,6 @@ export class EventBridge {
   constructor(eventBus, vueComponent) {
     this.eventBus = eventBus;
     this.vueComponent = vueComponent;
-    // ✅ 使用普通对象替代Map，保持代码一致性
     this.listeners = {};
     this.listenerKeys = []; // 维护键的顺序
   }
@@ -132,7 +131,6 @@ export class EventBridge {
    * 添加事件监听器
    */
   addListener(eventName, handler) {
-    // ✅ 使用对象方法检查和设置
     if (eventName in this.listeners) {
       this.removeListener(eventName);
     }
@@ -150,7 +148,6 @@ export class EventBridge {
    * 移除事件监听器
    */
   removeListener(eventName) {
-    // ✅ 使用对象方法获取和删除
     const handler = this.listeners[eventName];
     if (handler) {
       this.eventBus.off(eventName, handler);
@@ -168,7 +165,6 @@ export class EventBridge {
    * 销毁事件桥接器
    */
   destroy() {
-    // ✅ 使用键数组遍历
     for (const eventName of this.listenerKeys) {
       this.removeListener(eventName);
     }

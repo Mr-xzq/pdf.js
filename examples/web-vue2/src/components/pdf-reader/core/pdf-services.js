@@ -219,7 +219,6 @@ export class PdfServices {
 export class PageRenderService {
   constructor(pdfServices) {
     this.pdfServices = pdfServices;
-    // ✅ 使用普通对象替代Map，保持代码一致性
     this.renderCache = {};
     this.cacheKeys = []; // 维护键的顺序
   }
@@ -335,7 +334,6 @@ export class PageRenderService {
    * 清理渲染缓存
    */
   clearCache() {
-    // ✅ 使用对象清理方法
     this.renderCache = {};
     this.cacheKeys = [];
   }
