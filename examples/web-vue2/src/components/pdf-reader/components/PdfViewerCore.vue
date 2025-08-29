@@ -337,14 +337,7 @@ export default {
       this.$emit('render-error', event);
     },
     
-    /**
-     * 处理密码请求
-     * MVP阶段：基础事件传递
-     * 后期扩展：密码对话框、密码验证、记住密码等功能
-     */
-    onPasswordRequired(event) {
-      this.$emit('password-required', event);
-    },
+
     
     // 公共方法
     

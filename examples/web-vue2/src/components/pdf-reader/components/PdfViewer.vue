@@ -40,7 +40,6 @@
             @page-changed="onPageChanged"
             @scale-changed="onScaleChanged"
             @page-rendered="onPageRendered"
-            @password-required="onPasswordRequired"
             ref="viewerCore"
           />
         </div>
@@ -243,12 +242,7 @@ export default {
       this.$emit('page-rendered', event);
     },
 
-    onPasswordRequired(event) {
-      // MVP阶段：简单事件传递，由使用方处理密码输入
-      // 后期扩展：可在此处显示密码对话框组件
-      // TODO: 集成 PdfPasswordDialog 组件（阶段6扩展功能）
-      this.$emit('password-required', event);
-    },
+
 
     // 搜索相关方法 - UI状态本地管理
     onSearchToggle() {

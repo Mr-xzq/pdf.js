@@ -96,20 +96,6 @@ export class PdfServices {
           if (this.vueComponent.onLoadProgress) {
             this.vueComponent.onLoadProgress(progressEvent);
           }
-        },
-        onPassword: (callback, reason) => {
-          // MVP阶段：基础密码事件处理，传递给上层组件
-          // 后期扩展：可在此处集成密码对话框组件
-          const passwordEvent = {
-            callback,
-            reason,
-            isIncorrect: reason === 'INCORRECT_PASSWORD'
-          };
-
-          // 直接调用组件方法，避免事件循环
-          if (this.vueComponent.onPasswordRequired) {
-            this.vueComponent.onPasswordRequired(passwordEvent);
-          }
         }
       };
 
