@@ -1,5 +1,7 @@
 import { getPdfApplication } from './pdf-application.js';
 import { EventBridge } from './pdf-events.js';
+import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from './scale';
+
 
 /**
  * PDF 服务层封装
@@ -482,12 +484,20 @@ export class NavigationService {
    * 设置缩放
    */
   setScale(scale) {
-    if (scale <= 0 || scale > 10) {
+    if (scale <= 0 || scale > MAX_SCALE) {
       throw new Error(`缩放比例超出范围: ${scale}`);
     }
 
     const previous = this.currentScale;
     this.currentScale = scale;
+
+    // 将 currentScaleValue 切换为数值，阻止后续因字符串模式触发的重算把比例“改回去”
+    try {
+      const vc = this.pdfServices.vueComponent;
+      if (vc && vc.$store && vc.$store.dispatch) {
+        vc.$store.dispatch('pdfReader/viewer/setScaleValue', scale);
+      }
+    } catch (e) {}
 
     // 直接调用组件方法，避免事件循环
     const scaleChangedEvent = {
@@ -505,16 +515,16 @@ export class NavigationService {
   /**
    * 放大
    */
-  zoomIn(step = 0.25) {
-    const newScale = Math.min(this.currentScale + step, 10);
+  zoomIn() {
+    const newScale = Math.min(this.currentScale * DEFAULT_SCALE_DELTA, MAX_SCALE);
     return this.setScale(newScale);
   }
 
   /**
    * 缩小
    */
-  zoomOut(step = 0.25) {
-    const newScale = Math.max(this.currentScale - step, 0.1);
+  zoomOut() {
+    const newScale = Math.max(this.currentScale / DEFAULT_SCALE_DELTA, MIN_SCALE);
     return this.setScale(newScale);
   }
 

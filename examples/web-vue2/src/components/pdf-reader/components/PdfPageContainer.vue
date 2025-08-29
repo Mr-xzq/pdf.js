@@ -1,29 +1,29 @@
 <template>
-  <div class="pdf-page-container" ref="container">
+  <div class="pdf-page-container" :class="{ 'pdf-page-container--loading': rendering }" ref="container">
     <!-- 页面画布 -->
-    <canvas 
+    <canvas
       ref="pageCanvas"
       class="pdf-page-container__canvas"
       :style="canvasStyle"
       @click="onCanvasClick"
     ></canvas>
-    
+
     <!-- 文本层（用于文本选择和搜索） -->
-    <div 
+    <div
       v-if="textLayerEnabled"
       ref="textLayer"
       class="pdf-page-container__text-layer"
       :style="textLayerStyle"
     ></div>
-    
+
     <!-- 注释层 -->
-    <div 
+    <div
       v-if="annotationsEnabled"
       ref="annotationLayer"
       class="pdf-page-container__annotation-layer"
       :style="annotationLayerStyle"
     ></div>
-    
+
     <!-- 页面加载状态 -->
     <div v-if="rendering" class="pdf-page-container__loading">
       <div class="loading-spinner"></div>
@@ -40,7 +40,7 @@ import { AnnotationLayerBuilder } from '../core/layers/AnnotationLayerBuilder';
 
 export default {
   name: 'PdfPageContainer',
-  
+
   props: {
     pageNumber: {
       type: Number,
@@ -63,20 +63,20 @@ export default {
       default: false
     }
   },
-  
+
   data() {
     return {
       // 渲染服务
       renderService: null,
-      
+
       // 渲染状态
       rendering: false,
       rendered: false,
-      
+
       // 页面信息
       pageInfo: null,
       viewport: null,
-      
+
       // 样式
       canvasStyle: {},
       textLayerStyle: {},
@@ -89,17 +89,17 @@ export default {
       }
     };
   },
-  
+
   mounted() {
     this.initializeRenderService();
     this.renderPage();
   },
-  
+
   beforeDestroy() {
     this.destroyLayers();
     this.cleanup();
   },
-  
+
   watch: {
     pageNumber: {
       handler: 'onPageNumberChange',
@@ -110,7 +110,7 @@ export default {
       immediate: false
     }
   },
-  
+
   methods: {
     /**
      * 初始化渲染服务
@@ -118,7 +118,7 @@ export default {
     initializeRenderService() {
       this.renderService = new PageRenderService(this.pdfServices);
     },
-    
+
     /**
      * 渲染页面
      */
@@ -132,12 +132,12 @@ export default {
         this.cancelLayers?.();
         this.rendering = true;
         this.rendered = false;
-        
+
         const canvas = this.$refs.pageCanvas;
         if (!canvas) {
           throw new Error('Canvas 元素未找到');
         }
-        
+
         // 渲染页面到 Canvas
         const result = await this.renderService.renderPageToCanvas(
           this.pageNumber,
@@ -146,32 +146,34 @@ export default {
             scale: this.scale
           }
         );
-        
+
         this.pageInfo = result;
         this.viewport = result.viewport;
-        
+
         // 更新样式
         this.updateStyles();
-        
+
         // 初始化并渲染各 Layer（Builder 模式）
         this.initializeLayers();
         await this.renderLayers();
-        
+
         this.rendering = false;
         this.rendered = true;
-        
+
         this.$emit('page-rendered', {
           pageNumber: this.pageNumber,
           scale: this.scale,
           viewport: this.viewport
         });
-        
+
         console.log(`页面 ${this.pageNumber} 渲染完成`);
-        
+
       } catch (error) {
         this.rendering = false;
+      // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
+      this.$nextTick(() => this.syncContainerSize());
+
         console.error(`页面 ${this.pageNumber} 渲染失败:`, error);
-        
         this.$emit('render-error', {
           pageNumber: this.pageNumber,
           error: error.message
@@ -250,6 +252,18 @@ export default {
       }
     },
 
+    /**
+     * 在渲染完成后，根据 viewport 尺寸设置容器高度，防止缩小时容器比 canvas 高
+     */
+    syncContainerSize() {
+      const container = this.$refs.container;
+      const canvas = this.$refs.pageCanvas;
+      if (!container || !canvas || !this.viewport) return;
+      const { width, height } = this.viewport;
+      container.style.width = `${width}px`;
+      container.style.height = `${height}px`;
+    },
+
 
     /**
      * 更新样式
@@ -282,7 +296,7 @@ export default {
         maxHeight: '100%'
       };
     },
-    
+
     /**
      * 清理资源
      */
@@ -290,7 +304,7 @@ export default {
       if (this.renderService) {
         this.renderService.clearCache();
       }
-      
+
       // 清理 Canvas
       const canvas = this.$refs.pageCanvas;
       if (canvas) {
@@ -298,21 +312,21 @@ export default {
         context.clearRect(0, 0, canvas.width, canvas.height);
       }
     },
-    
+
     /**
      * 处理页码变化
      */
     async onPageNumberChange() {
       await this.renderPage();
     },
-    
+
     /**
      * 处理缩放变化
      */
     async onScaleChange() {
       await this.renderPage();
     },
-    
+
     /**
      * 处理 Canvas 点击
      */
@@ -335,7 +349,6 @@ export default {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin: 8px;
-  min-height: 400px; // 设置最小高度
 
   &__canvas {
     display: block;
@@ -351,7 +364,7 @@ export default {
     max-width: none;
     max-height: none;
   }
-  
+
   &__text-layer {
     position: absolute;
     left: 0;
@@ -368,7 +381,7 @@ export default {
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "liga" 1, "kern" 1;
   }
-  
+
   &__annotation-layer {
     position: absolute;
     left: 0;
@@ -377,7 +390,7 @@ export default {
     bottom: 0;
     pointer-events: auto;
   }
-  
+
   &__loading {
     position: absolute;
     left: 0;
@@ -389,7 +402,7 @@ export default {
     align-items: center;
     justify-content: center;
     background: rgba(255, 255, 255, 0.9);
-    
+
     .loading-spinner {
       width: 32px;
       height: 32px;
@@ -399,7 +412,7 @@ export default {
       animation: spin 1s linear infinite;
       margin-bottom: 12px;
     }
-    
+
     .loading-text {
       font-size: 14px;
       color: #666;

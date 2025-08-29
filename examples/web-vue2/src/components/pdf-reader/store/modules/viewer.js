@@ -3,18 +3,24 @@
  * 管理查看器的显示状态、导航、缩放等
  */
 
+import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE, round2 } from '../../core/scale';
+
+
+const persistedScaleValue = (typeof window !== 'undefined' && window.localStorage)
+  ? (() => { try { return JSON.parse(window.localStorage.getItem('pdfReader.currentScaleValue')); } catch(e) { return null; } })()
+  : null;
+
 const state = {
   // 当前页面
   currentPage: 1,
 
   // 缩放相关
   scale: 1.0,
-  scaleMode: 'auto', // 'auto', 'page-width', 'page-fit', 'custom'
+  currentScaleValue: persistedScaleValue !== null ? persistedScaleValue : 'auto', // string | number
+  scaleMode: 'auto', // 兼容旧字段，后续可移除
   minScale: 0.1,
   maxScale: 10.0,
 
-  // 旋转角度
-  rotation: 0, // 0, 90, 180, 270
 
   // 渲染状态
   rendering: false,
@@ -58,32 +64,36 @@ const mutations = {
       state.currentPage = pageNumber;
     }
   },
-  
+
   // 设置缩放
   SET_SCALE(state, scale) {
     if (scale >= state.minScale && scale <= state.maxScale) {
       state.scale = scale;
-      state.scaleMode = 'custom';
     }
   },
-  
-  // 设置缩放模式
+
+  // 设置缩放设定值（字符串或数值）
+  SET_SCALE_VALUE(state, value) {
+    state.currentScaleValue = value;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('pdfReader.currentScaleValue', JSON.stringify(value));
+      }
+    } catch (e) {}
+  },
+
+  // 设置缩放模式（兼容旧逻辑）
   SET_SCALE_MODE(state, mode) {
     state.scaleMode = mode;
+    state.currentScaleValue = mode;
   },
-  
 
-  
-  // 设置旋转角度
-  SET_ROTATION(state, rotation) {
-    state.rotation = rotation % 360;
-  },
-  
+
   // 设置渲染状态
   SET_RENDERING(state, rendering) {
     state.rendering = rendering;
   },
-  
+
   // 添加正在渲染的页面
   ADD_RENDERING_PAGE(state, pageNumber) {
     if (!state.renderingPages.includes(pageNumber)) {
@@ -103,7 +113,7 @@ const mutations = {
   CLEAR_RENDERING_PAGES(state) {
     state.renderingPages = [];
   },
-  
+
   // 设置页面信息
   SET_PAGE_INFO(state, info) {
     state.pageInfo = {
@@ -111,12 +121,12 @@ const mutations = {
       ...info
     };
   },
-  
+
   // 设置滚动位置
   SET_SCROLL_POSITION(state, { x, y }) {
     state.scrollPosition = { x, y };
   },
-  
+
   // 更新配置
   UPDATE_CONFIG(state, config) {
     state.config = {
@@ -165,13 +175,12 @@ const mutations = {
   SET_HISTORY_INDEX(state, index) {
     state.historyIndex = Math.max(-1, Math.min(index, state.navigationHistory.length - 1));
   },
-  
+
   // 重置查看器状态
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
     state.scaleMode = 'auto';
-    state.rotation = 0;
     state.rendering = false;
     state.renderingPages = [];
     state.pageInfo = {
@@ -222,7 +231,7 @@ const actions = {
     console.warn('[viewer.goToPage] No viewer instance found, consider ensuring PdfViewerCore is mounted.');
     return pageNumber;
   },
-  
+
   /**
    * 下一页
    */
@@ -233,7 +242,7 @@ const actions = {
     }
     return state.currentPage;
   },
-  
+
   /**
    * 上一页
    */
@@ -265,53 +274,46 @@ const actions = {
       });
     }
   },
-  
+
   /**
    * 设置缩放
    */
   setScale({ commit }, scale) {
-    commit('SET_SCALE', scale);
+    commit('SET_SCALE', round2(Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE)));
     return scale;
   },
-  
-  /**
-   * 放大
-   */
-  zoomIn({ state, dispatch }, step = 0.25) {
-    const newScale = Math.min(state.scale + step, state.maxScale);
-    return dispatch('setScale', newScale);
+
+  // 设置缩放设定值（字符串或数值）
+  setScaleValue({ commit }, value) {
+    commit('SET_SCALE_VALUE', value);
+    return value;
   },
-  
+
   /**
-   * 缩小
+   * 放大（乘法步进）
    */
-  zoomOut({ state, dispatch }, step = 0.25) {
-    const newScale = Math.max(state.scale - step, state.minScale);
-    return dispatch('setScale', newScale);
+  zoomIn({ state, dispatch }) {
+    const next = Math.min(state.scale * DEFAULT_SCALE_DELTA, state.maxScale);
+    return dispatch('setScale', round2(next));
   },
-  
+
   /**
-   * 设置缩放模式
+   * 缩小（乘法步进）
+   */
+  zoomOut({ state, dispatch }) {
+    const next = Math.max(state.scale / DEFAULT_SCALE_DELTA, state.minScale);
+    return dispatch('setScale', round2(next));
+  },
+
+  /**
+   * 设置缩放模式（兼容旧接口）
    */
   setScaleMode({ commit }, mode) {
     commit('SET_SCALE_MODE', mode);
-    
-    // 根据模式计算实际缩放值
-    // 这里需要根据页面尺寸和容器尺寸计算
-    // 实际实现会在组件中处理
-    
     return mode;
   },
-  
-  /**
-   * 旋转页面
-   */
-  rotatePage({ state, commit }, degrees = 90) {
-    const newRotation = (state.rotation + degrees) % 360;
-    commit('SET_ROTATION', newRotation);
-    return newRotation;
-  },
-  
+
+
   /**
    * 设置页面渲染状态
    */
@@ -322,21 +324,21 @@ const actions = {
       commit('REMOVE_RENDERING_PAGE', pageNumber);
     }
   },
-  
+
   /**
    * 更新页面信息
    */
   updatePageInfo({ commit }, info) {
     commit('SET_PAGE_INFO', info);
   },
-  
+
   /**
    * 更新滚动位置
    */
   updateScrollPosition({ commit }, position) {
     commit('SET_SCROLL_POSITION', position);
   },
-  
+
   /**
    * 更新查看器配置
    */
@@ -411,22 +413,19 @@ const actions = {
 const getters = {
   // 当前页码
   currentPage: state => state.currentPage,
-  
+
   // 当前缩放
   currentScale: state => state.scale,
-  
+
   // 缩放百分比
   scalePercent: state => Math.round(state.scale * 100),
-  
-  // 当前旋转角度
-  currentRotation: state => state.rotation,
-  
+
   // 是否正在渲染
   isRendering: state => state.rendering || state.renderingPages.length > 0,
 
   // 特定页面是否正在渲染
   isPageRendering: state => pageNumber => state.renderingPages.includes(pageNumber),
-  
+
   // 导航状态
   navigationState: (state, _getters, _rootState, rootGetters) => {
     const totalPages = rootGetters['pdfReader/document/totalPages'];
@@ -440,7 +439,7 @@ const getters = {
       hasPages: totalPages > 0
     };
   },
-  
+
   // 缩放状态
   zoomState: state => ({
     scale: state.scale,
@@ -451,10 +450,10 @@ const getters = {
     minScale: state.minScale,
     maxScale: state.maxScale
   }),
-  
+
   // 页面信息
   pageInfo: state => state.pageInfo,
-  
+
   // 查看器配置
   viewerConfig: state => state.config,
 
@@ -463,7 +462,6 @@ const getters = {
     currentPage: state.currentPage,
     scale: state.scale,
     scaleMode: state.scaleMode,
-    rotation: state.rotation,
     rendering: state.rendering
   }),
 

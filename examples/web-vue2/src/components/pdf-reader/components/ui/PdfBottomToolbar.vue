@@ -19,6 +19,7 @@
       <!-- 缩放控制 -->
       <pdf-zoom-control
         :scale="scale"
+        :scale-label="scaleLabel"
         :can-zoom-in="canZoomIn"
         :can-zoom-out="canZoomOut"
         @zoom-in="onZoomIn"
@@ -77,6 +78,10 @@ export default {
     canZoomOut: {
       type: Boolean,
       default: true
+    },
+    scaleLabel: {
+      type: String,
+      default: ''
     }
   },
 

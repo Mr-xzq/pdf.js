@@ -50,7 +50,7 @@
         v-if="showControls && isDocumentLoaded"
         :current-page="currentPage"
         :total-pages="totalPages"
-        :scale="currentScale"
+        :scale="currentScale" :scale-label="scaleLabel"
         :can-go-prev="canGoPrev"
         :can-go-next="canGoNext"
         :can-zoom-in="canZoomIn"
@@ -167,6 +167,17 @@ export default {
     canZoomOut() {
       return this.zoomState.canZoomOut;
     },
+    scaleLabel() {
+      const v = this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
+      if (typeof v === 'string') {
+        // 简单映射：可按需美化
+        const map = { 'auto': '自动', 'page-fit': '适合页面', 'page-width': '适合宽度', 'page-height': '适合高度', 'page-actual': '实际大小' };
+        const name = map[v] || v;
+        return `${name} (${Math.round(this.scale * 100)}%)`;
+      }
+      return `${Math.round(this.scale * 100)}%`;
+    },
+
 
     // 侧边栏相关计算属性
     sidebarVisible() {
@@ -199,7 +210,7 @@ export default {
   methods: {
     // 映射Vuex actions - 包含侧边栏控制
     ...mapDocumentActions(['loadDocument', 'setDocumentLoaded', 'setDocumentError']),
-    ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'zoomIn', 'zoomOut', 'setScaleMode']),
+    ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'setScaleValue', 'zoomIn', 'zoomOut', 'setScaleMode']),
     ...mapSidebarActions(['toggle', 'show', 'hide', 'switchToTab']),
 
     // 事件处理 - 更新为使用Vuex actions
@@ -264,19 +275,25 @@ export default {
     },
 
     onZoomIn() {
-      this.zoomIn();
+      // 由 Core 驱动缩放，Store 由 Core 回写，避免“只改 Store 不渲染”的问题
+      this.$refs.viewerCore?.navigationService?.zoomIn();
     },
 
     onZoomOut() {
-      this.zoomOut();
+      this.$refs.viewerCore?.navigationService?.zoomOut();
     },
 
     onSetScale(scale) {
-      this.setScale(scale);
+      // 立即应用到 Core，并同步 currentScaleValue（方便后续 resize 重算）
+      this.$refs.viewerCore?.setScale?.(scale);
+      this.setScaleValue(scale);
     },
 
     onSetScaleMode(mode) {
+      // 更新模式值并触发一次立即重算
       this.setScaleMode(mode);
+      this.setScaleValue(mode);
+      this.$refs.viewerCore?.checkAndUpdateScale?.();
     },
 
     // 侧边栏控制方法 - 提供给外部调用

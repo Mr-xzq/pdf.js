@@ -15,6 +15,8 @@
     <div class="pdf-zoom-control__scale" @click="onScaleClick">
       {{ scalePercent }}%
     </div>
+      <div v-if="scaleLabel" class="pdf-zoom-control__mode">{{ scaleLabel }}</div>
+
 
     <!-- 放大按钮 -->
     <pdf-button
@@ -45,7 +47,7 @@
             确定
           </van-button>
         </div>
-        
+
         <div class="pdf-zoom-control__selector-content">
           <van-grid :column-num="3" :border="false">
             <van-grid-item
@@ -60,7 +62,7 @@
               </div>
             </van-grid-item>
           </van-grid>
-          
+
           <!-- 自定义缩放 -->
           <div class="pdf-zoom-control__custom">
             <van-field
@@ -93,6 +95,11 @@ export default {
   },
 
   props: {
+    scaleLabel: {
+      type: String,
+      default: ''
+    },
+
     scale: {
       type: Number,
       default: 1.0
@@ -104,6 +111,10 @@ export default {
     canZoomOut: {
       type: Boolean,
       default: true
+    },
+    scaleLabel: {
+      type: String,
+      default: ''
     }
   },
 
