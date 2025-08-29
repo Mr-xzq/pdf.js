@@ -1,5 +1,5 @@
-import { PdfApplication, getPdfApplication } from './pdf-application.js';
-import { EventBridge, PDF_EVENTS, VUE_EVENTS } from './pdf-events.js';
+import { getPdfApplication } from './pdf-application.js';
+import { EventBridge } from './pdf-events.js';
 
 /**
  * PDF 服务层封装
@@ -9,11 +9,11 @@ export class PdfServices {
   constructor(vueComponent, options = {}) {
     this.vueComponent = vueComponent;
     this.options = options;
-    
+
     // 核心服务
     this.application = null;
     this.eventBridge = null;
-    
+
     // 服务状态
     this.initialized = false;
   }
@@ -114,10 +114,10 @@ export class PdfServices {
       };
 
       const document = await this.application.loadDocument(src, loadOptions);
-      
+
       // 获取文档信息
       const documentInfo = await this.application.getDocumentInfo();
-      
+
       // 直接调用组件方法，避免事件循环
       const loadedEvent = {
         document,
@@ -188,7 +188,7 @@ export class PdfServices {
     // 注意：不销毁 application，因为它是单例
     this.application = null;
     this.initialized = false;
-    
+
     console.log('PDF 服务层已销毁');
   }
 
@@ -210,6 +210,60 @@ export class PdfServices {
       totalPages: this.application.totalPages
     };
   }
+
+  /**
+   * 跳转到 PDF 内部目标（统一入口）
+   * 支持传入字符串名称或 explicitDest 数组；
+   * 会解析为页码并统一走 Vuex 动作，以驱动当前实现的 UI 跳转。
+   */
+  async goToDestination(dest) {
+    // 文档必须已加载
+    const app = this.application;
+    if (!app || !app.pdfDocument) {
+      throw new Error('PDF 文档未加载');
+    }
+
+    try {
+      let explicitDest = dest;
+      if (typeof explicitDest === 'string') {
+        explicitDest = await app.pdfDocument.getDestination(explicitDest);
+      }
+
+      if (!Array.isArray(explicitDest)) {
+        throw new Error('无效的目的地格式');
+      }
+
+      const destRef = explicitDest[0];
+      let pageNumber = null;
+
+      if (destRef && typeof destRef === 'object') {
+        // 通过引用解析页码
+        pageNumber = (await app.pdfDocument.getPageIndex(destRef)) + 1;
+      } else if (Number.isInteger(destRef)) {
+        pageNumber = destRef + 1;
+      }
+
+      if (!pageNumber) {
+        throw new Error('无法解析目的地页码');
+      }
+
+      // 统一走 Vuex viewer 动作，保持状态一致
+      if (this.vueComponent && this.vueComponent.$store) {
+        await this.vueComponent.$store.dispatch('pdfReader/viewer/goToPage', pageNumber);
+      } else {
+        // 回退：直接通过 NavigationService
+        if (this.vueComponent?.navigationService) {
+          this.vueComponent.navigationService.goToPage(pageNumber);
+        }
+      }
+
+      return pageNumber;
+    } catch (error) {
+      console.error('goToDestination 失败:', error);
+      throw error;
+    }
+  }
+
 }
 
 /**
@@ -309,7 +363,7 @@ export class PageRenderService {
     try {
       const page = await this.pdfServices.getPage(pageNumber);
       const textContent = await page.getTextContent();
-      
+
       return textContent.items.map(item => item.str).join(' ');
     } catch (error) {
       console.error(`获取页面 ${pageNumber} 文本失败:`, error);
@@ -323,7 +377,8 @@ export class PageRenderService {
   async getPageAnnotations(pageNumber) {
     try {
       const page = await this.pdfServices.getPage(pageNumber);
-      return await page.getAnnotations();
+      // 使用 display 意图以获取用于显示的注释（包含链接等）
+      return await page.getAnnotations({ intent: 'display' });
     } catch (error) {
       console.error(`获取页面 ${pageNumber} 注释失败:`, error);
       return [];

@@ -20,6 +20,8 @@
         :page-number="currentPage"
         :scale="currentScale"
         :pdf-services="pdfServices"
+        :text-layer-enabled="true"
+        :annotations-enabled="true"
         @page-rendered="onPageRendered"
         @render-error="onRenderError"
       />
@@ -68,7 +70,7 @@ export default {
       default: 1
     }
   },
-  
+
   data() {
     return {
       // 服务实例
@@ -347,9 +349,12 @@ export default {
     // 公共方法
     
     /**
-     * 跳转到指定页面
+     * 跳转到指定页面（统一入口：优先通过 Vuex action；无 store 时回退 NavigationService）
      */
     goToPage(pageNumber) {
+      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+        return this.$store.dispatch('pdfReader/viewer/goToPage', pageNumber);
+      }
       if (this.navigationService) {
         return this.navigationService.goToPage(pageNumber);
       }
@@ -380,18 +385,24 @@ export default {
     },
     
     /**
-     * 下一页
+     * 下一页（统一从 Vuex action 派发；无 store 回退）
      */
     nextPage() {
+      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+        return this.$store.dispatch('pdfReader/viewer/nextPage');
+      }
       if (this.navigationService) {
         return this.navigationService.nextPage();
       }
     },
     
     /**
-     * 上一页
+     * 上一页（统一从 Vuex action 派发；无 store 回退）
      */
     prevPage() {
+      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
+        return this.$store.dispatch('pdfReader/viewer/prevPage');
+      }
       if (this.navigationService) {
         return this.navigationService.prevPage();
       }

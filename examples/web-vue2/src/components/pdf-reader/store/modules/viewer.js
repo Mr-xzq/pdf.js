@@ -198,15 +198,28 @@ const actions = {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
 
-    commit('SET_CURRENT_PAGE', pageNumber);
-
-    // 通知底层PDF查看器进行实际的页面跳转
-    // 通过事件总线或直接调用查看器方法
-    if (window.pdfViewerInstance && window.pdfViewerInstance.syncPageFromStore) {
-      window.pdfViewerInstance.syncPageFromStore(pageNumber);
+    // 统一由视图层驱动真实跳转：优先使用 NavigationService
+    if (window.pdfViewerInstance && window.pdfViewerInstance.navigationService &&
+        typeof window.pdfViewerInstance.navigationService.goToPage === 'function') {
+      window.pdfViewerInstance.navigationService.goToPage(pageNumber);
+      // 记录导航历史（来源根据调用路径可传参，这里先用 auto）
+      commit('ADD_NAVIGATION_HISTORY', { pageNumber: pageNumber, source: 'auto', timestamp: Date.now() });
+      console.log(`[viewer.goToPage] via NavigationService -> ${pageNumber}`);
+      return pageNumber;
     }
 
-    console.log(`Vuex goToPage: 跳转到页面 ${pageNumber}`);
+    // 回退：使用组件提供的同步方法（仍会触发 page-changed 事件）
+    if (window.pdfViewerInstance && typeof window.pdfViewerInstance.syncPageFromStore === 'function') {
+      window.pdfViewerInstance.syncPageFromStore(pageNumber);
+      commit('ADD_NAVIGATION_HISTORY', { pageNumber: pageNumber, source: 'auto', timestamp: Date.now() });
+      console.log(`[viewer.goToPage] via syncPageFromStore -> ${pageNumber}`);
+      return pageNumber;
+    }
+
+    // 最后回退：没有视图实例，仅更新 Store（非推荐，仅为容错）
+    // 注意：正常情况下应该存在视图实例并通过事件回写状态
+    // commit('SET_CURRENT_PAGE', pageNumber);
+    console.warn('[viewer.goToPage] No viewer instance found, consider ensuring PdfViewerCore is mounted.');
     return pageNumber;
   },
   

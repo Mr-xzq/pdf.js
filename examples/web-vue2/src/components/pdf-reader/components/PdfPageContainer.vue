@@ -34,6 +34,9 @@
 
 <script>
 import { PageRenderService } from '../core/pdf-services.js';
+import { TextLayerBuilder } from '../core/layers/TextLayerBuilder';
+import { AnnotationLayerBuilder } from '../core/layers/AnnotationLayerBuilder';
+
 
 export default {
   name: 'PdfPageContainer',
@@ -77,7 +80,13 @@ export default {
       // 样式
       canvasStyle: {},
       textLayerStyle: {},
-      annotationLayerStyle: {}
+      annotationLayerStyle: {},
+
+      // Layer builders 注册表
+      layers: {
+        text: null,
+        annotation: null,
+      }
     };
   },
   
@@ -87,6 +96,7 @@ export default {
   },
   
   beforeDestroy() {
+    this.destroyLayers();
     this.cleanup();
   },
   
@@ -116,8 +126,10 @@ export default {
       if (!this.pdfServices || !this.renderService || this.rendering) {
         return;
       }
-      
+
       try {
+        // 取消上一次渲染中的 Layer 任务，防止快速切换时重叠
+        this.cancelLayers?.();
         this.rendering = true;
         this.rendered = false;
         
@@ -141,15 +153,9 @@ export default {
         // 更新样式
         this.updateStyles();
         
-        // 渲染文本层
-        if (this.textLayerEnabled) {
-          await this.renderTextLayer();
-        }
-        
-        // 渲染注释层
-        if (this.annotationsEnabled) {
-          await this.renderAnnotationLayer();
-        }
+        // 初始化并渲染各 Layer（Builder 模式）
+        this.initializeLayers();
+        await this.renderLayers();
         
         this.rendering = false;
         this.rendered = true;
@@ -172,84 +178,79 @@ export default {
         });
       }
     },
-    
+
     /**
-     * 渲染文本层
+     * 取消进行中的 Layer 任务
      */
-    async renderTextLayer() {
-      if (!this.textLayerEnabled || !this.$refs.textLayer) {
-        return;
-      }
-      
-      try {
-        // 获取页面文本内容
-        const textContent = await this.renderService.getPageTextContent(this.pageNumber);
-        
-        // 简单的文本层实现（实际项目中可能需要更复杂的实现）
-        const textLayer = this.$refs.textLayer;
-        textLayer.innerHTML = '';
-        
-        if (textContent) {
-          const textDiv = document.createElement('div');
-          textDiv.textContent = textContent;
-          textDiv.style.cssText = `
-            position: absolute;
-            left: 0;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            overflow: hidden;
-            opacity: 0.2;
-            line-height: 1.0;
-            white-space: pre-wrap;
-            pointer-events: none;
-          `;
-          textLayer.appendChild(textDiv);
-        }
-        
-      } catch (error) {
-        console.error('文本层渲染失败:', error);
-      }
+    cancelLayers() {
+      if (this.layers?.text) this.layers.text.cancel();
+      if (this.layers?.annotation) this.layers.annotation.cancel();
     },
-    
+
     /**
-     * 渲染注释层
+     * 初始化 Layer builders
      */
-    async renderAnnotationLayer() {
-      if (!this.annotationsEnabled || !this.$refs.annotationLayer) {
-        return;
-      }
-      
-      try {
-        // 获取页面注释
-        const annotations = await this.renderService.getPageAnnotations(this.pageNumber);
-        
-        const annotationLayer = this.$refs.annotationLayer;
-        annotationLayer.innerHTML = '';
-        
-        // 简单的注释显示（实际项目中需要根据注释类型进行不同处理）
-        annotations.forEach((annotation, index) => {
-          if (annotation.subtype === 'Link') {
-            const linkElement = document.createElement('a');
-            linkElement.href = annotation.url || '#';
-            linkElement.style.cssText = `
-              position: absolute;
-              left: ${annotation.rect[0]}px;
-              top: ${annotation.rect[1]}px;
-              width: ${annotation.rect[2] - annotation.rect[0]}px;
-              height: ${annotation.rect[3] - annotation.rect[1]}px;
-              border: 1px solid rgba(0, 0, 255, 0.3);
-              background: rgba(0, 0, 255, 0.1);
-            `;
-            annotationLayer.appendChild(linkElement);
-          }
+    initializeLayers() {
+      const servicesGetter = () => this.pdfServices.getApplicationServices?.();
+
+      // Text Layer
+      if (this.textLayerEnabled && !this.layers.text && this.$refs.textLayer) {
+        this.layers.text = new TextLayerBuilder({
+          container: this.$refs.textLayer,
+          pdfServices: this.pdfServices,
+          getServices: servicesGetter,
         });
-        
-      } catch (error) {
-        console.error('注释层渲染失败:', error);
+        this.layers.text.setup({ pageNumber: this.pageNumber, viewport: this.viewport });
+      }
+
+      // Annotation Layer
+      if (this.annotationsEnabled && !this.layers.annotation && this.$refs.annotationLayer) {
+        this.layers.annotation = new AnnotationLayerBuilder({
+          container: this.$refs.annotationLayer,
+          pdfServices: this.pdfServices,
+          getServices: servicesGetter,
+        });
+        this.layers.annotation.setup({ pageNumber: this.pageNumber, viewport: this.viewport });
+      }
+
+
+    },
+
+    /**
+     * 渲染所有启用的 Layer
+     */
+    async renderLayers() {
+      const tasks = [];
+      if (this.layers.text) {
+        this.layers.text.cancelled = false;
+        this.layers.text.pageNumber = this.pageNumber;
+        this.layers.text.update({ viewport: this.viewport });
+        tasks.push(this.layers.text.render());
+      }
+      if (this.layers.annotation) {
+        this.layers.annotation.cancelled = false;
+        this.layers.annotation.pageNumber = this.pageNumber;
+        this.layers.annotation.update({ viewport: this.viewport });
+        tasks.push(this.layers.annotation.render());
+      }
+      await Promise.all(tasks);
+    },
+
+    /**
+     * 销毁所有 Layer
+     */
+    destroyLayers() {
+      if (this.layers.text) {
+        this.layers.text.destroy();
+        this.layers.text = null;
+      }
+      if (this.layers.annotation) {
+        this.layers.annotation.destroy();
+        this.layers.annotation = null;
       }
     },
-    
+
+
     /**
      * 更新样式
      */
@@ -374,7 +375,7 @@ export default {
     top: 0;
     right: 0;
     bottom: 0;
-    pointer-events: none;
+    pointer-events: auto;
   }
   
   &__loading {
