@@ -49,6 +49,10 @@ const routes = [
   {
     path: "/stage4-test",
     component: () => import("@/views/Stage4Test.vue"),
+  },
+  {
+    path: "/simple-reader-demo",
+    component: () => import("@/views/SimpleReaderDemo.vue"),
   }
 ];
 
