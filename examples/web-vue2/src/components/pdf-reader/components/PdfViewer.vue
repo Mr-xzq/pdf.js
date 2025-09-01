@@ -50,7 +50,8 @@
         v-if="showControls && isDocumentLoaded"
         :current-page="currentPage"
         :total-pages="totalPages"
-        :scale="currentScale" :scale-label="scaleLabel"
+        :scale="currentScale"
+        :scale-label="scaleLabel"
         :can-go-prev="canGoPrev"
         :can-go-next="canGoNext"
         :can-zoom-in="canZoomIn"
@@ -69,10 +70,10 @@
 </template>
 
 <script>
-import PdfViewerCore from './PdfViewerCore.vue';
-import PdfTopToolbar from './ui/PdfTopToolbar.vue';
-import PdfBottomToolbar from './ui/PdfBottomToolbar.vue';
-import PdfSidebar from './ui/PdfSidebar.vue';
+import PdfViewerCore from "./PdfViewerCore.vue";
+import PdfTopToolbar from "./ui/PdfTopToolbar.vue";
+import PdfBottomToolbar from "./ui/PdfBottomToolbar.vue";
+import PdfSidebar from "./ui/PdfSidebar.vue";
 import {
   installPdfReaderModule,
   mapDocumentState,
@@ -83,63 +84,63 @@ import {
   mapSidebarGetters,
   mapDocumentActions,
   mapViewerActions,
-  mapSidebarActions
-} from '../store/index.js';
+  mapSidebarActions,
+} from "../store/index.js";
 
 export default {
-  name: 'PdfViewer',
+  name: "PdfViewer",
 
   components: {
     PdfViewerCore,
     PdfTopToolbar,
     PdfBottomToolbar,
-    PdfSidebar
+    PdfSidebar,
   },
 
   props: {
     src: {
       type: String,
-      required: true
+      required: true,
     },
     initialPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     initialScale: {
       type: Number,
-      default: 1.0
+      default: 1.0,
     },
     maxCanvasPixels: {
       type: Number,
-      default: 0
+      default: 0,
     },
     textLayerMode: {
       type: Number,
-      default: 1
+      default: 1,
     },
     showControls: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
 
   data() {
     return {
       // UI状态下沉到组件本地
-      searchActive: false
+      searchActive: false,
     };
   },
 
   computed: {
     // 映射Vuex状态 - 包含侧边栏状态
-    ...mapDocumentState(['pdfDocument', 'loading', 'error']),
-    ...mapViewerState(['currentPage', 'scale']),
-    ...mapSidebarState(['visible', 'activeTab']),
+    ...mapDocumentState(["pdfDocument", "loading", "error"]),
+    ...mapViewerState(["currentPage", "scale"]),
+    ...mapSidebarState(["visible", "activeTab"]),
 
     // 映射Vuex getters
-    ...mapDocumentGetters(['isDocumentLoaded', 'totalPages']),
-    ...mapViewerGetters(['navigationState', 'zoomState']),
-    ...mapSidebarGetters(['enabledTabs', 'currentTab']),
+    ...mapDocumentGetters(["isDocumentLoaded", "totalPages"]),
+    ...mapViewerGetters(["navigationState", "zoomState"]),
+    ...mapSidebarGetters(["enabledTabs", "currentTab"]),
 
     // 为了兼容现有代码，提供别名
     currentScale() {
@@ -169,15 +170,20 @@ export default {
     },
     scaleLabel() {
       const v = this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
-      if (typeof v === 'string') {
+      if (typeof v === "string") {
         // 简单映射：可按需美化
-        const map = { 'auto': '自动', 'page-fit': '适合页面', 'page-width': '适合宽度', 'page-height': '适合高度', 'page-actual': '实际大小' };
+        const map = {
+          auto: "自动",
+          "page-fit": "适合页面",
+          "page-width": "适合宽度",
+          "page-height": "适合高度",
+          "page-actual": "实际大小",
+        };
         const name = map[v] || v;
         return `${name} (${Math.round(this.scale * 100)}%)`;
       }
       return `${Math.round(this.scale * 100)}%`;
     },
-
 
     // 侧边栏相关计算属性
     sidebarVisible() {
@@ -186,7 +192,7 @@ export default {
 
     sidebarActiveTab() {
       return this.activeTab;
-    }
+    },
   },
 
   mounted() {
@@ -195,70 +201,84 @@ export default {
       installPdfReaderModule(this.$store);
 
       // 初始化侧边栏移动端状态
-      this.$store.dispatch('pdfReader/sidebar/updateMobileState');
+      this.$store.dispatch("pdfReader/sidebar/updateMobileState");
     }
 
     // 监听窗口大小变化
-    window.addEventListener('resize', this.handleResize);
+    window.addEventListener("resize", this.handleResize);
   },
 
   beforeDestroy() {
     // 清理事件监听器
-    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener("resize", this.handleResize);
   },
 
   methods: {
     // 映射Vuex actions - 包含侧边栏控制
-    ...mapDocumentActions(['loadDocument', 'setDocumentLoaded', 'setDocumentError']),
-    ...mapViewerActions(['goToPage', 'nextPage', 'prevPage', 'setScale', 'setScaleValue', 'zoomIn', 'zoomOut', 'setScaleMode']),
-    ...mapSidebarActions(['toggle', 'show', 'hide', 'switchToTab']),
+    ...mapDocumentActions([
+      "loadDocument",
+      "setDocumentLoaded",
+      "setDocumentError",
+    ]),
+    ...mapViewerActions([
+      "goToPage",
+      "nextPage",
+      "prevPage",
+      "setScale",
+      "setScaleValue",
+      "zoomIn",
+      "zoomOut",
+      "setScaleMode",
+    ]),
+    ...mapSidebarActions(["toggle", "show", "hide", "switchToTab"]),
 
     // 事件处理 - 更新为使用Vuex actions
     onDocumentLoaded(event) {
       // 通过Vuex action更新状态
       this.setDocumentLoaded(event);
 
-      console.log('PDF 文档加载完成:', event);
-      console.log('文档总页数:', event.document?.numPages || event.info?.numPages);
-      console.log('当前导航状态:', this.navigationState);
+      console.log("PDF 文档加载完成:", event);
+      console.log(
+        "文档总页数:",
+        event.document?.numPages || event.info?.numPages
+      );
+      console.log("当前导航状态:", this.navigationState);
 
-      this.$emit('document-loaded', event);
+      this.$emit("document-loaded", event);
     },
 
     onDocumentError(event) {
       // 通过Vuex action更新错误状态
       this.setDocumentError(event);
 
-      console.error('PDF 文档加载错误:', event);
-      this.$emit('document-error', event);
+      console.error("PDF 文档加载错误:", event);
+      this.$emit("document-error", event);
     },
 
     onLoadProgress(event) {
-      this.$emit('load-progress', event);
+      this.$emit("load-progress", event);
     },
 
     onPageChanged(event) {
       // 只更新Vuex状态，不要再次调用goToPage避免循环
-      this.$store.commit('pdfReader/viewer/SET_CURRENT_PAGE', event.pageNumber);
-      this.$emit('page-changed', event);
+      this.$store.commit("pdfReader/viewer/SET_CURRENT_PAGE", event.pageNumber);
+      this.$emit("page-changed", event);
     },
 
     onScaleChanged(event) {
       // 通过Vuex action更新缩放
       this.setScale(event.scale);
-      this.$emit('scale-changed', event);
+      this.$emit("scale-changed", event);
     },
 
     onPageRendered(event) {
-      this.$emit('page-rendered', event);
+      this.$emit("page-rendered", event);
     },
-
-
 
     // 搜索相关方法 - UI状态本地管理
     onSearchToggle() {
       this.searchActive = !this.searchActive;
-      this.$emit('search-toggle', this.searchActive);
+      this.$emit("search-toggle", this.searchActive);
     },
 
     // 工具栏事件处理 - 直接使用映射的Vuex actions
@@ -302,13 +322,13 @@ export default {
      * @param {string} tabKey - 可选，指定要切换到的标签页
      */
     toggleSidebar(tabKey = null) {
-      console.log('PdfViewer.toggleSidebar 被调用');
+      console.log("PdfViewer.toggleSidebar 被调用");
 
       // 直接使用 store dispatch，避免映射问题
       if (this.$store) {
-        return this.$store.dispatch('pdfReader/sidebar/toggle', tabKey);
+        return this.$store.dispatch("pdfReader/sidebar/toggle", tabKey);
       } else {
-        console.error('Vuex store 未找到');
+        console.error("Vuex store 未找到");
       }
     },
 
@@ -318,7 +338,7 @@ export default {
      */
     showSidebar(tabKey = null) {
       if (this.$store) {
-        return this.$store.dispatch('pdfReader/sidebar/show', tabKey);
+        return this.$store.dispatch("pdfReader/sidebar/show", tabKey);
       }
     },
 
@@ -327,7 +347,7 @@ export default {
      */
     hideSidebar() {
       if (this.$store) {
-        return this.$store.dispatch('pdfReader/sidebar/hide');
+        return this.$store.dispatch("pdfReader/sidebar/hide");
       }
     },
 
@@ -337,7 +357,7 @@ export default {
      */
     switchSidebarTab(tabKey) {
       if (this.$store) {
-        return this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+        return this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
       }
     },
 
@@ -347,7 +367,7 @@ export default {
      */
     onSidebarClose() {
       if (this.$store) {
-        this.$store.dispatch('pdfReader/sidebar/hide');
+        this.$store.dispatch("pdfReader/sidebar/hide");
       }
     },
 
@@ -356,7 +376,7 @@ export default {
      */
     onSidebarTabChange(tabKey) {
       if (this.$store) {
-        this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+        this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
       }
     },
 
@@ -372,20 +392,20 @@ export default {
      */
     handleResize() {
       if (this.$store) {
-        this.$store.dispatch('pdfReader/sidebar/updateMobileState');
+        this.$store.dispatch("pdfReader/sidebar/updateMobileState");
       }
-    }
+    },
 
     // 注意：不再定义重复的方法，直接使用映射的Vuex actions
     // prevPage, nextPage, goToPage, zoomIn, zoomOut, setScale, setScaleMode
     // 这些方法已经通过 mapViewerActions 映射，避免无限递归
-  }
+  },
 };
 </script>
 
 <style lang="less" scoped>
 // 引入样式变量
-@import '../styles/variables.less';
+@import "../styles/variables.less";
 
 .pdf-viewer {
   width: 100%;

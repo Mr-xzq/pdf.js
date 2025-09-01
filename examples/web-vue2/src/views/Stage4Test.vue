@@ -1,43 +1,25 @@
 <template>
   <div class="stage4-test">
     <h2>阶段4验证 - 功能组件实现</h2>
-    
+
     <div class="test-container">
-
-
       <!-- 主内容区 -->
       <div class="test-main">
         <!-- 控制面板 -->
         <div class="test-controls">
-          <van-button
-            type="primary"
-            size="small"
-            @click="toggleSidebarDisplay"
-          >
+          <van-button type="primary" size="small" @click="toggleSidebarDisplay">
             切换侧边栏
           </van-button>
 
-          <van-button
-            type="default"
-            size="small"
-            @click="switchToThumbnails"
-          >
+          <van-button type="default" size="small" @click="switchToThumbnails">
             切换到缩略图
           </van-button>
 
-          <van-button
-            type="default"
-            size="small"
-            @click="switchToOutline"
-          >
+          <van-button type="default" size="small" @click="switchToOutline">
             切换到目录
           </van-button>
 
-          <van-button
-            type="default"
-            size="small"
-            @click="testExpandAll"
-          >
+          <van-button type="default" size="small" @click="testExpandAll">
             测试展开全部
           </van-button>
 
@@ -49,16 +31,16 @@
             调试目录展开
           </van-button>
 
-          <div style="margin-top: 8px;">
-            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
-              当前页: {{ currentPage }} / {{ totalPages || '加载中...' }}
+          <div style="margin-top: 8px">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px">
+              当前页: {{ currentPage }} / {{ totalPages || "加载中..." }}
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px">
               <van-field
                 v-model="testPageNumber"
                 type="number"
                 placeholder="输入页码"
-                style="width: 100px;"
+                style="width: 100px"
                 :min="1"
                 :max="totalPages"
               />
@@ -71,7 +53,7 @@
                 前往
               </van-button>
             </div>
-            <div style="display: flex; gap: 4px; margin-top: 4px;">
+            <div style="display: flex; gap: 4px; margin-top: 4px">
               <van-button
                 type="default"
                 size="mini"
@@ -122,9 +104,7 @@
             @page-changed="onPageChanged"
             @error="onError"
           />
-          <div v-else class="no-pdf">
-            请输入PDF文件URL并按回车加载
-          </div>
+          <div v-else class="no-pdf">请输入PDF文件URL并按回车加载</div>
         </div>
       </div>
     </div>
@@ -132,7 +112,7 @@
     <!-- 独立功能组件测试 -->
     <div class="standalone-tests">
       <h3>独立组件测试</h3>
-      
+
       <div class="test-grid">
         <!-- 独立目录组件 -->
         <div class="test-item">
@@ -172,51 +152,51 @@
 </template>
 
 <script>
-import PdfViewer from '../components/pdf-reader/components/PdfViewer.vue';
-import PdfOutline from '../components/pdf-reader/components/ui/PdfOutline.vue';
-import PdfThumbnail from '../components/pdf-reader/components/ui/PdfThumbnail.vue';
+import PdfViewer from "../components/pdf-reader/components/PdfViewer.vue";
+import PdfOutline from "../components/pdf-reader/components/ui/PdfOutline.vue";
+import PdfThumbnail from "../components/pdf-reader/components/ui/PdfThumbnail.vue";
 import {
   mapDocumentState,
   mapViewerState,
   mapDocumentActions,
   mapViewerActions,
-  mapDocumentGetters
-} from '../components/pdf-reader/store/index.js';
+  mapDocumentGetters,
+} from "../components/pdf-reader/store/index.js";
 
 export default {
-  name: 'Stage4Test',
+  name: "Stage4Test",
 
   components: {
     PdfViewer,
     PdfOutline,
-    PdfThumbnail
+    PdfThumbnail,
   },
 
   data() {
     return {
       // 仅保留组件特有的临时状态
-      pdfUrl: '/assets/sample.pdf', // 默认测试PDF
+      pdfUrl: "/assets/sample.pdf", // 默认测试PDF
 
       // 测试页码输入
       testPageNumber: 1,
 
       // UI状态本地管理（不涉及全局状态的）
       errorMessage: null,
-      showErrorDialog: false
+      showErrorDialog: false,
     };
   },
 
   computed: {
     // 映射Vuex状态 - 只保留测试页面需要的状态
-    ...mapDocumentState(['pdfDocument', 'loading', 'error']),
-    ...mapViewerState(['currentPage']),
+    ...mapDocumentState(["pdfDocument", "loading", "error"]),
+    ...mapViewerState(["currentPage"]),
 
     // 映射Vuex getters
-    ...mapDocumentGetters(['totalPages']),
+    ...mapDocumentGetters(["totalPages"]),
 
     hasError() {
       return !!this.error || !!this.errorMessage;
-    }
+    },
   },
 
   mounted() {
@@ -228,8 +208,8 @@ export default {
 
   methods: {
     // 映射Vuex actions - 只保留核心状态管理
-    ...mapDocumentActions(['loadDocument']),
-    ...mapViewerActions(['goToPage']),
+    ...mapDocumentActions(["loadDocument"]),
+    ...mapViewerActions(["goToPage"]),
 
     /**
      * 加载PDF文档
@@ -240,7 +220,7 @@ export default {
       try {
         // 使用Vuex action加载文档
         await this.loadDocument(this.pdfUrl);
-        console.log('PDF文档加载完成');
+        console.log("PDF文档加载完成");
       } catch (error) {
         this.onError(error);
       }
@@ -250,14 +230,14 @@ export default {
      * 文档加载完成
      */
     onDocumentLoaded(document) {
-      console.log('文档加载完成:', document);
+      console.log("文档加载完成:", document);
     },
 
     /**
      * 页面变化
      */
     onPageChanged(pageNumber) {
-      console.log('页面变化:', pageNumber);
+      console.log("页面变化:", pageNumber);
     },
 
     /**
@@ -266,7 +246,7 @@ export default {
     onNavigateToPage(pageNumber) {
       // 使用Vuex action跳转页面
       this.goToPage(pageNumber);
-      console.log('导航到页面:', pageNumber);
+      console.log("导航到页面:", pageNumber);
     },
 
     /**
@@ -277,7 +257,7 @@ export default {
       if (pdfViewer && pdfViewer.toggleSidebar) {
         pdfViewer.toggleSidebar();
       } else {
-        console.warn('PdfViewer 组件未找到或未加载');
+        console.warn("PdfViewer 组件未找到或未加载");
       }
     },
 
@@ -303,9 +283,9 @@ export default {
     switchToThumbnails() {
       const pdfViewer = this.$refs.pdfViewer;
       if (pdfViewer && pdfViewer.showSidebar) {
-        pdfViewer.showSidebar('thumbnails');
+        pdfViewer.showSidebar("thumbnails");
       } else {
-        console.warn('PdfViewer 组件未找到或未加载');
+        console.warn("PdfViewer 组件未找到或未加载");
       }
     },
 
@@ -315,9 +295,9 @@ export default {
     switchToOutline() {
       const pdfViewer = this.$refs.pdfViewer;
       if (pdfViewer && pdfViewer.showSidebar) {
-        pdfViewer.showSidebar('outline');
+        pdfViewer.showSidebar("outline");
       } else {
-        console.warn('PdfViewer 组件未找到或未加载');
+        console.warn("PdfViewer 组件未找到或未加载");
       }
     },
 
@@ -325,10 +305,10 @@ export default {
      * 错误处理 - 使用Vuex action
      */
     onError(error) {
-      console.error('PDF错误:', error);
+      console.error("PDF错误:", error);
       this.showError({
         message: error.message || error.toString(),
-        details: error.stack
+        details: error.stack,
       });
     },
 
@@ -347,17 +327,19 @@ export default {
       const pdfViewer = this.$refs.pdfViewer;
       if (pdfViewer && pdfViewer.$refs.sidebar) {
         const sidebar = pdfViewer.$refs.sidebar;
-        console.log('找到侧边栏组件:', sidebar);
+        console.log("找到侧边栏组件:", sidebar);
         // 尝试找到目录组件
-        const outlineComponent = sidebar.$children.find(child => child.$options.name === 'PdfOutline');
+        const outlineComponent = sidebar.$children.find(
+          child => child.$options.name === "PdfOutline"
+        );
         if (outlineComponent) {
-          console.log('找到目录组件，触发展开全部');
+          console.log("找到目录组件，触发展开全部");
           outlineComponent.toggleAllItems();
         } else {
-          console.log('未找到目录组件');
+          console.log("未找到目录组件");
         }
       } else {
-        console.log('未找到 PdfViewer 或侧边栏组件');
+        console.log("未找到 PdfViewer 或侧边栏组件");
       }
     },
 
@@ -368,7 +350,7 @@ export default {
       const pageNumber = parseInt(this.testPageNumber);
 
       if (!pageNumber || pageNumber < 1) {
-        this.$toast('请输入有效的页码');
+        this.$toast("请输入有效的页码");
         return;
       }
 
@@ -377,7 +359,7 @@ export default {
         return;
       }
 
-      console.log('测试跳转到第', pageNumber, '页');
+      console.log("测试跳转到第", pageNumber, "页");
       this.goToPage(pageNumber);
     },
 
@@ -398,33 +380,40 @@ export default {
       if (pdfViewer && pdfViewer.$refs.sidebar) {
         const sidebar = pdfViewer.$refs.sidebar;
         // 尝试找到目录组件
-        const outlineComponent = sidebar.$children.find(child => child.$options.name === 'PdfOutline');
+        const outlineComponent = sidebar.$children.find(
+          child => child.$options.name === "PdfOutline"
+        );
         if (outlineComponent) {
-          console.log('=== 目录展开调试信息 ===');
-          console.log('当前页面:', this.currentPage);
-          console.log('总页数:', this.totalPages);
-          console.log('页面映射关系:', outlineComponent.pageToOutlineMap);
-          console.log('目录层级关系:', outlineComponent.outlineHierarchy);
-          console.log('展开项目:', outlineComponent.expandedItems);
+          console.log("=== 目录展开调试信息 ===");
+          console.log("当前页面:", this.currentPage);
+          console.log("总页数:", this.totalPages);
+          console.log("页面映射关系:", outlineComponent.pageToOutlineMap);
+          console.log("目录层级关系:", outlineComponent.outlineHierarchy);
+          console.log("展开项目:", outlineComponent.expandedItems);
 
           // 显示当前页面的映射信息
           const mapping = outlineComponent.pageToOutlineMap[this.currentPage];
           if (mapping) {
-            console.log('当前页面映射到:', mapping.item.title, '路径:', mapping.path.map(p => p.title));
+            console.log(
+              "当前页面映射到:",
+              mapping.item.title,
+              "路径:",
+              mapping.path.map(p => p.title)
+            );
           } else {
-            console.log('当前页面没有找到映射关系');
+            console.log("当前页面没有找到映射关系");
           }
 
           // 手动触发展开到当前页面
           outlineComponent.expandToCurrentPage(this.currentPage);
         } else {
-          console.log('未找到目录组件');
+          console.log("未找到目录组件");
         }
       } else {
-        console.log('未找到 PdfViewer 或侧边栏组件');
+        console.log("未找到 PdfViewer 或侧边栏组件");
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

@@ -6,7 +6,15 @@ const pdfjsDistBase = path.resolve(__dirname, "../../pdfjs-dist");
 
 module.exports = defineConfig({
   transpileDependencies: true,
+  lintOnSave: "warning",
+  devServer: {
+    // overlay: {
+    //   warnings: true,
+    //   errors: true,
+    // },
+  },
   configureWebpack: {
+    devtool: "source-map",
     resolve: {
       alias: {
         "pdfjs-dist": pdfjsDistBase,

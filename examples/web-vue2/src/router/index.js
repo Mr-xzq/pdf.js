@@ -53,7 +53,7 @@ const routes = [
   {
     path: "/simple-reader-demo",
     component: () => import("@/views/SimpleReaderDemo.vue"),
-  }
+  },
 ];
 
 Vue.use(VueRouter);

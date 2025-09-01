@@ -3,12 +3,25 @@
  * 管理查看器的显示状态、导航、缩放等
  */
 
-import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE, round2 } from '../../core/scale';
+import {
+  DEFAULT_SCALE_DELTA,
+  MIN_SCALE,
+  MAX_SCALE,
+  round2,
+} from "../../core/scale";
 
-
-const persistedScaleValue = (typeof window !== 'undefined' && window.localStorage)
-  ? (() => { try { return JSON.parse(window.localStorage.getItem('pdfReader.currentScaleValue')); } catch(e) { return null; } })()
-  : null;
+const persistedScaleValue =
+  typeof window !== "undefined" && window.localStorage
+    ? (() => {
+        try {
+          return JSON.parse(
+            window.localStorage.getItem("pdfReader.currentScaleValue")
+          );
+        } catch (e) {
+          return null;
+        }
+      })()
+    : null;
 
 const state = {
   // 当前页面
@@ -16,11 +29,11 @@ const state = {
 
   // 缩放相关
   scale: 1.0,
-  currentScaleValue: persistedScaleValue !== null ? persistedScaleValue : 'auto', // string | number
-  scaleMode: 'auto', // 兼容旧字段，后续可移除
+  currentScaleValue:
+    persistedScaleValue !== null ? persistedScaleValue : "auto", // string | number
+  scaleMode: "auto", // 兼容旧字段，后续可移除
   minScale: 0.1,
   maxScale: 10.0,
-
 
   // 渲染状态
   rendering: false,
@@ -30,19 +43,19 @@ const state = {
   pageInfo: {
     width: 0,
     height: 0,
-    aspectRatio: 1
+    aspectRatio: 1,
   },
 
   // 滚动位置
   scrollPosition: {
     x: 0,
-    y: 0
+    y: 0,
   },
 
   // 基础配置（MVP版本）
   config: {
     textLayerMode: 1, // 0=禁用, 1=启用
-    maxCanvasPixels: 0 // 0=CSS缩放
+    maxCanvasPixels: 0, // 0=CSS缩放
   },
 
   // 缩略图相关（从navigation模块合并）
@@ -54,7 +67,7 @@ const state = {
   // 导航历史（从navigation模块合并）
   navigationHistory: [],
   historyIndex: -1,
-  maxHistorySize: 20 // 减少历史记录大小
+  maxHistorySize: 20, // 减少历史记录大小
 };
 
 const mutations = {
@@ -76,8 +89,11 @@ const mutations = {
   SET_SCALE_VALUE(state, value) {
     state.currentScaleValue = value;
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem('pdfReader.currentScaleValue', JSON.stringify(value));
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "pdfReader.currentScaleValue",
+          JSON.stringify(value)
+        );
       }
     } catch (e) {}
   },
@@ -87,7 +103,6 @@ const mutations = {
     state.scaleMode = mode;
     state.currentScaleValue = mode;
   },
-
 
   // 设置渲染状态
   SET_RENDERING(state, rendering) {
@@ -118,7 +133,7 @@ const mutations = {
   SET_PAGE_INFO(state, info) {
     state.pageInfo = {
       ...state.pageInfo,
-      ...info
+      ...info,
     };
   },
 
@@ -131,7 +146,7 @@ const mutations = {
   UPDATE_CONFIG(state, config) {
     state.config = {
       ...state.config,
-      ...config
+      ...config,
     };
   },
 
@@ -139,7 +154,7 @@ const mutations = {
   SET_THUMBNAIL(state, { pageNumber, thumbnail }) {
     state.thumbnails = {
       ...state.thumbnails,
-      [pageNumber]: thumbnail
+      [pageNumber]: thumbnail,
     };
   },
 
@@ -159,7 +174,10 @@ const mutations = {
   // 导航历史mutations（从navigation模块合并）
   ADD_NAVIGATION_HISTORY(state, entry) {
     // 移除当前位置之后的历史记录
-    state.navigationHistory = state.navigationHistory.slice(0, state.historyIndex + 1);
+    state.navigationHistory = state.navigationHistory.slice(
+      0,
+      state.historyIndex + 1
+    );
 
     // 添加新记录
     state.navigationHistory.push(entry);
@@ -173,27 +191,30 @@ const mutations = {
   },
 
   SET_HISTORY_INDEX(state, index) {
-    state.historyIndex = Math.max(-1, Math.min(index, state.navigationHistory.length - 1));
+    state.historyIndex = Math.max(
+      -1,
+      Math.min(index, state.navigationHistory.length - 1)
+    );
   },
 
   // 重置查看器状态
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
-    state.scaleMode = 'auto';
+    state.scaleMode = "auto";
     state.rendering = false;
     state.renderingPages = [];
     state.pageInfo = {
       width: 0,
       height: 0,
-      aspectRatio: 1
+      aspectRatio: 1,
     };
     state.scrollPosition = { x: 0, y: 0 };
     state.thumbnails = {};
     state.loadingThumbnails = [];
     state.navigationHistory = [];
     state.historyIndex = -1;
-  }
+  },
 };
 
 const actions = {
@@ -201,26 +222,40 @@ const actions = {
    * 跳转到指定页面
    */
   goToPage({ commit, rootGetters }, pageNumber) {
-    const totalPages = rootGetters['pdfReader/document/totalPages'];
+    const totalPages = rootGetters["pdfReader/document/totalPages"];
 
     if (pageNumber < 1 || pageNumber > totalPages) {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
 
     // 统一由视图层驱动真实跳转：优先使用 NavigationService
-    if (window.pdfViewerInstance && window.pdfViewerInstance.navigationService &&
-        typeof window.pdfViewerInstance.navigationService.goToPage === 'function') {
+    if (
+      window.pdfViewerInstance &&
+      window.pdfViewerInstance.navigationService &&
+      typeof window.pdfViewerInstance.navigationService.goToPage === "function"
+    ) {
       window.pdfViewerInstance.navigationService.goToPage(pageNumber);
       // 记录导航历史（来源根据调用路径可传参，这里先用 auto）
-      commit('ADD_NAVIGATION_HISTORY', { pageNumber: pageNumber, source: 'auto', timestamp: Date.now() });
+      commit("ADD_NAVIGATION_HISTORY", {
+        pageNumber: pageNumber,
+        source: "auto",
+        timestamp: Date.now(),
+      });
       console.log(`[viewer.goToPage] via NavigationService -> ${pageNumber}`);
       return pageNumber;
     }
 
     // 回退：使用组件提供的同步方法（仍会触发 page-changed 事件）
-    if (window.pdfViewerInstance && typeof window.pdfViewerInstance.syncPageFromStore === 'function') {
+    if (
+      window.pdfViewerInstance &&
+      typeof window.pdfViewerInstance.syncPageFromStore === "function"
+    ) {
       window.pdfViewerInstance.syncPageFromStore(pageNumber);
-      commit('ADD_NAVIGATION_HISTORY', { pageNumber: pageNumber, source: 'auto', timestamp: Date.now() });
+      commit("ADD_NAVIGATION_HISTORY", {
+        pageNumber: pageNumber,
+        source: "auto",
+        timestamp: Date.now(),
+      });
       console.log(`[viewer.goToPage] via syncPageFromStore -> ${pageNumber}`);
       return pageNumber;
     }
@@ -228,7 +263,9 @@ const actions = {
     // 最后回退：没有视图实例，仅更新 Store（非推荐，仅为容错）
     // 注意：正常情况下应该存在视图实例并通过事件回写状态
     // commit('SET_CURRENT_PAGE', pageNumber);
-    console.warn('[viewer.goToPage] No viewer instance found, consider ensuring PdfViewerCore is mounted.');
+    console.warn(
+      "[viewer.goToPage] No viewer instance found, consider ensuring PdfViewerCore is mounted."
+    );
     return pageNumber;
   },
 
@@ -236,9 +273,9 @@ const actions = {
    * 下一页
    */
   nextPage({ state, dispatch, rootGetters }) {
-    const totalPages = rootGetters['pdfReader/document/totalPages'];
+    const totalPages = rootGetters["pdfReader/document/totalPages"];
     if (state.currentPage < totalPages) {
-      return dispatch('goToPage', state.currentPage + 1);
+      return dispatch("goToPage", state.currentPage + 1);
     }
     return state.currentPage;
   },
@@ -248,7 +285,7 @@ const actions = {
    */
   prevPage({ state, dispatch }) {
     if (state.currentPage > 1) {
-      return dispatch('goToPage', state.currentPage - 1);
+      return dispatch("goToPage", state.currentPage - 1);
     }
     return state.currentPage;
   },
@@ -257,20 +294,20 @@ const actions = {
    * 确保当前页面在有效范围内
    */
   ensureValidCurrentPage({ state, commit, rootGetters }) {
-    const totalPages = rootGetters['pdfReader/document/totalPages'];
+    const totalPages = rootGetters["pdfReader/document/totalPages"];
 
     if (totalPages > 0) {
       // 确保当前页面在有效范围内
       if (state.currentPage < 1) {
-        commit('SET_CURRENT_PAGE', 1);
+        commit("SET_CURRENT_PAGE", 1);
       } else if (state.currentPage > totalPages) {
-        commit('SET_CURRENT_PAGE', totalPages);
+        commit("SET_CURRENT_PAGE", totalPages);
       }
 
-      console.log('确保页面有效性:', {
+      console.log("确保页面有效性:", {
         currentPage: state.currentPage,
         totalPages,
-        isValid: state.currentPage >= 1 && state.currentPage <= totalPages
+        isValid: state.currentPage >= 1 && state.currentPage <= totalPages,
       });
     }
   },
@@ -279,13 +316,16 @@ const actions = {
    * 设置缩放
    */
   setScale({ commit }, scale) {
-    commit('SET_SCALE', round2(Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE)));
+    commit(
+      "SET_SCALE",
+      round2(Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE))
+    );
     return scale;
   },
 
   // 设置缩放设定值（字符串或数值）
   setScaleValue({ commit }, value) {
-    commit('SET_SCALE_VALUE', value);
+    commit("SET_SCALE_VALUE", value);
     return value;
   },
 
@@ -294,7 +334,7 @@ const actions = {
    */
   zoomIn({ state, dispatch }) {
     const next = Math.min(state.scale * DEFAULT_SCALE_DELTA, state.maxScale);
-    return dispatch('setScale', round2(next));
+    return dispatch("setScale", round2(next));
   },
 
   /**
@@ -302,26 +342,25 @@ const actions = {
    */
   zoomOut({ state, dispatch }) {
     const next = Math.max(state.scale / DEFAULT_SCALE_DELTA, state.minScale);
-    return dispatch('setScale', round2(next));
+    return dispatch("setScale", round2(next));
   },
 
   /**
    * 设置缩放模式（兼容旧接口）
    */
   setScaleMode({ commit }, mode) {
-    commit('SET_SCALE_MODE', mode);
+    commit("SET_SCALE_MODE", mode);
     return mode;
   },
-
 
   /**
    * 设置页面渲染状态
    */
   setPageRendering({ commit }, { pageNumber, rendering }) {
     if (rendering) {
-      commit('ADD_RENDERING_PAGE', pageNumber);
+      commit("ADD_RENDERING_PAGE", pageNumber);
     } else {
-      commit('REMOVE_RENDERING_PAGE', pageNumber);
+      commit("REMOVE_RENDERING_PAGE", pageNumber);
     }
   },
 
@@ -329,21 +368,21 @@ const actions = {
    * 更新页面信息
    */
   updatePageInfo({ commit }, info) {
-    commit('SET_PAGE_INFO', info);
+    commit("SET_PAGE_INFO", info);
   },
 
   /**
    * 更新滚动位置
    */
   updateScrollPosition({ commit }, position) {
-    commit('SET_SCROLL_POSITION', position);
+    commit("SET_SCROLL_POSITION", position);
   },
 
   /**
    * 更新查看器配置
    */
   updateConfig({ commit }, config) {
-    commit('UPDATE_CONFIG', config);
+    commit("UPDATE_CONFIG", config);
   },
 
   /**
@@ -356,19 +395,21 @@ const actions = {
     }
 
     try {
-      commit('ADD_LOADING_THUMBNAIL', pageNumber);
+      commit("ADD_LOADING_THUMBNAIL", pageNumber);
 
       const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: scale || state.thumbnailScale });
+      const viewport = page.getViewport({
+        scale: scale || state.thumbnailScale,
+      });
 
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
       const renderContext = {
         canvasContext: context,
-        viewport: viewport
+        viewport: viewport,
       };
 
       await page.render(renderContext).promise;
@@ -377,16 +418,16 @@ const actions = {
         canvas: canvas,
         width: viewport.width,
         height: viewport.height,
-        scale: scale || state.thumbnailScale
+        scale: scale || state.thumbnailScale,
       };
 
-      commit('SET_THUMBNAIL', { pageNumber, thumbnail });
+      commit("SET_THUMBNAIL", { pageNumber, thumbnail });
       return thumbnail;
     } catch (error) {
-      console.error('加载缩略图失败:', error);
+      console.error("加载缩略图失败:", error);
       throw error;
     } finally {
-      commit('REMOVE_LOADING_THUMBNAIL', pageNumber);
+      commit("REMOVE_LOADING_THUMBNAIL", pageNumber);
     }
   },
 
@@ -396,18 +437,18 @@ const actions = {
   addNavigationHistory({ commit }, { pageNumber, source, timestamp }) {
     const entry = {
       pageNumber,
-      source: source || 'unknown',
-      timestamp: timestamp || Date.now()
+      source: source || "unknown",
+      timestamp: timestamp || Date.now(),
     };
-    commit('ADD_NAVIGATION_HISTORY', entry);
+    commit("ADD_NAVIGATION_HISTORY", entry);
   },
 
   /**
    * 重置查看器
    */
   resetViewer({ commit }) {
-    commit('RESET_VIEWER');
-  }
+    commit("RESET_VIEWER");
+  },
 };
 
 const getters = {
@@ -424,11 +465,12 @@ const getters = {
   isRendering: state => state.rendering || state.renderingPages.length > 0,
 
   // 特定页面是否正在渲染
-  isPageRendering: state => pageNumber => state.renderingPages.includes(pageNumber),
+  isPageRendering: state => pageNumber =>
+    state.renderingPages.includes(pageNumber),
 
   // 导航状态
   navigationState: (state, _getters, _rootState, rootGetters) => {
-    const totalPages = rootGetters['pdfReader/document/totalPages'];
+    const totalPages = rootGetters["pdfReader/document/totalPages"];
     const currentPage = state.currentPage;
 
     return {
@@ -436,7 +478,7 @@ const getters = {
       totalPages,
       canGoNext: currentPage < totalPages && totalPages > 0,
       canGoPrev: currentPage > 1,
-      hasPages: totalPages > 0
+      hasPages: totalPages > 0,
     };
   },
 
@@ -448,7 +490,7 @@ const getters = {
     canZoomIn: state.scale < state.maxScale,
     canZoomOut: state.scale > state.minScale,
     minScale: state.minScale,
-    maxScale: state.maxScale
+    maxScale: state.maxScale,
   }),
 
   // 页面信息
@@ -462,23 +504,28 @@ const getters = {
     currentPage: state.currentPage,
     scale: state.scale,
     scaleMode: state.scaleMode,
-    rendering: state.rendering
+    rendering: state.rendering,
   }),
 
   // 缩略图相关getters（从navigation模块合并）
   thumbnailCount: state => Object.keys(state.thumbnails).length,
-  isLoadingThumbnail: state => pageNumber => state.loadingThumbnails.includes(pageNumber),
+  isLoadingThumbnail: state => pageNumber =>
+    state.loadingThumbnails.includes(pageNumber),
   getThumbnail: state => pageNumber => state.thumbnails[pageNumber],
 
   // 导航历史getters（从navigation模块合并）
   canGoBack: state => state.historyIndex > 0,
-  canGoForward: state => state.historyIndex < state.navigationHistory.length - 1,
+  canGoForward: state =>
+    state.historyIndex < state.navigationHistory.length - 1,
   currentHistoryEntry: state => {
-    if (state.historyIndex >= 0 && state.historyIndex < state.navigationHistory.length) {
+    if (
+      state.historyIndex >= 0 &&
+      state.historyIndex < state.navigationHistory.length
+    ) {
       return state.navigationHistory[state.historyIndex];
     }
     return null;
-  }
+  },
 };
 
 export default {
@@ -486,5 +533,5 @@ export default {
   state,
   mutations,
   actions,
-  getters
+  getters,
 };

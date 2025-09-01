@@ -40,39 +40,39 @@
 </template>
 
 <script>
-import PdfButton from './PdfButton.vue';
+import PdfButton from "./PdfButton.vue";
 
 export default {
-  name: 'PdfTopToolbar',
+  name: "PdfTopToolbar",
 
   components: {
-    PdfButton
+    PdfButton,
   },
 
   props: {
     documentLoaded: {
       type: Boolean,
-      default: false
+      default: false,
     },
     currentPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     totalPages: {
       type: Number,
-      default: 0
+      default: 0,
     },
     searchActive: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
 
   methods: {
     onSearchToggle() {
-      this.$emit('search-toggle');
-    }
-  }
+      this.$emit("search-toggle");
+    },
+  },
 };
 </script>
 
@@ -127,7 +127,7 @@ export default {
     min-width: 36px;
     height: 36px;
     border-radius: 50%;
-    
+
     &.active {
       background: #1890ff;
       color: white;

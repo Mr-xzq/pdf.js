@@ -184,8 +184,6 @@ export default {
       this.addLog("success", `页面 ${event.pageNumber} 渲染完成`);
     },
 
-
-
     /**
      * 添加日志
      */

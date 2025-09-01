@@ -15,8 +15,7 @@
     <div class="pdf-zoom-control__scale" @click="onScaleClick">
       {{ scalePercent }}%
     </div>
-      <div v-if="scaleLabel" class="pdf-zoom-control__mode">{{ scaleLabel }}</div>
-
+    <div v-if="scaleLabel" class="pdf-zoom-control__mode">{{ scaleLabel }}</div>
 
     <!-- 放大按钮 -->
     <pdf-button
@@ -54,11 +53,13 @@
               v-for="preset in scalePresets"
               :key="preset.value"
               @click="onPresetScale(preset.value)"
-              :class="{ 'active': Math.abs(scale - preset.value) < 0.01 }"
+              :class="{ active: Math.abs(scale - preset.value) < 0.01 }"
             >
               <div class="preset-item">
                 <div class="preset-label">{{ preset.label }}</div>
-                <div class="preset-value">{{ Math.round(preset.value * 100) }}%</div>
+                <div class="preset-value">
+                  {{ Math.round(preset.value * 100) }}%
+                </div>
               </div>
             </van-grid-item>
           </van-grid>
@@ -85,68 +86,68 @@
 </template>
 
 <script>
-import PdfButton from './PdfButton.vue';
+import PdfButton from "./PdfButton.vue";
 
 export default {
-  name: 'PdfZoomControl',
+  name: "PdfZoomControl",
 
   components: {
-    PdfButton
+    PdfButton,
   },
 
   props: {
     scaleLabel: {
       type: String,
-      default: ''
+      default: "",
     },
 
     scale: {
       type: Number,
-      default: 1.0
+      default: 1.0,
     },
     canZoomIn: {
       type: Boolean,
-      default: true
+      default: true,
     },
     canZoomOut: {
       type: Boolean,
-      default: true
+      default: true,
     },
     scaleLabel: {
       type: String,
-      default: ''
-    }
+      default: "",
+    },
   },
 
   data() {
     return {
       showScaleSelector: false,
-      customScale: '',
+      customScale: "",
       // MVP版本：简化缩放预设
       scalePresets: [
-        { label: '适合宽度', value: 'page-width' },
-        { label: '适合页面', value: 'page-fit' },
-        { label: '50%', value: 0.5 },
-        { label: '100%', value: 1.0 },
-        { label: '150%', value: 1.5 },
-        { label: '200%', value: 2.0 }
-      ]
+        { label: "适合宽度", value: "page-width" },
+        { label: "适合页面", value: "page-fit" },
+        { label: "50%", value: 0.5 },
+        { label: "100%", value: 1.0 },
+        { label: "150%", value: 1.5 },
+        { label: "200%", value: 2.0 },
+      ],
     };
   },
 
   computed: {
     scalePercent() {
       return Math.round(this.scale * 100);
-    }
+    },
   },
 
   methods: {
     onZoomIn() {
-      this.$emit('zoom-in');
+      this.$emit("zoom-in");
     },
 
     onZoomOut() {
-      this.$emit('zoom-out');
+      this.$emit("zoom-out");
     },
 
     onScaleClick() {
@@ -155,12 +156,12 @@ export default {
     },
 
     onPresetScale(scaleValue) {
-      if (typeof scaleValue === 'string') {
+      if (typeof scaleValue === "string") {
         // 特殊缩放模式（如 page-width, page-fit）
-        this.$emit('set-scale-mode', scaleValue);
+        this.$emit("set-scale-mode", scaleValue);
       } else {
         // 数值缩放
-        this.$emit('set-scale', scaleValue);
+        this.$emit("set-scale", scaleValue);
       }
       this.showScaleSelector = false;
     },
@@ -169,11 +170,11 @@ export default {
       const scalePercent = parseInt(this.customScale);
       if (!isNaN(scalePercent) && scalePercent > 0 && scalePercent <= 1000) {
         const scaleValue = scalePercent / 100;
-        this.$emit('set-scale', scaleValue);
+        this.$emit("set-scale", scaleValue);
         this.showScaleSelector = false;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

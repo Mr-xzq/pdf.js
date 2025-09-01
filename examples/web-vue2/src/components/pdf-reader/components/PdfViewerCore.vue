@@ -36,42 +36,40 @@
 </template>
 
 <script>
-import { PdfServices, NavigationService } from '../core/pdf-services.js';
-import PdfPageContainer from './PdfPageContainer.vue';
-import PdfLoadingProgress from './ui/PdfLoadingProgress.vue';
-import { computeScaleByValue, DEFAULT_SCALE_VALUE } from '../core/scale';
-
-
+import { PdfServices, NavigationService } from "../core/pdf-services.js";
+import PdfPageContainer from "./PdfPageContainer.vue";
+import PdfLoadingProgress from "./ui/PdfLoadingProgress.vue";
+import { computeScaleByValue, DEFAULT_SCALE_VALUE } from "../core/scale";
 
 export default {
-  name: 'PdfViewerCore',
+  name: "PdfViewerCore",
 
   components: {
     PdfPageContainer,
-    PdfLoadingProgress
+    PdfLoadingProgress,
   },
 
   props: {
     src: {
       type: String,
-      default: ''
+      default: "",
     },
     initialPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     initialScale: {
       type: Number,
-      default: 1.0
+      default: 1.0,
     },
     maxCanvasPixels: {
       type: Number,
-      default: 0
+      default: 0,
     },
     textLayerMode: {
       type: Number,
-      default: 1
-    }
+      default: 1,
+    },
   },
 
   data() {
@@ -87,7 +85,7 @@ export default {
 
       // 加载进度
       loadProgress: 0,
-      loadMessage: '正在加载...',
+      loadMessage: "正在加载...",
 
       // 当前状态
       currentPage: this.initialPage,
@@ -104,7 +102,7 @@ export default {
 
       resizeObserver: null,
       windowResizeHandler: null,
-      lastContainerSize: null
+      lastContainerSize: null,
     };
   },
 
@@ -148,7 +146,7 @@ export default {
 
     // 清理 window resize 监听器
     if (this.windowResizeHandler) {
-      window.removeEventListener('resize', this.windowResizeHandler);
+      window.removeEventListener("resize", this.windowResizeHandler);
       this.windowResizeHandler = null;
     }
 
@@ -157,25 +155,23 @@ export default {
 
   watch: {
     src: {
-      handler: 'onSrcChange',
-      immediate: false
+      handler: "onSrcChange",
+      immediate: false,
     },
 
     // 监听Vuex状态变化
-    '$store.state.pdfReader.viewer.currentPage': {
+    "$store.state.pdfReader.viewer.currentPage": {
       handler(newPage, oldPage) {
         if (newPage !== oldPage && newPage !== this.currentPage) {
           // 避免循环调用，只有当Vuex状态与组件状态不同步时才更新
           this.syncPageFromStore(newPage);
         }
       },
-      immediate: false
+      immediate: false,
     },
 
-
-
     // 监听侧边栏状态变化
-    '$store.state.pdfReader.sidebar.visible': {
+    "$store.state.pdfReader.sidebar.visible": {
       handler(newVisible, oldVisible) {
         if (newVisible !== oldVisible) {
           // 侧边栏显示状态变化，延迟检查缩放以等待布局完成
@@ -187,8 +183,8 @@ export default {
           });
         }
       },
-      immediate: false
-    }
+      immediate: false,
+    },
   },
 
   methods: {
@@ -201,16 +197,16 @@ export default {
         this.pdfServices = new PdfServices(this, {
           isMobile: true,
           maxCanvasPixels: this.maxCanvasPixels,
-          textLayerMode: this.textLayerMode
+          textLayerMode: this.textLayerMode,
         });
 
         // 创建导航服务
         this.navigationService = new NavigationService(this.pdfServices);
 
-        console.log('PDF 查看器核心服务初始化完成');
+        console.log("PDF 查看器核心服务初始化完成");
       } catch (error) {
-        console.error('PDF 查看器核心服务初始化失败:', error);
-        this.error = '初始化失败: ' + error.message;
+        console.error("PDF 查看器核心服务初始化失败:", error);
+        this.error = "初始化失败: " + error.message;
       }
     },
 
@@ -227,12 +223,11 @@ export default {
         this.error = null;
         this.documentLoaded = false;
         this.loadProgress = 0;
-        this.loadMessage = '正在加载 PDF...';
+        this.loadMessage = "正在加载 PDF...";
 
         await this.pdfServices.loadDocument(this.src);
-
       } catch (error) {
-        console.error('PDF 文档加载失败:', error);
+        console.error("PDF 文档加载失败:", error);
         this.error = error.message;
         this.loading = false;
       }
@@ -275,8 +270,6 @@ export default {
       this.totalPages = event.numPages;
       this.documentInfo = event;
 
-
-
       // 响应式计算最佳缩放比例
       this.$nextTick(() => {
         this.initializeScaleForDocument(event);
@@ -284,14 +277,14 @@ export default {
 
       // 传递完整的文档信息给父组件
       // event 结构: { document, numPages, fingerprint, info, metadata }
-      this.$emit('document-loaded', {
+      this.$emit("document-loaded", {
         document: event.document,
         info: {
           numPages: event.numPages,
-          title: event.info?.Title || '',
-          author: event.info?.Author || '',
-          fingerprint: event.fingerprint
-        }
+          title: event.info?.Title || "",
+          author: event.info?.Author || "",
+          fingerprint: event.fingerprint,
+        },
       });
     },
 
@@ -301,7 +294,7 @@ export default {
     onDocumentError(event) {
       this.loading = false;
       this.error = event.error;
-      this.$emit('document-error', event);
+      this.$emit("document-error", event);
     },
 
     /**
@@ -312,7 +305,7 @@ export default {
       this.loadProgress = event.percentage;
       this.loadMessage = `正在加载... ${event.percentage}%`;
       // 只向父组件传递事件，不要再次发出给自己
-      this.$emit('load-progress', event);
+      this.$emit("load-progress", event);
     },
 
     /**
@@ -320,7 +313,7 @@ export default {
      */
     onPageChanged(event) {
       this.currentPage = event.pageNumber;
-      this.$emit('page-changed', event);
+      this.$emit("page-changed", event);
     },
 
     /**
@@ -328,25 +321,23 @@ export default {
      */
     onScaleChanged(event) {
       this.currentScale = event.scale;
-      this.$emit('scale-changed', event);
+      this.$emit("scale-changed", event);
     },
 
     /**
      * 处理页面渲染完成
      */
     onPageRendered(event) {
-      this.$emit('page-rendered', event);
+      this.$emit("page-rendered", event);
     },
 
     /**
      * 处理页面渲染错误
      */
     onRenderError(event) {
-      console.error('页面渲染错误:', event);
-      this.$emit('render-error', event);
+      console.error("页面渲染错误:", event);
+      this.$emit("render-error", event);
     },
-
-
 
     // 公共方法
 
@@ -354,8 +345,12 @@ export default {
      * 跳转到指定页面（统一入口：优先通过 Vuex action；无 store 时回退 NavigationService）
      */
     goToPage(pageNumber) {
-      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-        return this.$store.dispatch('pdfReader/viewer/goToPage', pageNumber);
+      if (
+        this.$store &&
+        this.$store.hasModule &&
+        this.$store.hasModule(["pdfReader", "viewer"])
+      ) {
+        return this.$store.dispatch("pdfReader/viewer/goToPage", pageNumber);
       }
       if (this.navigationService) {
         return this.navigationService.goToPage(pageNumber);
@@ -378,9 +373,9 @@ export default {
         // 触发页面变化事件，但不更新Vuex状态
         const pageChangedEvent = {
           pageNumber,
-          previous: previousPage
+          previous: previousPage,
         };
-        this.$emit('page-changed', pageChangedEvent);
+        this.$emit("page-changed", pageChangedEvent);
 
         console.log(`页面跳转: ${previousPage} -> ${pageNumber}`);
       }
@@ -390,8 +385,12 @@ export default {
      * 下一页（统一从 Vuex action 派发；无 store 回退）
      */
     nextPage() {
-      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-        return this.$store.dispatch('pdfReader/viewer/nextPage');
+      if (
+        this.$store &&
+        this.$store.hasModule &&
+        this.$store.hasModule(["pdfReader", "viewer"])
+      ) {
+        return this.$store.dispatch("pdfReader/viewer/nextPage");
       }
       if (this.navigationService) {
         return this.navigationService.nextPage();
@@ -402,8 +401,12 @@ export default {
      * 上一页（统一从 Vuex action 派发；无 store 回退）
      */
     prevPage() {
-      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-        return this.$store.dispatch('pdfReader/viewer/prevPage');
+      if (
+        this.$store &&
+        this.$store.hasModule &&
+        this.$store.hasModule(["pdfReader", "viewer"])
+      ) {
+        return this.$store.dispatch("pdfReader/viewer/prevPage");
       }
       if (this.navigationService) {
         return this.navigationService.prevPage();
@@ -415,9 +418,9 @@ export default {
      */
     setScaleValue(value) {
       if (this.$store && this.$store.dispatch) {
-        this.$store.dispatch('pdfReader/viewer/setScaleValue', value);
+        this.$store.dispatch("pdfReader/viewer/setScaleValue", value);
       }
-      if (typeof value === 'number') {
+      if (typeof value === "number") {
         this.setScale(value);
       } else {
         // 字符串模式，触发一次重算（带防抖）
@@ -472,19 +475,30 @@ export default {
       this.currentScale = this.initialScale;
 
       // 同步到 Vuex 状态
-      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-        this.$store.dispatch('pdfReader/viewer/setScale', this.initialScale);
-        this.$store.dispatch('pdfReader/viewer/goToPage', this.initialPage);
+      if (
+        this.$store &&
+        this.$store.hasModule &&
+        this.$store.hasModule(["pdfReader", "viewer"])
+      ) {
+        this.$store.dispatch("pdfReader/viewer/setScale", this.initialScale);
+        this.$store.dispatch("pdfReader/viewer/goToPage", this.initialPage);
       }
 
       // 触发容器尺寸检查，这会自动计算最佳缩放
       // 初始化时将 currentScaleValue 置为默认（auto）
       if (this.$store && this.$store.dispatch) {
-        this.$store.dispatch('pdfReader/viewer/setScaleValue', DEFAULT_SCALE_VALUE);
+        this.$store.dispatch(
+          "pdfReader/viewer/setScaleValue",
+          DEFAULT_SCALE_VALUE
+        );
       }
       this.checkAndUpdateScale();
 
-      console.log(`PDF 文档加载完成，共 ${event?.numPages || 'unknown'} 页，初始缩放: ${this.initialScale}`);
+      console.log(
+        `PDF 文档加载完成，共 ${event?.numPages || "unknown"} 页，初始缩放: ${
+          this.initialScale
+        }`
+      );
     },
 
     /**
@@ -501,26 +515,33 @@ export default {
       }
 
       const containerRect = container.getBoundingClientRect();
-      const newSize = { width: containerRect.width, height: containerRect.height };
+      const newSize = {
+        width: containerRect.width,
+        height: containerRect.height,
+      };
       if (newSize.width === 0 || newSize.height === 0) {
         return;
       }
 
-      const currentScaleValue = this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
-      if (currentScaleValue && typeof currentScaleValue === 'string') {
+      const currentScaleValue =
+        this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
+      if (currentScaleValue && typeof currentScaleValue === "string") {
         try {
           const page = await this.pdfServices.getPage(1);
           const viewport = page.getViewport({ scale: 1.0 });
           const computed = computeScaleByValue(currentScaleValue, newSize, {
             pageWidth: viewport.width,
-            pageHeight: viewport.height
+            pageHeight: viewport.height,
           });
           if (Math.abs(computed - this.currentScale) > 0.01) {
             this.applyScale(computed);
-            this.$emit('scale-changing', { presetValue: currentScaleValue, scale: computed });
+            this.$emit("scale-changing", {
+              presetValue: currentScaleValue,
+              scale: computed,
+            });
           }
         } catch (e) {
-          console.warn('基于模式重算缩放失败:', e);
+          console.warn("基于模式重算缩放失败:", e);
         }
         return; // 仅当为字符串模式时参与重算；否则保持当前数值缩放
       }
@@ -537,8 +558,12 @@ export default {
       this.currentScale = scale;
 
       // 同步到 Vuex 状态
-      if (this.$store && this.$store.hasModule && this.$store.hasModule(['pdfReader', 'viewer'])) {
-        this.$store.dispatch('pdfReader/viewer/setScale', scale);
+      if (
+        this.$store &&
+        this.$store.hasModule &&
+        this.$store.hasModule(["pdfReader", "viewer"])
+      ) {
+        this.$store.dispatch("pdfReader/viewer/setScale", scale);
       }
 
       // 触发页面重新渲染
@@ -573,8 +598,10 @@ export default {
         const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
         const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
 
-        const availableHeight = containerRect.height - paddingTop - paddingBottom - 20; // 额外预留20px
-        const availableWidth = containerRect.width - paddingLeft - paddingRight - 20;
+        const availableHeight =
+          containerRect.height - paddingTop - paddingBottom - 20; // 额外预留20px
+        const availableWidth =
+          containerRect.width - paddingLeft - paddingRight - 20;
 
         let pageWidth = 595; // 默认A4宽度
         let pageHeight = 842; // 默认A4高度
@@ -596,7 +623,7 @@ export default {
             console.log(`从事件获取页面尺寸: ${pageWidth}x${pageHeight}px`);
           }
         } catch (error) {
-          console.warn('无法获取实际页面尺寸，使用默认值:', error);
+          console.warn("无法获取实际页面尺寸，使用默认值:", error);
         }
 
         // 计算适合容器的缩放比例
@@ -617,11 +644,13 @@ export default {
           optimalScale = Math.max(0.5, autoScale);
         }
 
-        console.log(`容器尺寸: ${availableWidth}x${availableHeight}px, 页面尺寸: ${pageWidth}x${pageHeight}px, 计算缩放比例: ${optimalScale}`);
+        console.log(
+          `容器尺寸: ${availableWidth}x${availableHeight}px, 页面尺寸: ${pageWidth}x${pageHeight}px, 计算缩放比例: ${optimalScale}`
+        );
 
         return optimalScale;
       } catch (error) {
-        console.warn('计算最佳缩放比例失败:', error);
+        console.warn("计算最佳缩放比例失败:", error);
         return this.initialScale;
       }
     },
@@ -631,16 +660,18 @@ export default {
      */
     setupResizeObserver() {
       if (!window.ResizeObserver) {
-        console.warn('ResizeObserver 不支持，将使用 window resize 事件');
+        console.warn("ResizeObserver 不支持，将使用 window resize 事件");
         // 降级到 window resize 事件
         this.windowResizeHandler = () => {
           this.scheduleResizeRecompute();
         };
-        window.addEventListener('resize', this.windowResizeHandler);
+        window.addEventListener("resize", this.windowResizeHandler);
         return;
       }
 
-      this.resizeObserver = new ResizeObserver(() => this.scheduleResizeRecompute());
+      this.resizeObserver = new ResizeObserver(() =>
+        this.scheduleResizeRecompute()
+      );
 
       // 等待 DOM 更新后再开始监听
       this.$nextTick(() => {
@@ -671,9 +702,11 @@ export default {
       if (width === 0 || height === 0) return;
 
       // 检查尺寸是否真的变化了
-      if (this.lastContainerSize &&
-          Math.abs(this.lastContainerSize.width - width) < 1 &&
-          Math.abs(this.lastContainerSize.height - height) < 1) {
+      if (
+        this.lastContainerSize &&
+        Math.abs(this.lastContainerSize.width - width) < 1 &&
+        Math.abs(this.lastContainerSize.height - height) < 1
+      ) {
         return;
       }
 
@@ -684,8 +717,8 @@ export default {
 
       // 响应式更新缩放
       this.checkAndUpdateScale();
-    }
-  }
+    },
+  },
 };
 </script>
 

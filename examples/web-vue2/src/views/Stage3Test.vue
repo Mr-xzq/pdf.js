@@ -1,7 +1,7 @@
 <template>
   <div class="stage3-test">
     <h2>阶段3验证 - 工具栏与基础交互</h2>
-    
+
     <!-- PDF 路径输入 -->
     <div class="pdf-input-section">
       <h3>PDF 文件设置</h3>
@@ -56,7 +56,7 @@
         <div class="info-item">
           <label>文档状态:</label>
           <span :class="documentLoaded ? 'success' : 'pending'">
-            {{ documentLoaded ? '已加载' : '未加载' }}
+            {{ documentLoaded ? "已加载" : "未加载" }}
           </span>
         </div>
         <div class="info-item">
@@ -70,7 +70,7 @@
         <div class="info-item">
           <label>搜索状态:</label>
           <span :class="searchActive ? 'active' : 'inactive'">
-            {{ searchActive ? '激活' : '未激活' }}
+            {{ searchActive ? "激活" : "未激活" }}
           </span>
         </div>
       </div>
@@ -82,7 +82,9 @@
       <div class="button-group">
         <van-button type="primary" @click="testNavigation">测试导航</van-button>
         <van-button type="primary" @click="testZoom">测试缩放</van-button>
-        <van-button type="primary" @click="testToolbarToggle">切换工具栏</van-button>
+        <van-button type="primary" @click="testToolbarToggle"
+          >切换工具栏</van-button
+        >
         <van-button type="primary" @click="testSearch">测试搜索</van-button>
       </div>
     </div>
@@ -107,28 +109,31 @@
 </template>
 
 <script>
-import PdfViewer from '../components/pdf-reader/components/PdfViewer.vue';
+import PdfViewer from "../components/pdf-reader/components/PdfViewer.vue";
 
 export default {
-  name: 'Stage3Test',
+  name: "Stage3Test",
 
   components: {
-    PdfViewer
+    PdfViewer,
   },
 
   data() {
     return {
       // PDF 配置
-      pdfUrl: '/assets/sample.pdf', // 当前加载的PDF文件
-      inputPdfUrl: '/assets/sample.pdf', // 输入框中的PDF路径
+      pdfUrl: "/assets/sample.pdf", // 当前加载的PDF文件
+      inputPdfUrl: "/assets/sample.pdf", // 输入框中的PDF路径
       loading: false, // 加载状态
 
       // 示例PDF文件列表
       samplePdfs: [
-        { name: '示例1', url: '/assets/sample.pdf' },
-        { name: '示例2', url: '/assets/sample2.pdf' },
-        { name: '测试文档', url: '/assets/test.pdf' },
-        { name: '在线PDF', url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf' }
+        { name: "示例1", url: "/assets/sample.pdf" },
+        { name: "示例2", url: "/assets/sample2.pdf" },
+        { name: "测试文档", url: "/assets/test.pdf" },
+        {
+          name: "在线PDF",
+          url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        },
       ],
 
       // 状态
@@ -142,24 +147,24 @@ export default {
       eventLogs: [],
 
       // 测试状态
-      testRunning: false
+      testRunning: false,
     };
   },
 
   mounted() {
-    this.addLog('info', '页面加载', '开始测试阶段3功能');
+    this.addLog("info", "页面加载", "开始测试阶段3功能");
   },
 
   methods: {
     // PDF 加载相关方法
     async loadPdf() {
       if (!this.inputPdfUrl.trim()) {
-        this.$toast('请输入PDF文件路径');
+        this.$toast("请输入PDF文件路径");
         return;
       }
 
       this.loading = true;
-      this.addLog('info', 'PDF加载', `开始加载: ${this.inputPdfUrl}`);
+      this.addLog("info", "PDF加载", `开始加载: ${this.inputPdfUrl}`);
 
       try {
         // 重置状态
@@ -173,17 +178,16 @@ export default {
 
         // 等待一下让组件有时间响应
         await this.sleep(100);
-
       } catch (error) {
-        this.addLog('error', 'PDF加载', `加载失败: ${error.message}`);
-        this.$toast('PDF加载失败');
+        this.addLog("error", "PDF加载", `加载失败: ${error.message}`);
+        this.$toast("PDF加载失败");
       } finally {
         this.loading = false;
       }
     },
 
     loadSamplePdf() {
-      this.inputPdfUrl = '/assets/sample.pdf';
+      this.inputPdfUrl = "/assets/sample.pdf";
       this.loadPdf();
     },
 
@@ -198,72 +202,76 @@ export default {
       this.totalPages = event.numPages;
       this.currentPage = 1;
       this.loading = false;
-      this.addLog('success', '文档加载', `成功加载 ${event.numPages} 页PDF`);
+      this.addLog("success", "文档加载", `成功加载 ${event.numPages} 页PDF`);
     },
 
     onDocumentError(event) {
       this.documentLoaded = false;
       this.loading = false;
-      this.addLog('error', '文档错误', event.message || '加载失败');
-      this.$toast('PDF文档加载失败');
+      this.addLog("error", "文档错误", event.message || "加载失败");
+      this.$toast("PDF文档加载失败");
     },
 
     onPageChanged(event) {
       this.currentPage = event.pageNumber;
-      this.addLog('info', '页面切换', `切换到第 ${event.pageNumber} 页`);
+      this.addLog("info", "页面切换", `切换到第 ${event.pageNumber} 页`);
     },
 
     onScaleChanged(event) {
       this.currentScale = event.scale;
-      this.addLog('info', '缩放变化', `缩放比例: ${Math.round(event.scale * 100)}%`);
+      this.addLog(
+        "info",
+        "缩放变化",
+        `缩放比例: ${Math.round(event.scale * 100)}%`
+      );
     },
 
     onSearchToggle(active) {
       this.searchActive = active;
-      this.addLog('info', '搜索切换', active ? '搜索激活' : '搜索关闭');
+      this.addLog("info", "搜索切换", active ? "搜索激活" : "搜索关闭");
     },
 
     // 测试功能
     async testNavigation() {
       if (!this.documentLoaded) {
-        this.$toast('请先加载PDF文档');
+        this.$toast("请先加载PDF文档");
         return;
       }
 
-      this.addLog('info', '测试开始', '导航功能测试');
-      
+      this.addLog("info", "测试开始", "导航功能测试");
+
       // 模拟导航操作
       await this.sleep(500);
-      this.addLog('info', '测试操作', '导航功能正常');
+      this.addLog("info", "测试操作", "导航功能正常");
     },
 
     async testZoom() {
       if (!this.documentLoaded) {
-        this.$toast('请先加载PDF文档');
+        this.$toast("请先加载PDF文档");
         return;
       }
 
-      this.addLog('info', '测试开始', '缩放功能测试');
-      
+      this.addLog("info", "测试开始", "缩放功能测试");
+
       // 模拟缩放操作
       await this.sleep(500);
-      this.addLog('info', '测试操作', '缩放功能正常');
+      this.addLog("info", "测试操作", "缩放功能正常");
     },
 
     async testToolbarToggle() {
-      this.addLog('info', '测试开始', '工具栏切换测试');
-      
+      this.addLog("info", "测试开始", "工具栏切换测试");
+
       // 模拟工具栏切换
       await this.sleep(500);
-      this.addLog('info', '测试操作', '工具栏切换正常');
+      this.addLog("info", "测试操作", "工具栏切换正常");
     },
 
     async testSearch() {
-      this.addLog('info', '测试开始', '搜索功能测试');
-      
+      this.addLog("info", "测试开始", "搜索功能测试");
+
       // 模拟搜索操作
       await this.sleep(500);
-      this.addLog('info', '测试操作', '搜索功能正常');
+      this.addLog("info", "测试操作", "搜索功能正常");
     },
 
     // 工具方法
@@ -272,10 +280,10 @@ export default {
         type,
         event,
         data,
-        time: new Date().toLocaleTimeString()
+        time: new Date().toLocaleTimeString(),
       };
       this.eventLogs.unshift(log);
-      
+
       // 限制日志数量
       if (this.eventLogs.length > 50) {
         this.eventLogs = this.eventLogs.slice(0, 50);
@@ -284,8 +292,8 @@ export default {
 
     sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
-    }
-  }
+    },
+  },
 };
 </script>
 

@@ -5,19 +5,19 @@
       class="pdf-outline-item__content"
       :class="{
         'pdf-outline-item__content--active': isActive,
-        'pdf-outline-item__content--has-children': hasChildren
+        'pdf-outline-item__content--has-children': hasChildren,
       }"
       :style="{ paddingLeft: `${level * 16 + 16}px` }"
       :data-item-id="getItemId()"
       @click="onItemClick"
     >
       <!-- 展开/收起按钮 -->
-      <div 
+      <div
         v-if="hasChildren"
         class="pdf-outline-item__toggle"
         @click.stop="onToggleClick"
       >
-        <van-icon 
+        <van-icon
           :name="isExpanded ? 'arrow-down' : 'arrow'"
           size="12px"
           :class="{ 'pdf-outline-item__toggle-icon--expanded': isExpanded }"
@@ -26,15 +26,15 @@
       <div v-else class="pdf-outline-item__toggle-placeholder"></div>
 
       <!-- 目录项标题 -->
-      <div 
+      <div
         class="pdf-outline-item__title"
         :class="{
           'pdf-outline-item__title--bold': item.bold,
-          'pdf-outline-item__title--italic': item.italic
+          'pdf-outline-item__title--italic': item.italic,
         }"
         :style="titleStyle"
       >
-        {{ item.title || '无标题' }}
+        {{ item.title || "无标题" }}
       </div>
 
       <!-- 页码指示器 -->
@@ -44,10 +44,7 @@
     </div>
 
     <!-- 子项目 -->
-    <div 
-      v-if="hasChildren && isExpanded"
-      class="pdf-outline-item__children"
-    >
+    <div v-if="hasChildren && isExpanded" class="pdf-outline-item__children">
       <pdf-outline-item
         v-for="(childItem, index) in item.items"
         :key="`child-${level}-${index}`"
@@ -66,45 +63,45 @@
 
 <script>
 export default {
-  name: 'PdfOutlineItem',
+  name: "PdfOutlineItem",
 
   props: {
     // 目录项数据
     item: {
       type: Object,
-      required: true
+      required: true,
     },
     // 层级深度
     level: {
       type: Number,
-      default: 0
+      default: 0,
     },
     // 项目索引
     itemIndex: {
       type: Number,
-      default: 0
+      default: 0,
     },
     // 当前页码
     currentPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     // 展开的项目集合
     expandedItems: {
       type: Object,
-      default: () => ({})
+      default: () => ({}),
     },
     // PDF文档对象
     pdfDocument: {
       type: Object,
-      default: null
-    }
+      default: null,
+    },
   },
 
   data() {
     return {
       // 缓存的页码
-      cachedPageNumber: null
+      cachedPageNumber: null,
     };
   },
 
@@ -130,7 +127,7 @@ export default {
     // 标题样式
     titleStyle() {
       const style = {};
-      
+
       // 应用颜色
       if (this.item.color && this.item.color.length >= 3) {
         const [r, g, b] = this.item.color;
@@ -143,7 +140,7 @@ export default {
     // 页码
     pageNumber() {
       return this.cachedPageNumber;
-    }
+    },
   },
 
   watch: {
@@ -154,8 +151,8 @@ export default {
           this.loadPageNumber();
         }
       },
-      immediate: true
-    }
+      immediate: true,
+    },
   },
 
   async mounted() {
@@ -169,11 +166,13 @@ export default {
      */
     getItemId() {
       // 使用简单的字符串哈希来生成唯一ID，与父组件保持一致
-      const str = `${this.item.title || 'untitled'}-${JSON.stringify(this.item.dest || {})}`;
+      const str = `${this.item.title || "untitled"}-${JSON.stringify(
+        this.item.dest || {}
+      )}`;
       let hash = 0;
       for (let i = 0; i < str.length; i++) {
         const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
+        hash = (hash << 5) - hash + char;
         hash = hash & hash; // 转换为32位整数
       }
       return `outline-item-${Math.abs(hash)}`;
@@ -183,7 +182,7 @@ export default {
      * 处理项目点击
      */
     onItemClick() {
-      this.$emit('item-click', this.item);
+      this.$emit("item-click", this.item);
     },
 
     /**
@@ -191,22 +190,29 @@ export default {
      */
     onToggleClick() {
       const newExpanded = !this.isExpanded;
-      console.log('点击展开/收起:', this.item.title, '当前状态:', this.isExpanded, '新状态:', newExpanded);
-      this.$emit('toggle-expand', this.item, newExpanded);
+      console.log(
+        "点击展开/收起:",
+        this.item.title,
+        "当前状态:",
+        this.isExpanded,
+        "新状态:",
+        newExpanded
+      );
+      this.$emit("toggle-expand", this.item, newExpanded);
     },
 
     /**
      * 处理子项目点击
      */
     onChildItemClick(childItem) {
-      this.$emit('item-click', childItem);
+      this.$emit("item-click", childItem);
     },
 
     /**
      * 处理子项目展开/收起
      */
     onChildToggleExpand(childItem, expanded) {
-      this.$emit('toggle-expand', childItem, expanded);
+      this.$emit("toggle-expand", childItem, expanded);
     },
 
     /**
@@ -218,9 +224,11 @@ export default {
       try {
         // 这里需要从父组件获取PDF文档对象来解析页码
         // 暂时简化处理
-        this.cachedPageNumber = await this.getDestinationPageNumber(this.item.dest);
+        this.cachedPageNumber = await this.getDestinationPageNumber(
+          this.item.dest
+        );
       } catch (error) {
-        console.error('获取目录项页码失败:', error);
+        console.error("获取目录项页码失败:", error);
       }
     },
 
@@ -237,30 +245,30 @@ export default {
         if (Array.isArray(dest)) {
           // 如果dest是数组，第一个元素通常是页面引用
           const pageRef = dest[0];
-          if (typeof pageRef === 'object' && pageRef !== null) {
+          if (typeof pageRef === "object" && pageRef !== null) {
             // 通过页面引用获取页码
             pageIndex = await this.pdfDocument.getPageIndex(pageRef);
-          } else if (typeof pageRef === 'number') {
+          } else if (typeof pageRef === "number") {
             // 直接是页码索引
             pageIndex = pageRef;
           }
-        } else if (typeof dest === 'string') {
+        } else if (typeof dest === "string") {
           // 如果是字符串，可能是命名目标
           // 这里需要更复杂的解析逻辑
           return null;
         }
 
-        if (typeof pageIndex === 'number') {
+        if (typeof pageIndex === "number") {
           return pageIndex + 1; // 页码从1开始
         }
 
         return null;
       } catch (error) {
-        console.error('解析目标页码失败:', error);
+        console.error("解析目标页码失败:", error);
         return null;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -322,7 +330,7 @@ export default {
     line-height: 1.4;
     color: #323233;
     word-break: break-word;
-    
+
     &--bold {
       font-weight: bold;
     }

@@ -6,57 +6,57 @@
 // PDF.js 原生事件常量
 export const PDF_EVENTS = {
   // 文档相关事件
-  DOCUMENT_LOADED: 'documentloaded',
-  DOCUMENT_INIT: 'documentinit',
-  DOCUMENT_ERROR: 'documenterror',
-  
+  DOCUMENT_LOADED: "documentloaded",
+  DOCUMENT_INIT: "documentinit",
+  DOCUMENT_ERROR: "documenterror",
+
   // 页面相关事件
-  PAGE_CHANGING: 'pagechanging',
-  PAGE_CHANGED: 'pagechanged',
-  PAGE_RENDERED: 'pagerendered',
-  PAGE_RENDER_ERROR: 'pagerendererror',
-  
+  PAGE_CHANGING: "pagechanging",
+  PAGE_CHANGED: "pagechanged",
+  PAGE_RENDERED: "pagerendered",
+  PAGE_RENDER_ERROR: "pagerendererror",
+
   // 缩放相关事件
-  SCALE_CHANGING: 'scalechanging',
-  SCALE_CHANGED: 'scalechanged',
-  
+  SCALE_CHANGING: "scalechanging",
+  SCALE_CHANGED: "scalechanged",
+
   // 搜索相关事件
-  FIND_RESULT: 'updatefindmatchescount',
-  FIND_HIGHLIGHT: 'updatefindcontrolstate',
-  
+  FIND_RESULT: "updatefindmatchescount",
+  FIND_HIGHLIGHT: "updatefindcontrolstate",
+
   // 链接相关事件
-  LINK_CLICKED: 'linkclicked',
-  
+  LINK_CLICKED: "linkclicked",
+
   // 加载进度事件
-  LOAD_PROGRESS: 'progress',
-  
+  LOAD_PROGRESS: "progress",
+
   // 密码相关事件
-  PASSWORD_REQUIRED: 'passwordrequired',
-  PASSWORD_INCORRECT: 'passwordincorrect'
+  PASSWORD_REQUIRED: "passwordrequired",
+  PASSWORD_INCORRECT: "passwordincorrect",
 };
 
 // Vue 组件事件常量
 export const VUE_EVENTS = {
   // 文档事件
-  DOCUMENT_LOADED: 'document-loaded',
-  DOCUMENT_ERROR: 'document-error',
-  LOAD_PROGRESS: 'load-progress',
-  
+  DOCUMENT_LOADED: "document-loaded",
+  DOCUMENT_ERROR: "document-error",
+  LOAD_PROGRESS: "load-progress",
+
   // 页面事件
-  PAGE_CHANGED: 'page-changed',
-  PAGE_RENDERED: 'page-rendered',
-  
+  PAGE_CHANGED: "page-changed",
+  PAGE_RENDERED: "page-rendered",
+
   // 缩放事件
-  SCALE_CHANGED: 'scale-changed',
-  
+  SCALE_CHANGED: "scale-changed",
+
   // 搜索事件
-  SEARCH_RESULT: 'search-result',
-  
+  SEARCH_RESULT: "search-result",
+
   // 交互事件
-  LINK_CLICKED: 'link-clicked',
-  
+  LINK_CLICKED: "link-clicked",
+
   // 密码事件
-  PASSWORD_REQUIRED: 'password-required'
+  PASSWORD_REQUIRED: "password-required",
 };
 
 /**
@@ -76,55 +76,55 @@ export class EventBridge {
    */
   register() {
     // 文档加载完成
-    this.addListener(PDF_EVENTS.DOCUMENT_LOADED, (event) => {
+    this.addListener(PDF_EVENTS.DOCUMENT_LOADED, event => {
       this.vueComponent.$emit(VUE_EVENTS.DOCUMENT_LOADED, {
         numPages: event.source.pagesCount,
-        fingerprint: event.source.fingerprint
+        fingerprint: event.source.fingerprint,
       });
     });
 
     // 页面变化
-    this.addListener(PDF_EVENTS.PAGE_CHANGED, (event) => {
+    this.addListener(PDF_EVENTS.PAGE_CHANGED, event => {
       this.vueComponent.$emit(VUE_EVENTS.PAGE_CHANGED, {
         pageNumber: event.pageNumber,
-        previous: event.previous
+        previous: event.previous,
       });
     });
 
     // 缩放变化
-    this.addListener(PDF_EVENTS.SCALE_CHANGED, (event) => {
+    this.addListener(PDF_EVENTS.SCALE_CHANGED, event => {
       this.vueComponent.$emit(VUE_EVENTS.SCALE_CHANGED, {
         scale: event.scale,
-        previous: event.presetValue
+        previous: event.presetValue,
       });
     });
 
     // 页面渲染完成
-    this.addListener(PDF_EVENTS.PAGE_RENDERED, (event) => {
+    this.addListener(PDF_EVENTS.PAGE_RENDERED, event => {
       this.vueComponent.$emit(VUE_EVENTS.PAGE_RENDERED, {
         pageNumber: event.pageNumber,
-        cssTransform: event.cssTransform
+        cssTransform: event.cssTransform,
       });
     });
 
     // 搜索结果
-    this.addListener(PDF_EVENTS.FIND_RESULT, (event) => {
+    this.addListener(PDF_EVENTS.FIND_RESULT, event => {
       this.vueComponent.$emit(VUE_EVENTS.SEARCH_RESULT, {
         matchesCount: event.matchesCount,
         current: event.current,
-        total: event.total
+        total: event.total,
       });
     });
 
     // 链接点击
-    this.addListener(PDF_EVENTS.LINK_CLICKED, (event) => {
+    this.addListener(PDF_EVENTS.LINK_CLICKED, event => {
       this.vueComponent.$emit(VUE_EVENTS.LINK_CLICKED, {
         url: event.url,
-        dest: event.dest
+        dest: event.dest,
       });
     });
 
-    console.log('PDF 事件桥接器注册完成');
+    console.log("PDF 事件桥接器注册完成");
   }
 
   /**
@@ -172,7 +172,7 @@ export class EventBridge {
     // 清理所有数据
     this.listeners = {};
     this.listenerKeys = [];
-    console.log('PDF 事件桥接器已销毁');
+    console.log("PDF 事件桥接器已销毁");
   }
 }
 
@@ -187,7 +187,7 @@ export const EventUtils = {
     return {
       pageNumber,
       previous,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   },
 
@@ -198,7 +198,7 @@ export const EventUtils = {
     return {
       scale,
       previous,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   },
 
@@ -209,19 +209,19 @@ export const EventUtils = {
     return {
       numPages: document.numPages,
       fingerprint: document.fingerprint,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   },
 
   /**
    * 创建错误事件数据
    */
-  createErrorEvent(error, context = '') {
+  createErrorEvent(error, context = "") {
     return {
       message: error.message,
       name: error.name,
       context,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   },
 
@@ -233,9 +233,9 @@ export const EventUtils = {
       loaded,
       total,
       percentage: total > 0 ? Math.round((loaded / total) * 100) : 0,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-  }
+  },
 };
 
 /**
@@ -246,31 +246,30 @@ export const EventValidator = {
    * 验证页码
    */
   validatePageNumber(pageNumber, totalPages) {
-    return Number.isInteger(pageNumber) && 
-           pageNumber >= 1 && 
-           pageNumber <= totalPages;
+    return (
+      Number.isInteger(pageNumber) &&
+      pageNumber >= 1 &&
+      pageNumber <= totalPages
+    );
   },
 
   /**
    * 验证缩放比例
    */
   validateScale(scale) {
-    return typeof scale === 'number' && 
-           scale > 0 && 
-           scale <= 10;
+    return typeof scale === "number" && scale > 0 && scale <= 10;
   },
 
   /**
    * 验证事件数据
    */
   validateEventData(eventData, requiredFields = []) {
-    if (!eventData || typeof eventData !== 'object') {
+    if (!eventData || typeof eventData !== "object") {
       return false;
     }
 
-    return requiredFields.every(field => 
-      eventData.hasOwnProperty(field) && 
-      eventData[field] !== undefined
+    return requiredFields.every(
+      field => eventData.hasOwnProperty(field) && eventData[field] !== undefined
     );
-  }
+  },
 };

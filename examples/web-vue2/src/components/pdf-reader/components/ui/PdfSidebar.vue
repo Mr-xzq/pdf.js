@@ -1,9 +1,9 @@
 <template>
-  <div 
+  <div
     class="pdf-sidebar"
     :class="{
       'pdf-sidebar--visible': visible,
-      'pdf-sidebar--mobile': isMobile
+      'pdf-sidebar--mobile': isMobile,
     }"
   >
     <!-- 侧边栏头部 -->
@@ -16,7 +16,7 @@
         :animated="false"
         @change="onTabChange"
       >
-        <van-tab 
+        <van-tab
           v-for="tab in availableTabs"
           :key="tab.key"
           :name="tab.key"
@@ -40,10 +40,7 @@
     <!-- 侧边栏内容 -->
     <div class="pdf-sidebar__content">
       <!-- 缩略图面板 -->
-      <div 
-        v-show="activeTab === 'thumbnails'"
-        class="pdf-sidebar__panel"
-      >
+      <div v-show="activeTab === 'thumbnails'" class="pdf-sidebar__panel">
         <pdf-thumbnail
           :thumbnail-size="thumbnailSize"
           @navigate-to-page="onNavigateToPage"
@@ -53,10 +50,7 @@
       </div>
 
       <!-- 目录面板 -->
-      <div 
-        v-show="activeTab === 'outline'"
-        class="pdf-sidebar__panel"
-      >
+      <div v-show="activeTab === 'outline'" class="pdf-sidebar__panel">
         <pdf-outline
           :auto-expand-to-current="true"
           @navigate-to-page="onNavigateToPage"
@@ -67,10 +61,7 @@
       </div>
 
       <!-- 书签面板（预留） -->
-      <div 
-        v-show="activeTab === 'bookmarks'"
-        class="pdf-sidebar__panel"
-      >
+      <div v-show="activeTab === 'bookmarks'" class="pdf-sidebar__panel">
         <div class="pdf-sidebar__placeholder">
           <van-icon name="bookmark-o" size="24px" color="#c8c9cc" />
           <span class="pdf-sidebar__placeholder-text">书签功能开发中...</span>
@@ -78,10 +69,7 @@
       </div>
 
       <!-- 搜索面板（预留） -->
-      <div 
-        v-show="activeTab === 'search'"
-        class="pdf-sidebar__panel"
-      >
+      <div v-show="activeTab === 'search'" class="pdf-sidebar__panel">
         <div class="pdf-sidebar__placeholder">
           <van-icon name="search" size="24px" color="#c8c9cc" />
           <span class="pdf-sidebar__placeholder-text">搜索功能开发中...</span>
@@ -100,40 +88,40 @@
 </template>
 
 <script>
-import PdfThumbnail from './PdfThumbnail.vue';
-import PdfOutline from './PdfOutline.vue';
+import PdfThumbnail from "./PdfThumbnail.vue";
+import PdfOutline from "./PdfOutline.vue";
 import {
   mapDocumentState,
   mapViewerState,
   mapSidebarState,
   mapSidebarGetters,
-  mapSidebarActions
-} from '../../store/index.js';
+  mapSidebarActions,
+} from "../../store/index.js";
 
 export default {
-  name: 'PdfSidebar',
+  name: "PdfSidebar",
 
   components: {
     PdfThumbnail,
-    PdfOutline
+    PdfOutline,
   },
 
   props: {
     // 是否显示
     visible: {
       type: Boolean,
-      default: false
+      default: false,
     },
     // 默认激活的标签
     defaultTab: {
       type: String,
-      default: 'thumbnails'
+      default: "thumbnails",
     },
     // 缩略图尺寸（简化配置）
     thumbnailSize: {
       type: Number,
-      default: 120
-    }
+      default: 120,
+    },
   },
 
   data() {
@@ -144,25 +132,25 @@ export default {
 
   computed: {
     // Vuex 状态映射 - 包含侧边栏状态
-    ...mapDocumentState(['pdfDocument']),
-    ...mapViewerState(['currentPage']),
-    ...mapSidebarState(['activeTab', 'isMobile']),
-    ...mapSidebarGetters(['enabledTabs', 'currentTab']),
+    ...mapDocumentState(["pdfDocument"]),
+    ...mapViewerState(["currentPage"]),
+    ...mapSidebarState(["activeTab", "isMobile"]),
+    ...mapSidebarGetters(["enabledTabs", "currentTab"]),
 
     // 可用的标签页（从全局状态获取）
     availableTabs() {
       return this.enabledTabs;
-    }
+    },
   },
 
   watch: {
     // 监听默认标签变化
     defaultTab(newTab) {
       // 使用全局状态管理
-      if (typeof this.switchToTab === 'function') {
+      if (typeof this.switchToTab === "function") {
         this.switchToTab(newTab);
       } else if (this.$store) {
-        this.$store.dispatch('pdfReader/sidebar/switchToTab', newTab);
+        this.$store.dispatch("pdfReader/sidebar/switchToTab", newTab);
       }
     },
 
@@ -175,7 +163,7 @@ export default {
           this.restoreScrollThrough();
         }
       });
-    }
+    },
   },
 
   mounted() {
@@ -194,78 +182,78 @@ export default {
 
   methods: {
     // 映射全局状态管理actions
-    ...mapSidebarActions(['switchToTab', 'hide']),
+    ...mapSidebarActions(["switchToTab", "hide"]),
 
     /**
      * 处理标签切换 - 使用全局状态管理
      */
     onTabChange(tabKey) {
-      console.log('PdfSidebar.onTabChange 被调用，参数:', tabKey);
-      console.log('switchToTab 方法存在:', typeof this.switchToTab);
+      console.log("PdfSidebar.onTabChange 被调用，参数:", tabKey);
+      console.log("switchToTab 方法存在:", typeof this.switchToTab);
 
-      if (typeof this.switchToTab === 'function') {
+      if (typeof this.switchToTab === "function") {
         this.switchToTab(tabKey);
       } else {
         // 备用方案：直接调用 store
         if (this.$store) {
-          this.$store.dispatch('pdfReader/sidebar/switchToTab', tabKey);
+          this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
         }
       }
 
-      this.$emit('tab-change', tabKey);
+      this.$emit("tab-change", tabKey);
     },
 
     /**
      * 处理关闭 - 使用全局状态管理
      */
     onClose() {
-      console.log('PdfSidebar.onClose 被调用');
+      console.log("PdfSidebar.onClose 被调用");
 
-      if (typeof this.hide === 'function') {
+      if (typeof this.hide === "function") {
         this.hide();
       } else {
         // 备用方案：直接调用 store
         if (this.$store) {
-          this.$store.dispatch('pdfReader/sidebar/hide');
+          this.$store.dispatch("pdfReader/sidebar/hide");
         }
       }
 
-      this.$emit('close');
+      this.$emit("close");
     },
 
     /**
      * 处理页面导航
      */
     onNavigateToPage(pageNumber) {
-      this.$emit('navigate-to-page', pageNumber);
+      this.$emit("navigate-to-page", pageNumber);
     },
 
     /**
      * 处理URL导航
      */
     onNavigateToUrl(url) {
-      this.$emit('navigate-to-url', url);
+      this.$emit("navigate-to-url", url);
     },
 
     /**
      * 处理页面点击
      */
     onPageClick(pageNumber) {
-      this.$emit('page-click', pageNumber);
+      this.$emit("page-click", pageNumber);
     },
 
     /**
      * 处理目录项点击
      */
     onOutlineItemClick(item) {
-      this.$emit('outline-item-click', item);
+      this.$emit("outline-item-click", item);
     },
 
     /**
      * 处理错误
      */
     onError(error) {
-      this.$emit('error', error);
+      this.$emit("error", error);
     },
 
     /**
@@ -281,11 +269,11 @@ export default {
     preventScrollThrough() {
       // 在移动端，当侧边栏显示时禁用 body 滚动
       if (this.isMobile && document.body) {
-        document.body.classList.add('sidebar-open');
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
-        document.body.style.height = '100%';
+        document.body.classList.add("sidebar-open");
+        document.body.style.overflow = "hidden";
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.height = "100%";
       }
     },
 
@@ -295,14 +283,14 @@ export default {
     restoreScrollThrough() {
       // 恢复 body 滚动
       if (document.body) {
-        document.body.classList.remove('sidebar-open');
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
-        document.body.style.height = '';
+        document.body.classList.remove("sidebar-open");
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.height = "";
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -343,16 +331,16 @@ export default {
 
   &__tabs {
     flex: 1;
-    
+
     :deep(.van-tabs__nav) {
       background: transparent;
     }
-    
+
     :deep(.van-tab) {
       font-size: 12px;
       padding: 8px 12px;
     }
-    
+
     :deep(.van-tab__text) {
       display: flex;
       align-items: center;

@@ -1,4 +1,4 @@
-import { PDF_CONFIG, MOBILE_CONFIG } from './pdf-config.js';
+import { PDF_CONFIG, MOBILE_CONFIG } from "./pdf-config.js";
 
 /**
  * PDF 应用控制器
@@ -12,9 +12,9 @@ export class PdfApplication {
     this.findController = null;
     this.options = {
       isMobile: true,
-      ...options
+      ...options,
     };
-    
+
     // 初始化状态
     this.initialized = false;
     this.loading = false;
@@ -30,15 +30,15 @@ export class PdfApplication {
 
     try {
       // 首先导入核心 PDF.js 库，确保 globalThis.pdfjsLib 可用
-      const pdfjsLib = await import('pdfjs-dist/webpack.mjs');
+      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
 
       // 确保 globalThis.pdfjsLib 存在
-      if (typeof globalThis !== 'undefined') {
+      if (typeof globalThis !== "undefined") {
         globalThis.pdfjsLib = pdfjsLib;
       }
 
       // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
-      const pdfjsViewer = await import('pdfjs-dist/legacy/web/pdf_viewer.mjs');
+      const pdfjsViewer = await import("pdfjs-dist/legacy/web/pdf_viewer.mjs");
 
       // 创建事件总线
       this.eventBus = new pdfjsViewer.EventBus();
@@ -47,21 +47,21 @@ export class PdfApplication {
       this.linkService = new pdfjsViewer.PDFLinkService({
         eventBus: this.eventBus,
         externalLinkTarget: 2, // 新窗口打开外部链接
-        externalLinkRel: 'noopener noreferrer nofollow'
+        externalLinkRel: "noopener noreferrer nofollow",
       });
 
       // 创建搜索控制器
       this.findController = new pdfjsViewer.PDFFindController({
         eventBus: this.eventBus,
-        linkService: this.linkService
+        linkService: this.linkService,
       });
 
       this.initialized = true;
-      console.log('PDF.js 应用控制器初始化完成');
+      console.log("PDF.js 应用控制器初始化完成");
 
       return this.getServices();
     } catch (error) {
-      console.error('PDF.js 应用控制器初始化失败:', error);
+      console.error("PDF.js 应用控制器初始化失败:", error);
       throw error;
     }
   }
@@ -73,7 +73,7 @@ export class PdfApplication {
     return {
       eventBus: this.eventBus,
       linkService: this.linkService,
-      findController: this.findController
+      findController: this.findController,
     };
   }
 
@@ -82,7 +82,7 @@ export class PdfApplication {
    */
   async loadDocument(src, options = {}) {
     if (this.loading) {
-      throw new Error('文档正在加载中，请稍候');
+      throw new Error("文档正在加载中，请稍候");
     }
 
     try {
@@ -90,11 +90,11 @@ export class PdfApplication {
 
       // 使用已经导入的 PDF.js 核心库
       let pdfjsLib;
-      if (typeof globalThis !== 'undefined' && globalThis.pdfjsLib) {
+      if (typeof globalThis !== "undefined" && globalThis.pdfjsLib) {
         pdfjsLib = globalThis.pdfjsLib;
       } else {
         // 如果没有初始化，先导入
-        pdfjsLib = await import('pdfjs-dist/webpack.mjs');
+        pdfjsLib = await import("pdfjs-dist/webpack.mjs");
       }
 
       // 合并配置
@@ -102,14 +102,13 @@ export class PdfApplication {
       const loadingTask = pdfjsLib.getDocument({
         url: src,
         ...config,
-        ...options
+        ...options,
       });
 
       // 监听加载进度
       if (options.onProgress) {
         loadingTask.onProgress = options.onProgress;
       }
-
 
       this.pdfDocument = await loadingTask.promise;
 
@@ -124,7 +123,7 @@ export class PdfApplication {
       return this.pdfDocument;
     } catch (error) {
       this.loading = false;
-      console.error('PDF 文档加载失败:', error);
+      console.error("PDF 文档加载失败:", error);
       throw error;
     }
   }
@@ -134,7 +133,7 @@ export class PdfApplication {
    */
   async getDocumentInfo() {
     if (!this.pdfDocument) {
-      throw new Error('文档未加载');
+      throw new Error("文档未加载");
     }
 
     try {
@@ -144,15 +143,15 @@ export class PdfApplication {
         numPages: this.pdfDocument.numPages,
         fingerprint: this.pdfDocument.fingerprint,
         info: metadataResult.info,
-        metadata: metadataResult.metadata
+        metadata: metadataResult.metadata,
       };
     } catch (error) {
-      console.error('获取文档信息失败:', error);
+      console.error("获取文档信息失败:", error);
       return {
         numPages: this.pdfDocument.numPages,
         fingerprint: this.pdfDocument.fingerprint,
         info: null,
-        metadata: null
+        metadata: null,
       };
     }
   }
@@ -162,7 +161,7 @@ export class PdfApplication {
    */
   async getPage(pageNumber) {
     if (!this.pdfDocument) {
-      throw new Error('文档未加载');
+      throw new Error("文档未加载");
     }
 
     if (pageNumber < 1 || pageNumber > this.pdfDocument.numPages) {
@@ -177,13 +176,13 @@ export class PdfApplication {
    */
   async getOutline() {
     if (!this.pdfDocument) {
-      throw new Error('文档未加载');
+      throw new Error("文档未加载");
     }
 
     try {
       return await this.pdfDocument.getOutline();
     } catch (error) {
-      console.error('获取文档大纲失败:', error);
+      console.error("获取文档大纲失败:", error);
       return null;
     }
   }
@@ -211,8 +210,8 @@ export class PdfApplication {
 
     this.initialized = false;
     this.loading = false;
-    
-    console.log('PDF 应用控制器已销毁');
+
+    console.log("PDF 应用控制器已销毁");
   }
 
   /**

@@ -1,5 +1,9 @@
 <template>
-  <div class="pdf-page-container" :class="{ 'pdf-page-container--loading': rendering }" ref="container">
+  <div
+    class="pdf-page-container"
+    :class="{ 'pdf-page-container--loading': rendering }"
+    ref="container"
+  >
     <!-- 页面画布 -->
     <canvas
       ref="pageCanvas"
@@ -33,35 +37,34 @@
 </template>
 
 <script>
-import { PageRenderService } from '../core/pdf-services.js';
-import { TextLayerBuilder } from '../core/layers/TextLayerBuilder';
-import { AnnotationLayerBuilder } from '../core/layers/AnnotationLayerBuilder';
-
+import { PageRenderService } from "../core/pdf-services.js";
+import { TextLayerBuilder } from "../core/layers/TextLayerBuilder";
+import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder";
 
 export default {
-  name: 'PdfPageContainer',
+  name: "PdfPageContainer",
 
   props: {
     pageNumber: {
       type: Number,
-      required: true
+      required: true,
     },
     scale: {
       type: Number,
-      default: 1.0
+      default: 1.0,
     },
     pdfServices: {
       type: Object,
-      required: true
+      required: true,
     },
     textLayerEnabled: {
       type: Boolean,
-      default: true
+      default: true,
     },
     annotationsEnabled: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
 
   data() {
@@ -86,7 +89,7 @@ export default {
       layers: {
         text: null,
         annotation: null,
-      }
+      },
     };
   },
 
@@ -102,13 +105,13 @@ export default {
 
   watch: {
     pageNumber: {
-      handler: 'onPageNumberChange',
-      immediate: false
+      handler: "onPageNumberChange",
+      immediate: false,
     },
     scale: {
-      handler: 'onScaleChange',
-      immediate: false
-    }
+      handler: "onScaleChange",
+      immediate: false,
+    },
   },
 
   methods: {
@@ -135,7 +138,7 @@ export default {
 
         const canvas = this.$refs.pageCanvas;
         if (!canvas) {
-          throw new Error('Canvas 元素未找到');
+          throw new Error("Canvas 元素未找到");
         }
 
         // 渲染页面到 Canvas
@@ -143,7 +146,7 @@ export default {
           this.pageNumber,
           canvas,
           {
-            scale: this.scale
+            scale: this.scale,
           }
         );
 
@@ -160,23 +163,22 @@ export default {
         this.rendering = false;
         this.rendered = true;
 
-        this.$emit('page-rendered', {
+        this.$emit("page-rendered", {
           pageNumber: this.pageNumber,
           scale: this.scale,
-          viewport: this.viewport
+          viewport: this.viewport,
         });
 
         console.log(`页面 ${this.pageNumber} 渲染完成`);
-
       } catch (error) {
         this.rendering = false;
-      // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
-      this.$nextTick(() => this.syncContainerSize());
+        // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
+        this.$nextTick(() => this.syncContainerSize());
 
         console.error(`页面 ${this.pageNumber} 渲染失败:`, error);
-        this.$emit('render-error', {
+        this.$emit("render-error", {
           pageNumber: this.pageNumber,
-          error: error.message
+          error: error.message,
         });
       }
     },
@@ -202,20 +204,28 @@ export default {
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
         });
-        this.layers.text.setup({ pageNumber: this.pageNumber, viewport: this.viewport });
+        this.layers.text.setup({
+          pageNumber: this.pageNumber,
+          viewport: this.viewport,
+        });
       }
 
       // Annotation Layer
-      if (this.annotationsEnabled && !this.layers.annotation && this.$refs.annotationLayer) {
+      if (
+        this.annotationsEnabled &&
+        !this.layers.annotation &&
+        this.$refs.annotationLayer
+      ) {
         this.layers.annotation = new AnnotationLayerBuilder({
           container: this.$refs.annotationLayer,
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
         });
-        this.layers.annotation.setup({ pageNumber: this.pageNumber, viewport: this.viewport });
+        this.layers.annotation.setup({
+          pageNumber: this.pageNumber,
+          viewport: this.viewport,
+        });
       }
-
-
     },
 
     /**
@@ -264,7 +274,6 @@ export default {
       container.style.height = `${height}px`;
     },
 
-
     /**
      * 更新样式
      */
@@ -277,23 +286,23 @@ export default {
 
       // Canvas 样式 - 现在由渲染服务直接设置尺寸，这里不再干预
       this.canvasStyle = {
-        display: 'block'
+        display: "block",
       };
 
       // 文本层样式
       this.textLayerStyle = {
         width: `${width}px`,
         height: `${height}px`,
-        maxWidth: '100%',
-        maxHeight: '100%'
+        maxWidth: "100%",
+        maxHeight: "100%",
       };
 
       // 注释层样式
       this.annotationLayerStyle = {
         width: `${width}px`,
         height: `${height}px`,
-        maxWidth: '100%',
-        maxHeight: '100%'
+        maxWidth: "100%",
+        maxHeight: "100%",
       };
     },
 
@@ -308,7 +317,7 @@ export default {
       // 清理 Canvas
       const canvas = this.$refs.pageCanvas;
       if (canvas) {
-        const context = canvas.getContext('2d');
+        const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
       }
     },
@@ -331,14 +340,14 @@ export default {
      * 处理 Canvas 点击
      */
     onCanvasClick(event) {
-      this.$emit('canvas-click', {
+      this.$emit("canvas-click", {
         pageNumber: this.pageNumber,
         x: event.offsetX,
         y: event.offsetY,
-        event
+        event,
       });
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -373,7 +382,7 @@ export default {
     bottom: 0;
     overflow: hidden;
     opacity: 0.2;
-    line-height: 1.0;
+    line-height: 1;
 
     // 优化文本渲染
     text-rendering: optimizeLegibility;
@@ -421,7 +430,11 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

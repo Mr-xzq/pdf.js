@@ -33,51 +33,49 @@
 </template>
 
 <script>
-import PdfButton from './PdfButton.vue';
-import PdfPageInput from './PdfPageInput.vue';
+import PdfButton from "./PdfButton.vue";
+import PdfPageInput from "./PdfPageInput.vue";
 
 export default {
-  name: 'PdfNavigation',
+  name: "PdfNavigation",
 
   components: {
     PdfButton,
-    PdfPageInput
+    PdfPageInput,
   },
 
   props: {
     currentPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     totalPages: {
       type: Number,
-      default: 0
+      default: 0,
     },
     canGoPrev: {
       type: Boolean,
-      default: false
+      default: false,
     },
     canGoNext: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
-
-
 
   methods: {
     onPrevPage() {
-      this.$emit('prev-page');
+      this.$emit("prev-page");
     },
 
     onNextPage() {
-      this.$emit('next-page');
+      this.$emit("next-page");
     },
 
     onGoToPage(pageNumber) {
-      this.$emit('go-to-page', pageNumber);
-    }
-  }
+      this.$emit("go-to-page", pageNumber);
+    },
+  },
 };
 </script>
 

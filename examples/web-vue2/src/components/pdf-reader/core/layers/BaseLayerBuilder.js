@@ -20,12 +20,12 @@ export class BaseLayerBuilder {
     this.viewport = viewport;
 
     if (!this.layer) {
-      this.layer = document.createElement('div');
-      this.layer.style.position = 'absolute';
-      this.layer.style.left = '0';
-      this.layer.style.top = '0';
-      this.layer.style.right = '0';
-      this.layer.style.bottom = '0';
+      this.layer = document.createElement("div");
+      this.layer.style.position = "absolute";
+      this.layer.style.left = "0";
+      this.layer.style.top = "0";
+      this.layer.style.right = "0";
+      this.layer.style.bottom = "0";
       this.container.appendChild(this.layer);
     }
 
@@ -58,4 +58,3 @@ export class BaseLayerBuilder {
     this.initialized = false;
   }
 }
-

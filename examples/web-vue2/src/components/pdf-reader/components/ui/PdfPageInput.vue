@@ -19,23 +19,23 @@
 
 <script>
 export default {
-  name: 'PdfPageInput',
+  name: "PdfPageInput",
 
   props: {
     currentPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     totalPages: {
       type: Number,
-      default: 0
-    }
+      default: 0,
+    },
   },
 
   data() {
     return {
-      inputValue: '',
-      focused: false
+      inputValue: "",
+      focused: false,
     };
   },
 
@@ -43,11 +43,11 @@ export default {
     currentPage: {
       handler(newPage) {
         if (!this.focused) {
-          this.inputValue = '';
+          this.inputValue = "";
         }
       },
-      immediate: true
-    }
+      immediate: true,
+    },
   },
 
   methods: {
@@ -66,18 +66,18 @@ export default {
 
     handlePageChange() {
       const pageNumber = parseInt(this.inputValue);
-      
+
       if (isNaN(pageNumber) || pageNumber < 1 || pageNumber > this.totalPages) {
         // 无效输入，重置为当前页
-        this.inputValue = '';
+        this.inputValue = "";
         return;
       }
 
       if (pageNumber !== this.currentPage) {
-        this.$emit('go-to-page', pageNumber);
+        this.$emit("go-to-page", pageNumber);
       }
 
-      this.inputValue = '';
+      this.inputValue = "";
     },
 
     onFocus() {
@@ -85,8 +85,8 @@ export default {
       if (!this.inputValue) {
         this.inputValue = this.currentPage.toString();
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

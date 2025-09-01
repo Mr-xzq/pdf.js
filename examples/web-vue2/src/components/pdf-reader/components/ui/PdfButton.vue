@@ -17,87 +17,88 @@
 
 <script>
 export default {
-  name: 'PdfButton',
+  name: "PdfButton",
 
   props: {
     // 按钮类型
     type: {
       type: String,
-      default: 'default', // default, primary, secondary, danger
-      validator: value => ['default', 'primary', 'secondary', 'danger'].includes(value)
+      default: "default", // default, primary, secondary, danger
+      validator: value =>
+        ["default", "primary", "secondary", "danger"].includes(value),
     },
     // 按钮尺寸
     size: {
       type: String,
-      default: 'medium', // small, medium, large
-      validator: value => ['small', 'medium', 'large'].includes(value)
+      default: "medium", // small, medium, large
+      validator: value => ["small", "medium", "large"].includes(value),
     },
     // 是否禁用
     disabled: {
       type: Boolean,
-      default: false
+      default: false,
     },
     // 是否激活状态
     active: {
       type: Boolean,
-      default: false
+      default: false,
     },
     // 是否圆形按钮
     round: {
       type: Boolean,
-      default: false
+      default: false,
     },
     // 是否块级按钮
     block: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
 
   data() {
     return {
-      touching: false
+      touching: false,
     };
   },
 
   computed: {
     buttonClasses() {
       return [
-        'pdf-button',
+        "pdf-button",
         `pdf-button--${this.type}`,
         `pdf-button--${this.size}`,
         {
-          'pdf-button--disabled': this.disabled,
-          'pdf-button--active': this.active,
-          'pdf-button--round': this.round,
-          'pdf-button--block': this.block,
-          'pdf-button--touching': this.touching
-        }
+          "pdf-button--disabled": this.disabled,
+          "pdf-button--active": this.active,
+          "pdf-button--round": this.round,
+          "pdf-button--block": this.block,
+          "pdf-button--touching": this.touching,
+        },
       ];
-    }
+    },
   },
 
   methods: {
     onClick(event) {
       if (!this.disabled) {
-        this.$emit('click', event);
+        this.$emit("click", event);
       }
     },
 
     onTouchStart(event) {
       if (!this.disabled) {
         this.touching = true;
-        this.$emit('touchstart', event);
+        this.$emit("touchstart", event);
       }
     },
 
     onTouchEnd(event) {
       if (!this.disabled) {
         this.touching = false;
-        this.$emit('touchend', event);
+        this.$emit("touchend", event);
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

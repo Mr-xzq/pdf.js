@@ -39,77 +39,77 @@
 </template>
 
 <script>
-import PdfNavigation from './PdfNavigation.vue';
-import PdfZoomControl from './PdfZoomControl.vue';
+import PdfNavigation from "./PdfNavigation.vue";
+import PdfZoomControl from "./PdfZoomControl.vue";
 
 export default {
-  name: 'PdfBottomToolbar',
+  name: "PdfBottomToolbar",
 
   components: {
     PdfNavigation,
-    PdfZoomControl
+    PdfZoomControl,
   },
 
   props: {
     currentPage: {
       type: Number,
-      default: 1
+      default: 1,
     },
     totalPages: {
       type: Number,
-      default: 0
+      default: 0,
     },
     scale: {
       type: Number,
-      default: 1.0
+      default: 1.0,
     },
     canGoPrev: {
       type: Boolean,
-      default: false
+      default: false,
     },
     canGoNext: {
       type: Boolean,
-      default: false
+      default: false,
     },
     canZoomIn: {
       type: Boolean,
-      default: true
+      default: true,
     },
     canZoomOut: {
       type: Boolean,
-      default: true
+      default: true,
     },
     scaleLabel: {
       type: String,
-      default: ''
-    }
+      default: "",
+    },
   },
 
   methods: {
     onPrevPage() {
-      this.$emit('prev-page');
+      this.$emit("prev-page");
     },
 
     onNextPage() {
-      this.$emit('next-page');
+      this.$emit("next-page");
     },
 
     onGoToPage(pageNumber) {
-      this.$emit('go-to-page', pageNumber);
+      this.$emit("go-to-page", pageNumber);
     },
 
     onZoomIn() {
-      this.$emit('zoom-in');
+      this.$emit("zoom-in");
     },
 
     onZoomOut() {
-      this.$emit('zoom-out');
+      this.$emit("zoom-out");
     },
 
     onSetScale(scale) {
-      this.$emit('set-scale', scale);
-    }
-  }
+      this.$emit("set-scale", scale);
+    },
+  },
 };
 </script>
 
