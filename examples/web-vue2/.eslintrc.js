@@ -16,6 +16,6 @@ module.exports = {
     "vue/no-reserved-component-names": "off",
   },
   globals: {
-    PDFJS_DIST_BASE_PATH: true,
+    // PDFJS_DIST_BASE_PATH: true,
   },
 };

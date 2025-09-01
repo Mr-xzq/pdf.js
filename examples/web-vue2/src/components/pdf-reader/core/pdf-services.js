@@ -57,7 +57,7 @@ export class PdfServices {
   async preInitialize() {
     try {
       // 导入并设置 globalThis.pdfjsLib
-      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
+      const pdfjsLib = await import("local-pdfjs-dist/webpack.mjs");
 
       if (typeof globalThis !== "undefined") {
         globalThis.pdfjsLib = pdfjsLib;

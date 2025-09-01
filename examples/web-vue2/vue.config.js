@@ -2,7 +2,8 @@ const { defineConfig } = require("@vue/cli-service");
 const path = require("path");
 const webpack = require("webpack");
 
-const pdfjsDistBase = path.resolve(__dirname, "../../pdfjs-dist");
+const globalPdfjsDistBase = path.resolve(__dirname, "../../pdfjs-dist");
+const localPdfjsDistBase = path.resolve(__dirname, "public/lib/pdfjs-dist");
 
 module.exports = defineConfig({
   transpileDependencies: true,
@@ -17,12 +18,14 @@ module.exports = defineConfig({
     devtool: "source-map",
     resolve: {
       alias: {
-        "pdfjs-dist": pdfjsDistBase,
+        "global-pdfjs-dist": globalPdfjsDistBase,
+        "local-pdfjs-dist": localPdfjsDistBase,
       },
     },
     plugins: [
       new webpack.DefinePlugin({
-        PDFJS_DIST_BASE_PATH: JSON.stringify(pdfjsDistBase),
+        // GLOBAL_PDFJS_DIST_BASE_PATH: JSON.stringify(globalPdfjsDistBase),
+        // LOCAL_PDFJS_DIST_BASE_PATH: JSON.stringify(localPdfjsDistBase),
       }),
     ],
   },

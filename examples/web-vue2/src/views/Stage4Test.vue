@@ -152,16 +152,16 @@
 </template>
 
 <script>
-import PdfViewer from "../components/pdf-reader/components/PdfViewer.vue";
-import PdfOutline from "../components/pdf-reader/components/ui/PdfOutline.vue";
-import PdfThumbnail from "../components/pdf-reader/components/ui/PdfThumbnail.vue";
+import PdfViewer from "@/components/pdf-reader/components/PdfViewer.vue";
+import PdfOutline from "@/components/pdf-reader/components/ui/PdfOutline.vue";
+import PdfThumbnail from "@/components/pdf-reader/components/ui/PdfThumbnail.vue";
 import {
   mapDocumentState,
   mapViewerState,
   mapDocumentActions,
   mapViewerActions,
   mapDocumentGetters,
-} from "../components/pdf-reader/store/index.js";
+} from "@/components/pdf-reader/store/index.js";
 
 export default {
   name: "Stage4Test",

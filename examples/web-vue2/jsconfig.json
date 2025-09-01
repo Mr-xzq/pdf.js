@@ -5,7 +5,9 @@
     "baseUrl": "./",
     "moduleResolution": "node",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "global-pdfjs-dist/*": ["../../pdfjs-dist/*"],
+      "local-pdfjs-dist/*": ["public/lib/pdfjs-dist/*"]
     },
     "lib": ["esnext", "dom", "dom.iterable", "scripthost"]
   }
