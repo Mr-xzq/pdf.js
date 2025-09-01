@@ -14,13 +14,13 @@
  */
 /* eslint-disable import/no-unresolved */
 
-import { GlobalWorkerOptions } from "./build/pdf.mjs";
+import { GlobalWorkerOptions } from "./legacy/build/pdf.mjs";
 
 if (typeof window !== "undefined" && "Worker" in window) {
   GlobalWorkerOptions.workerPort = new Worker(
-    new URL("./build/pdf.worker.mjs", import.meta.url),
+    new URL("./legacy/build/pdf.worker.mjs", import.meta.url),
     { type: "module" }
   );
 }
 
-export * from "./build/pdf.mjs";
+export * from "./legacy/build/pdf.mjs";
