@@ -19,8 +19,6 @@ const isMobile =
 //   new VConsole();
 // }
 
-console.log("PDFJS_DIST_BASE_PATH: ", PDFJS_DIST_BASE_PATH);
-
 Vue.config.productionTip = false;
 
 new Vue({
