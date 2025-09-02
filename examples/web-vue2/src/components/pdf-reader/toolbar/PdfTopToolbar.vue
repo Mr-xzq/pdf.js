@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import PdfButton from "./PdfButton.vue";
+import PdfButton from "../ui/PdfButton.vue";
 
 export default {
   name: "PdfTopToolbar",
@@ -159,3 +159,4 @@ export default {
   }
 }
 </style>
+

@@ -40,9 +40,10 @@
 import { PageRenderService } from "../core/pdf-services.js";
 import { TextLayerBuilder } from "../core/layers/TextLayerBuilder";
 import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder";
+import { createLayer, updateAndRenderLayer, cancelLayer, destroyLayer } from "../core/layers/lifecycle";
 
 export default {
-  name: "PdfPageContainer",
+  name: "PdfPage",
 
   props: {
     pageNumber: {
@@ -187,8 +188,8 @@ export default {
      * 取消进行中的 Layer 任务
      */
     cancelLayers() {
-      if (this.layers?.text) this.layers.text.cancel();
-      if (this.layers?.annotation) this.layers.annotation.cancel();
+      cancelLayer(this.layers?.text);
+      cancelLayer(this.layers?.annotation);
     },
 
     /**
@@ -199,14 +200,11 @@ export default {
 
       // Text Layer
       if (this.textLayerEnabled && !this.layers.text && this.$refs.textLayer) {
-        this.layers.text = new TextLayerBuilder({
+        this.layers.text = createLayer(TextLayerBuilder, {
           container: this.$refs.textLayer,
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
-        });
-        this.layers.text.setup({
-          pageNumber: this.pageNumber,
-          viewport: this.viewport,
+          setup: { pageNumber: this.pageNumber, viewport: this.viewport },
         });
       }
 
@@ -216,14 +214,11 @@ export default {
         !this.layers.annotation &&
         this.$refs.annotationLayer
       ) {
-        this.layers.annotation = new AnnotationLayerBuilder({
+        this.layers.annotation = createLayer(AnnotationLayerBuilder, {
           container: this.$refs.annotationLayer,
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
-        });
-        this.layers.annotation.setup({
-          pageNumber: this.pageNumber,
-          viewport: this.viewport,
+          setup: { pageNumber: this.pageNumber, viewport: this.viewport },
         });
       }
     },
@@ -234,16 +229,20 @@ export default {
     async renderLayers() {
       const tasks = [];
       if (this.layers.text) {
-        this.layers.text.cancelled = false;
-        this.layers.text.pageNumber = this.pageNumber;
-        this.layers.text.update({ viewport: this.viewport });
-        tasks.push(this.layers.text.render());
+        tasks.push(
+          updateAndRenderLayer(this.layers.text, {
+            pageNumber: this.pageNumber,
+            viewport: this.viewport,
+          })
+        );
       }
       if (this.layers.annotation) {
-        this.layers.annotation.cancelled = false;
-        this.layers.annotation.pageNumber = this.pageNumber;
-        this.layers.annotation.update({ viewport: this.viewport });
-        tasks.push(this.layers.annotation.render());
+        tasks.push(
+          updateAndRenderLayer(this.layers.annotation, {
+            pageNumber: this.pageNumber,
+            viewport: this.viewport,
+          })
+        );
       }
       await Promise.all(tasks);
     },
@@ -253,11 +252,11 @@ export default {
      */
     destroyLayers() {
       if (this.layers.text) {
-        this.layers.text.destroy();
+        destroyLayer(this.layers.text);
         this.layers.text = null;
       }
       if (this.layers.annotation) {
-        this.layers.annotation.destroy();
+        destroyLayer(this.layers.annotation);
         this.layers.annotation = null;
       }
     },
@@ -438,3 +437,4 @@ export default {
   }
 }
 </style>
+

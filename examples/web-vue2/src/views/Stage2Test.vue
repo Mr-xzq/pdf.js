@@ -40,7 +40,7 @@ https://mozilla.github.io/pdf.js/legacy/web/compressed.tracemonkey-pldi-09.pdf"
     </div>
 
     <div class="pdf-container">
-      <pdf-viewer
+      <pdf-reader
         v-if="currentPdfUrl"
         :src="currentPdfUrl"
         :initial-page="1"
@@ -77,13 +77,13 @@ https://mozilla.github.io/pdf.js/legacy/web/compressed.tracemonkey-pldi-09.pdf"
 </template>
 
 <script>
-import PdfViewer from "@/components/pdf-reader/components/PdfViewer.vue";
+import PdfReader from "@/components/pdf-reader/index.vue";
 
 export default {
   name: "Stage2Test",
 
   components: {
-    PdfViewer,
+    PdfReader,
   },
 
   data() {

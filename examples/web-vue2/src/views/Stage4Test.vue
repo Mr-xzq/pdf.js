@@ -95,7 +95,7 @@
 
         <!-- PDF查看器 -->
         <div class="test-viewer">
-          <pdf-viewer
+          <pdf-reader
             v-if="pdfUrl"
             ref="pdfViewer"
             :src="pdfUrl"
@@ -152,9 +152,9 @@
 </template>
 
 <script>
-import PdfViewer from "@/components/pdf-reader/components/PdfViewer.vue";
-import PdfOutline from "@/components/pdf-reader/components/ui/PdfOutline.vue";
-import PdfThumbnail from "@/components/pdf-reader/components/ui/PdfThumbnail.vue";
+import PdfReader from "@/components/pdf-reader/index.vue";
+import PdfOutline from "@/components/pdf-reader/sidebar/PdfOutline.vue";
+import PdfThumbnail from "@/components/pdf-reader/sidebar/PdfThumbnail.vue";
 import {
   mapDocumentState,
   mapViewerState,
@@ -167,7 +167,7 @@ export default {
   name: "Stage4Test",
 
   components: {
-    PdfViewer,
+    PdfReader,
     PdfOutline,
     PdfThumbnail,
   },
@@ -257,7 +257,7 @@ export default {
       if (pdfViewer && pdfViewer.toggleSidebar) {
         pdfViewer.toggleSidebar();
       } else {
-        console.warn("PdfViewer 组件未找到或未加载");
+        console.warn("PdfReader 组件未找到或未加载");
       }
     },
 
@@ -297,7 +297,7 @@ export default {
       if (pdfViewer && pdfViewer.showSidebar) {
         pdfViewer.showSidebar("outline");
       } else {
-        console.warn("PdfViewer 组件未找到或未加载");
+        console.warn("PdfReader 组件未找到或未加载");
       }
     },
 

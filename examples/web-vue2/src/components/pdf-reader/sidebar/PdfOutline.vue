@@ -48,7 +48,7 @@
 
 <script>
 import PdfOutlineItem from "./PdfOutlineItem.vue";
-import { mapDocumentState, mapViewerState } from "../../store/index.js";
+import { mapDocumentState, mapViewerState } from "../store/index.js";
 
 export default {
   name: "PdfOutline",
@@ -137,32 +137,10 @@ export default {
         this.outline = outline;
         console.log("PDF目录加载完成:", outline);
 
-        // 调试：检查目录结构
-        if (outline && outline.length > 0) {
-          console.log("目录结构分析:");
-          outline.forEach((item, index) => {
-            console.log(
-              `- ${index}: ${item.title}, 有子项: ${!!(
-                item.items && item.items.length > 0
-              )}, 子项数量: ${item.items ? item.items.length : 0}`
-            );
-            if (item.items && item.items.length > 0) {
-              item.items.forEach((subItem, subIndex) => {
-                console.log(`  - ${subIndex}: ${subItem.title}`);
-              });
-            }
-          });
-        }
-
         // 如果有目录，建立映射关系并展开到当前页
         if (outline && outline.length > 0) {
           this.$nextTick(async () => {
-            console.log("目录加载完成，建立页面映射关系");
             await this.buildPageToOutlineMapping();
-            console.log(
-              "页面映射关系建立完成，展开到当前页面:",
-              this.currentPage
-            );
             this.expandToCurrentPage(this.currentPage);
           });
         }
@@ -252,7 +230,6 @@ export default {
         this.$delete(this.expandedItems, itemId);
       }
       this.$emit("item-expand", item, expanded);
-      console.log("目录展开状态变化:", item.title, expanded, itemId);
     },
 
     /**
@@ -270,7 +247,6 @@ export default {
         hash = hash & hash; // 转换为32位整数
       }
       const id = `outline-item-${Math.abs(hash)}`;
-      console.log("生成目录项ID:", item.title, "->", id);
       return id;
     },
 
@@ -287,9 +263,6 @@ export default {
 
       // 建立页面范围映射
       this.buildPageRangeMapping();
-
-      console.log("页面映射关系:", this.pageToOutlineMap);
-      console.log("目录层级关系:", this.outlineHierarchy);
     },
 
     /**
@@ -364,19 +337,9 @@ export default {
     expandToCurrentPage(pageNumber) {
       if (!this.hasOutline || !pageNumber) return;
 
-      console.log("展开到当前页面:", pageNumber);
-
       const mapping = this.pageToOutlineMap[pageNumber];
       if (mapping) {
-        console.log(
-          "找到页面映射:",
-          mapping.item.title,
-          "路径:",
-          mapping.path.map(p => p.title)
-        );
         this.expandToItem(mapping);
-      } else {
-        console.log("未找到页面", pageNumber, "的映射关系");
       }
     },
 
@@ -387,12 +350,6 @@ export default {
       if (!mapping) return;
 
       const { item, path } = mapping;
-      console.log(
-        "展开到目标项目:",
-        item.title,
-        "路径:",
-        path.map(p => p.title)
-      );
 
       // 展开路径上的所有父项目（除了最后一个目标项本身）
       for (let i = 0; i < path.length - 1; i++) {
@@ -400,21 +357,11 @@ export default {
 
         if (this.hasNestedChildren(parentItem)) {
           const itemId = this.getItemId(parentItem);
-          console.log(
-            "展开父项目:",
-            parentItem.title,
-            "ID:",
-            itemId,
-            "层级:",
-            i
-          );
 
           // 使用Vue.set确保响应式更新
           this.$set(this.expandedItems, itemId, true);
         }
       }
-
-      console.log("展开完成，当前展开项目:", Object.keys(this.expandedItems));
 
       // 使用nextTick等待DOM更新
       this.$nextTick(() => {
@@ -428,12 +375,10 @@ export default {
     scrollToActiveItem(targetItem) {
       try {
         const itemId = this.getItemId(targetItem);
-        console.log("查找目录项元素，ID:", itemId);
 
         // 使用更安全的方式查找元素：遍历所有元素而不是使用CSS选择器
         const container = this.$el.querySelector(".pdf-outline__list");
         if (!container) {
-          console.log("未找到目录容器");
           return;
         }
 
@@ -449,7 +394,6 @@ export default {
         }
 
         if (itemElement) {
-          console.log("找到目标元素，开始滚动");
           // 计算滚动位置，让目标元素在容器中央
           const containerRect = container.getBoundingClientRect();
           const itemRect = itemElement.getBoundingClientRect();
@@ -465,8 +409,6 @@ export default {
             top: Math.max(0, targetScrollTop),
             behavior: "smooth",
           });
-        } else {
-          console.log("未找到目标元素，ID:", itemId);
         }
       } catch (error) {
         console.error("滚动到激活项目失败:", error);
@@ -477,19 +419,12 @@ export default {
      * 切换全部展开/收起
      */
     toggleAllItems() {
-      console.log("切换全部展开/收起，当前状态:", this.allExpanded);
       if (this.allExpanded) {
         this.collapseAllItems();
       } else {
         this.expandAllItems();
       }
       this.allExpanded = !this.allExpanded;
-      console.log(
-        "切换后状态:",
-        this.allExpanded,
-        "展开项目:",
-        this.expandedItems
-      );
     },
 
     /**
@@ -590,3 +525,4 @@ export default {
   }
 }
 </style>
+

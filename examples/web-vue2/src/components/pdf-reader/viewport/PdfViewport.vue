@@ -16,7 +16,7 @@
 
     <!-- PDF 内容区域 -->
     <div v-else-if="documentLoaded" class="pdf-viewer-core__content">
-      <pdf-page-container
+      <pdf-page
         :page-number="currentPage"
         :scale="currentScale"
         :pdf-services="pdfServices"
@@ -37,15 +37,14 @@
 
 <script>
 import { PdfServices, NavigationService } from "../core/pdf-services.js";
-import PdfPageContainer from "./PdfPageContainer.vue";
-import PdfLoadingProgress from "./ui/PdfLoadingProgress.vue";
-import { computeScaleByValue, DEFAULT_SCALE_VALUE } from "../core/scale";
+import PdfPage from "./PdfPage.vue";
+import PdfLoadingProgress from "../ui/PdfLoadingProgress.vue";
 
 export default {
-  name: "PdfViewerCore",
+  name: "PdfViewport",
 
   components: {
-    PdfPageContainer,
+    PdfPage,
     PdfLoadingProgress,
   },
 
@@ -109,21 +108,6 @@ export default {
   async mounted() {
     await this.initializeServices();
 
-    // 设置全局PDF查看器实例，供Vuex actions调用
-    window.pdfViewerInstance = this;
-
-    // 注册事件监听器
-    // 移除对 pdf-services 直接调用的事件的自监听，避免无限递归
-    // 这些事件现在通过 pdf-services 直接调用组件方法：
-    // - document-loaded -> onDocumentLoaded
-    // - document-error -> onDocumentError
-    // - load-progress -> onLoadProgress
-    // - password-required -> onPasswordRequired
-    // - page-changed -> onPageChanged
-    // - scale-changed -> onScaleChanged
-
-    // 如果有其他子组件的事件需要监听，可以在这里添加
-
     // 监听容器尺寸变化，重新计算缩放
     this.setupResizeObserver();
 
@@ -133,11 +117,6 @@ export default {
   },
 
   beforeDestroy() {
-    // 清理全局实例
-    if (window.pdfViewerInstance === this) {
-      window.pdfViewerInstance = null;
-    }
-
     // 清理 ResizeObserver
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -170,17 +149,11 @@ export default {
       immediate: false,
     },
 
-    // 监听侧边栏状态变化
-    "$store.state.pdfReader.sidebar.visible": {
-      handler(newVisible, oldVisible) {
-        if (newVisible !== oldVisible) {
-          // 侧边栏显示状态变化，延迟检查缩放以等待布局完成
-          this.$nextTick(() => {
-            // 使用 requestAnimationFrame 确保在浏览器重绘后执行
-            requestAnimationFrame(() => {
-              this.checkAndUpdateScale();
-            });
-          });
+    // 监听全局缩放数值变化（数值模式时），由 Store 驱动 Core 应用
+    "$store.state.pdfReader.viewer.scale": {
+      handler(newScale, oldScale) {
+        if (typeof newScale === "number" && newScale !== oldScale && newScale !== this.currentScale) {
+          this.setScale(newScale);
         }
       },
       immediate: false,
@@ -484,14 +457,7 @@ export default {
         this.$store.dispatch("pdfReader/viewer/goToPage", this.initialPage);
       }
 
-      // 触发容器尺寸检查，这会自动计算最佳缩放
-      // 初始化时将 currentScaleValue 置为默认（auto）
-      if (this.$store && this.$store.dispatch) {
-        this.$store.dispatch(
-          "pdfReader/viewer/setScaleValue",
-          DEFAULT_SCALE_VALUE
-        );
-      }
+      // 触发容器尺寸检查：直接按容器尺寸计算一次最佳数值缩放
       this.checkAndUpdateScale();
 
       console.log(
@@ -523,30 +489,21 @@ export default {
         return;
       }
 
-      const currentScaleValue =
-        this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
-      if (currentScaleValue && typeof currentScaleValue === "string") {
-        try {
-          const page = await this.pdfServices.getPage(1);
-          const viewport = page.getViewport({ scale: 1.0 });
-          const computed = computeScaleByValue(currentScaleValue, newSize, {
-            pageWidth: viewport.width,
-            pageHeight: viewport.height,
-          });
-          if (Math.abs(computed - this.currentScale) > 0.01) {
-            this.applyScale(computed);
-            this.$emit("scale-changing", {
-              presetValue: currentScaleValue,
-              scale: computed,
-            });
-          }
-        } catch (e) {
-          console.warn("基于模式重算缩放失败:", e);
+      // 直接基于容器和页面尺寸计算一个合适的数值缩放（无预设逻辑）
+      try {
+        const page = await this.pdfServices.getPage(1);
+        const viewport = page.getViewport({ scale: 1.0 });
+        // 简单以宽高中较小的适配比例为准
+        const scaleToFitHeight = newSize.height / viewport.height;
+        const scaleToFitWidth = newSize.width / viewport.width;
+        const computed = Math.min(scaleToFitHeight, scaleToFitWidth);
+        if (Math.abs(computed - this.currentScale) > 0.01) {
+          this.applyScale(computed);
+          this.$emit("scale-changing", { scale: computed });
         }
-        return; // 仅当为字符串模式时参与重算；否则保持当前数值缩放
+      } catch (e) {
+        console.warn("容器自适应计算失败:", e);
       }
-
-      // 非字符串模式（数值缩放）下，不进行任何自动重算，避免“弹回”
       return;
     },
 
@@ -811,3 +768,4 @@ export default {
   }
 }
 </style>
+

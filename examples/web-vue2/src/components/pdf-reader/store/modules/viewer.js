@@ -10,18 +10,7 @@ import {
   round2,
 } from "../../core/scale";
 
-const persistedScaleValue =
-  typeof window !== "undefined" && window.localStorage
-    ? (() => {
-        try {
-          return JSON.parse(
-            window.localStorage.getItem("pdfReader.currentScaleValue")
-          );
-        } catch (e) {
-          return null;
-        }
-      })()
-    : null;
+
 
 const state = {
   // 当前页面
@@ -29,9 +18,6 @@ const state = {
 
   // 缩放相关
   scale: 1.0,
-  currentScaleValue:
-    persistedScaleValue !== null ? persistedScaleValue : "auto", // string | number
-  scaleMode: "auto", // 兼容旧字段，后续可移除
   minScale: 0.1,
   maxScale: 10.0,
 
@@ -52,22 +38,11 @@ const state = {
     y: 0,
   },
 
-  // 基础配置（MVP版本）
-  config: {
-    textLayerMode: 1, // 0=禁用, 1=启用
-    maxCanvasPixels: 0, // 0=CSS缩放
-  },
 
-  // 缩略图相关（从navigation模块合并）
-  thumbnails: {},
-  thumbnailSize: 120,
-  thumbnailScale: 0.5,
-  loadingThumbnails: [],
 
-  // 导航历史（从navigation模块合并）
-  navigationHistory: [],
-  historyIndex: -1,
-  maxHistorySize: 20, // 减少历史记录大小
+
+
+
 };
 
 const mutations = {
@@ -85,24 +60,9 @@ const mutations = {
     }
   },
 
-  // 设置缩放设定值（字符串或数值）
-  SET_SCALE_VALUE(state, value) {
-    state.currentScaleValue = value;
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(
-          "pdfReader.currentScaleValue",
-          JSON.stringify(value)
-        );
-      }
-    } catch (e) {}
-  },
 
-  // 设置缩放模式（兼容旧逻辑）
-  SET_SCALE_MODE(state, mode) {
-    state.scaleMode = mode;
-    state.currentScaleValue = mode;
-  },
+
+
 
   // 设置渲染状态
   SET_RENDERING(state, rendering) {
@@ -142,66 +102,16 @@ const mutations = {
     state.scrollPosition = { x, y };
   },
 
-  // 更新配置
-  UPDATE_CONFIG(state, config) {
-    state.config = {
-      ...state.config,
-      ...config,
-    };
-  },
 
-  // 缩略图相关mutations（从navigation模块合并）
-  SET_THUMBNAIL(state, { pageNumber, thumbnail }) {
-    state.thumbnails = {
-      ...state.thumbnails,
-      [pageNumber]: thumbnail,
-    };
-  },
 
-  ADD_LOADING_THUMBNAIL(state, pageNumber) {
-    if (!state.loadingThumbnails.includes(pageNumber)) {
-      state.loadingThumbnails.push(pageNumber);
-    }
-  },
 
-  REMOVE_LOADING_THUMBNAIL(state, pageNumber) {
-    const index = state.loadingThumbnails.indexOf(pageNumber);
-    if (index > -1) {
-      state.loadingThumbnails.splice(index, 1);
-    }
-  },
 
-  // 导航历史mutations（从navigation模块合并）
-  ADD_NAVIGATION_HISTORY(state, entry) {
-    // 移除当前位置之后的历史记录
-    state.navigationHistory = state.navigationHistory.slice(
-      0,
-      state.historyIndex + 1
-    );
 
-    // 添加新记录
-    state.navigationHistory.push(entry);
-
-    // 限制历史记录大小
-    if (state.navigationHistory.length > state.maxHistorySize) {
-      state.navigationHistory.shift();
-    } else {
-      state.historyIndex++;
-    }
-  },
-
-  SET_HISTORY_INDEX(state, index) {
-    state.historyIndex = Math.max(
-      -1,
-      Math.min(index, state.navigationHistory.length - 1)
-    );
-  },
 
   // 重置查看器状态
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
-    state.scaleMode = "auto";
     state.rendering = false;
     state.renderingPages = [];
     state.pageInfo = {
@@ -210,10 +120,6 @@ const mutations = {
       aspectRatio: 1,
     };
     state.scrollPosition = { x: 0, y: 0 };
-    state.thumbnails = {};
-    state.loadingThumbnails = [];
-    state.navigationHistory = [];
-    state.historyIndex = -1;
   },
 };
 
@@ -228,44 +134,8 @@ const actions = {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
 
-    // 统一由视图层驱动真实跳转：优先使用 NavigationService
-    if (
-      window.pdfViewerInstance &&
-      window.pdfViewerInstance.navigationService &&
-      typeof window.pdfViewerInstance.navigationService.goToPage === "function"
-    ) {
-      window.pdfViewerInstance.navigationService.goToPage(pageNumber);
-      // 记录导航历史（来源根据调用路径可传参，这里先用 auto）
-      commit("ADD_NAVIGATION_HISTORY", {
-        pageNumber: pageNumber,
-        source: "auto",
-        timestamp: Date.now(),
-      });
-      console.log(`[viewer.goToPage] via NavigationService -> ${pageNumber}`);
-      return pageNumber;
-    }
-
-    // 回退：使用组件提供的同步方法（仍会触发 page-changed 事件）
-    if (
-      window.pdfViewerInstance &&
-      typeof window.pdfViewerInstance.syncPageFromStore === "function"
-    ) {
-      window.pdfViewerInstance.syncPageFromStore(pageNumber);
-      commit("ADD_NAVIGATION_HISTORY", {
-        pageNumber: pageNumber,
-        source: "auto",
-        timestamp: Date.now(),
-      });
-      console.log(`[viewer.goToPage] via syncPageFromStore -> ${pageNumber}`);
-      return pageNumber;
-    }
-
-    // 最后回退：没有视图实例，仅更新 Store（非推荐，仅为容错）
-    // 注意：正常情况下应该存在视图实例并通过事件回写状态
-    // commit('SET_CURRENT_PAGE', pageNumber);
-    console.warn(
-      "[viewer.goToPage] No viewer instance found, consider ensuring PdfViewerCore is mounted."
-    );
+    // 以 Store 为单一数据源：先更新 Store，由视图层通过 watcher 同步到 Core
+    commit("SET_CURRENT_PAGE", pageNumber);
     return pageNumber;
   },
 
@@ -323,11 +193,7 @@ const actions = {
     return scale;
   },
 
-  // 设置缩放设定值（字符串或数值）
-  setScaleValue({ commit }, value) {
-    commit("SET_SCALE_VALUE", value);
-    return value;
-  },
+
 
   /**
    * 放大（乘法步进）
@@ -345,13 +211,7 @@ const actions = {
     return dispatch("setScale", round2(next));
   },
 
-  /**
-   * 设置缩放模式（兼容旧接口）
-   */
-  setScaleMode({ commit }, mode) {
-    commit("SET_SCALE_MODE", mode);
-    return mode;
-  },
+
 
   /**
    * 设置页面渲染状态
@@ -381,67 +241,17 @@ const actions = {
   /**
    * 更新查看器配置
    */
-  updateConfig({ commit }, config) {
-    commit("UPDATE_CONFIG", config);
-  },
+
 
   /**
    * 加载缩略图（从navigation模块合并）
    */
-  async loadThumbnail({ state, commit, rootState }, { pageNumber, scale }) {
-    const pdfDocument = rootState.pdfReader.document.pdfDocument;
-    if (!pdfDocument || state.thumbnails[pageNumber]) {
-      return;
-    }
 
-    try {
-      commit("ADD_LOADING_THUMBNAIL", pageNumber);
-
-      const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({
-        scale: scale || state.thumbnailScale,
-      });
-
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-      };
-
-      await page.render(renderContext).promise;
-
-      const thumbnail = {
-        canvas: canvas,
-        width: viewport.width,
-        height: viewport.height,
-        scale: scale || state.thumbnailScale,
-      };
-
-      commit("SET_THUMBNAIL", { pageNumber, thumbnail });
-      return thumbnail;
-    } catch (error) {
-      console.error("加载缩略图失败:", error);
-      throw error;
-    } finally {
-      commit("REMOVE_LOADING_THUMBNAIL", pageNumber);
-    }
-  },
 
   /**
    * 添加导航历史（从navigation模块合并）
    */
-  addNavigationHistory({ commit }, { pageNumber, source, timestamp }) {
-    const entry = {
-      pageNumber,
-      source: source || "unknown",
-      timestamp: timestamp || Date.now(),
-    };
-    commit("ADD_NAVIGATION_HISTORY", entry);
-  },
+
 
   /**
    * 重置查看器
@@ -485,7 +295,6 @@ const getters = {
   // 缩放状态
   zoomState: state => ({
     scale: state.scale,
-    scaleMode: state.scaleMode,
     scalePercent: Math.round(state.scale * 100),
     canZoomIn: state.scale < state.maxScale,
     canZoomOut: state.scale > state.minScale,
@@ -496,36 +305,16 @@ const getters = {
   // 页面信息
   pageInfo: state => state.pageInfo,
 
-  // 查看器配置
-  viewerConfig: state => state.config,
+
 
   // 当前视图状态
   viewState: state => ({
     currentPage: state.currentPage,
     scale: state.scale,
-    scaleMode: state.scaleMode,
     rendering: state.rendering,
   }),
 
-  // 缩略图相关getters（从navigation模块合并）
-  thumbnailCount: state => Object.keys(state.thumbnails).length,
-  isLoadingThumbnail: state => pageNumber =>
-    state.loadingThumbnails.includes(pageNumber),
-  getThumbnail: state => pageNumber => state.thumbnails[pageNumber],
 
-  // 导航历史getters（从navigation模块合并）
-  canGoBack: state => state.historyIndex > 0,
-  canGoForward: state =>
-    state.historyIndex < state.navigationHistory.length - 1,
-  currentHistoryEntry: state => {
-    if (
-      state.historyIndex >= 0 &&
-      state.historyIndex < state.navigationHistory.length
-    ) {
-      return state.navigationHistory[state.historyIndex];
-    }
-    return null;
-  },
 };
 
 export default {

@@ -96,7 +96,7 @@ import {
   mapSidebarState,
   mapSidebarGetters,
   mapSidebarActions,
-} from "../../store/index.js";
+} from "../store/index.js";
 
 export default {
   name: "PdfSidebar",
@@ -417,3 +417,4 @@ export default {
   touch-action: none !important;
 }
 </style>
+

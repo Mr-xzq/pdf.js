@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { mapDocumentState, mapViewerState } from "../../store/index.js";
+import { mapDocumentState, mapViewerState } from "../store/index.js";
 
 export default {
   name: "PdfThumbnail",
@@ -465,3 +465,4 @@ export default {
   }
 }
 </style>
+

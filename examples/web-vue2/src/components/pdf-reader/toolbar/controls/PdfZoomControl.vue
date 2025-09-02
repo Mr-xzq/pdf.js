@@ -12,10 +12,9 @@
     </pdf-button>
 
     <!-- 缩放比例显示 -->
-    <div class="pdf-zoom-control__scale" @click="onScaleClick">
+    <div class="pdf-zoom-control__scale">
       {{ scalePercent }}%
     </div>
-    <div v-if="scaleLabel" class="pdf-zoom-control__mode">{{ scaleLabel }}</div>
 
     <!-- 放大按钮 -->
     <pdf-button
@@ -28,65 +27,12 @@
       <template #icon>+</template>
     </pdf-button>
 
-    <!-- 缩放选择器（可选，点击比例时显示） -->
-    <van-popup
-      v-model="showScaleSelector"
-      position="bottom"
-      :style="{ height: '40%' }"
-      round
-    >
-      <div class="pdf-zoom-control__selector">
-        <div class="pdf-zoom-control__selector-header">
-          <h3>选择缩放比例</h3>
-          <van-button
-            type="primary"
-            size="small"
-            @click="showScaleSelector = false"
-          >
-            确定
-          </van-button>
-        </div>
 
-        <div class="pdf-zoom-control__selector-content">
-          <van-grid :column-num="3" :border="false">
-            <van-grid-item
-              v-for="preset in scalePresets"
-              :key="preset.value"
-              @click="onPresetScale(preset.value)"
-              :class="{ active: Math.abs(scale - preset.value) < 0.01 }"
-            >
-              <div class="preset-item">
-                <div class="preset-label">{{ preset.label }}</div>
-                <div class="preset-value">
-                  {{ Math.round(preset.value * 100) }}%
-                </div>
-              </div>
-            </van-grid-item>
-          </van-grid>
-
-          <!-- 自定义缩放 -->
-          <div class="pdf-zoom-control__custom">
-            <van-field
-              v-model="customScale"
-              type="number"
-              label="自定义"
-              placeholder="输入缩放比例"
-              @blur="onCustomScaleChange"
-              @keyup.enter="onCustomScaleChange"
-            >
-              <template #button>
-                <span>%</span>
-              </template>
-            </van-field>
-          </div>
-        </div>
-      </div>
-    </van-popup>
   </div>
 </template>
 
 <script>
-import PdfButton from "./PdfButton.vue";
+import PdfButton from "../../ui/PdfButton.vue";
 
 export default {
   name: "PdfZoomControl",
@@ -96,11 +42,6 @@ export default {
   },
 
   props: {
-    scaleLabel: {
-      type: String,
-      default: "",
-    },
-
     scale: {
       type: Number,
       default: 1.0,
@@ -113,26 +54,10 @@ export default {
       type: Boolean,
       default: true,
     },
-    scaleLabel: {
-      type: String,
-      default: "",
-    },
   },
 
   data() {
-    return {
-      showScaleSelector: false,
-      customScale: "",
-      // MVP版本：简化缩放预设
-      scalePresets: [
-        { label: "适合宽度", value: "page-width" },
-        { label: "适合页面", value: "page-fit" },
-        { label: "50%", value: 0.5 },
-        { label: "100%", value: 1.0 },
-        { label: "150%", value: 1.5 },
-        { label: "200%", value: 2.0 },
-      ],
-    };
+    return {};
   },
 
   computed: {
@@ -148,31 +73,6 @@ export default {
 
     onZoomOut() {
       this.$emit("zoom-out");
-    },
-
-    onScaleClick() {
-      this.showScaleSelector = true;
-      this.customScale = this.scalePercent.toString();
-    },
-
-    onPresetScale(scaleValue) {
-      if (typeof scaleValue === "string") {
-        // 特殊缩放模式（如 page-width, page-fit）
-        this.$emit("set-scale-mode", scaleValue);
-      } else {
-        // 数值缩放
-        this.$emit("set-scale", scaleValue);
-      }
-      this.showScaleSelector = false;
-    },
-
-    onCustomScaleChange() {
-      const scalePercent = parseInt(this.customScale);
-      if (!isNaN(scalePercent) && scalePercent > 0 && scalePercent <= 1000) {
-        const scaleValue = scalePercent / 100;
-        this.$emit("set-scale", scaleValue);
-        this.showScaleSelector = false;
-      }
     },
   },
 };
@@ -344,3 +244,4 @@ export default {
   }
 }
 </style>
+

@@ -28,7 +28,7 @@
 
         <!-- 核心查看器 -->
         <div class="pdf-viewer__main">
-          <pdf-viewer-core
+          <pdf-viewport
             :src="src"
             :initial-page="initialPage"
             :initial-scale="initialScale"
@@ -51,7 +51,6 @@
         :current-page="currentPage"
         :total-pages="totalPages"
         :scale="currentScale"
-        :scale-label="scaleLabel"
         :can-go-prev="canGoPrev"
         :can-go-next="canGoNext"
         :can-zoom-in="canZoomIn"
@@ -62,7 +61,6 @@
         @zoom-in="onZoomIn"
         @zoom-out="onZoomOut"
         @set-scale="onSetScale"
-        @set-scale-mode="onSetScaleMode"
         class="pdf-viewer__bottom-toolbar"
       />
     </div>
@@ -70,10 +68,10 @@
 </template>
 
 <script>
-import PdfViewerCore from "./PdfViewerCore.vue";
-import PdfTopToolbar from "./ui/PdfTopToolbar.vue";
-import PdfBottomToolbar from "./ui/PdfBottomToolbar.vue";
-import PdfSidebar from "./ui/PdfSidebar.vue";
+import PdfViewport from "./viewport/PdfViewport.vue";
+import PdfTopToolbar from "./toolbar/PdfTopToolbar.vue";
+import PdfBottomToolbar from "./toolbar/PdfBottomToolbar.vue";
+import PdfSidebar from "./sidebar/PdfSidebar.vue";
 import {
   installPdfReaderModule,
   mapDocumentState,
@@ -85,13 +83,13 @@ import {
   mapDocumentActions,
   mapViewerActions,
   mapSidebarActions,
-} from "../store/index.js";
+} from "./store/index.js";
 
 export default {
-  name: "PdfViewer",
+  name: "PdfReader",
 
   components: {
-    PdfViewerCore,
+    PdfViewport,
     PdfTopToolbar,
     PdfBottomToolbar,
     PdfSidebar,
@@ -168,22 +166,7 @@ export default {
     canZoomOut() {
       return this.zoomState.canZoomOut;
     },
-    scaleLabel() {
-      const v = this.$store?.state?.pdfReader?.viewer?.currentScaleValue;
-      if (typeof v === "string") {
-        // 简单映射：可按需美化
-        const map = {
-          auto: "自动",
-          "page-fit": "适合页面",
-          "page-width": "适合宽度",
-          "page-height": "适合高度",
-          "page-actual": "实际大小",
-        };
-        const name = map[v] || v;
-        return `${name} (${Math.round(this.scale * 100)}%)`;
-      }
-      return `${Math.round(this.scale * 100)}%`;
-    },
+
 
     // 侧边栏相关计算属性
     sidebarVisible() {
@@ -225,10 +208,8 @@ export default {
       "nextPage",
       "prevPage",
       "setScale",
-      "setScaleValue",
       "zoomIn",
       "zoomOut",
-      "setScaleMode",
     ]),
     ...mapSidebarActions(["toggle", "show", "hide", "switchToTab"]),
 
@@ -295,25 +276,19 @@ export default {
     },
 
     onZoomIn() {
-      // 由 Core 驱动缩放，Store 由 Core 回写，避免“只改 Store 不渲染”的问题
-      this.$refs.viewerCore?.navigationService?.zoomIn();
+      // 统一入口：通过 Store 派发，Core 通过 watcher 同步
+      this.zoomIn();
     },
 
     onZoomOut() {
-      this.$refs.viewerCore?.navigationService?.zoomOut();
+      this.zoomOut();
     },
 
     onSetScale(scale) {
-      // 立即应用到 Core，并同步 currentScaleValue（方便后续 resize 重算）
-      this.$refs.viewerCore?.setScale?.(scale);
-      this.setScaleValue(scale);
-    },
-
-    onSetScaleMode(mode) {
-      // 更新模式值并触发一次立即重算
-      this.setScaleMode(mode);
-      this.setScaleValue(mode);
-      this.$refs.viewerCore?.checkAndUpdateScale?.();
+      // 统一入口：只保留数值缩放
+      if (typeof scale === "number") {
+        this.setScale(scale);
+      }
     },
 
     // 侧边栏控制方法 - 提供给外部调用
@@ -405,7 +380,7 @@ export default {
 
 <style lang="less" scoped>
 // 引入样式变量
-@import "../styles/variables.less";
+@import "./styles/variables.less";
 
 .pdf-viewer {
   width: 100%;
@@ -476,3 +451,4 @@ export default {
   }
 }
 </style>
+

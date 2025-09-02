@@ -38,7 +38,7 @@
 
     <!-- PDF 阅读器 -->
     <div class="pdf-container">
-      <pdf-viewer
+      <pdf-reader
         :src="pdfUrl"
         :show-controls="true"
         @document-loaded="onDocumentLoaded"
@@ -109,13 +109,13 @@
 </template>
 
 <script>
-import PdfViewer from "../components/pdf-reader/components/PdfViewer.vue";
+import PdfReader from "../components/pdf-reader/index.vue";
 
 export default {
   name: "Stage3Test",
 
   components: {
-    PdfViewer,
+    PdfReader,
   },
 
   data() {

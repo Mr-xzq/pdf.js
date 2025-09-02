@@ -190,14 +190,6 @@ export default {
      */
     onToggleClick() {
       const newExpanded = !this.isExpanded;
-      console.log(
-        "点击展开/收起:",
-        this.item.title,
-        "当前状态:",
-        this.isExpanded,
-        "新状态:",
-        newExpanded
-      );
       this.$emit("toggle-expand", this.item, newExpanded);
     },
 
@@ -361,3 +353,4 @@ export default {
   }
 }
 </style>
+

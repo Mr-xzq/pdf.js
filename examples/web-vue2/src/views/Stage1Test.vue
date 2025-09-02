@@ -39,7 +39,7 @@
       </div>
 
       <div class="pdf-container">
-        <pdf-viewer
+        <pdf-reader
           v-if="currentPdfUrl"
           :src="currentPdfUrl"
           @document-loaded="onDocumentLoaded"
@@ -54,12 +54,12 @@
 </template>
 
 <script>
-import PdfViewer from "@/components/pdf-reader/components/PdfViewer.vue";
+import PdfReader from "@/components/pdf-reader/index.vue";
 
 export default {
   name: "Stage1Test",
   components: {
-    PdfViewer,
+    PdfReader,
   },
   data() {
     return {
