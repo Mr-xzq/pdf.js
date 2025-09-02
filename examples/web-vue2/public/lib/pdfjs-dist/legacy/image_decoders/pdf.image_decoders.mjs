@@ -18407,7 +18407,7 @@ var _module = {
 
 
 const pdfjsVersion = "4.4.168";
-const pdfjsBuild = "1af5fb6f3";
+const pdfjsBuild = "2aa34a4e1";
 
 var __webpack_exports__Jbig2Error = __webpack_exports__.Jbig2Error;
 var __webpack_exports__Jbig2Image = __webpack_exports__.Jbig2Image;

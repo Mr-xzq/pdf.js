@@ -1,9 +1,9 @@
-export type OnProgressParameters = import("./display/api.js").OnProgressParameters;
-export type PDFDocumentLoadingTask = import("./display/api.js").PDFDocumentLoadingTask;
-export type PDFDocumentProxy = import("./display/api.js").PDFDocumentProxy;
-export type PDFPageProxy = import("./display/api.js").PDFPageProxy;
-export type RenderTask = import("./display/api.js").RenderTask;
-export type PageViewport = import("./display/display_utils.js").PageViewport;
+export type OnProgressParameters = import("./display/api").OnProgressParameters;
+export type PDFDocumentLoadingTask = import("./display/api").PDFDocumentLoadingTask;
+export type PDFDocumentProxy = import("./display/api").PDFDocumentProxy;
+export type PDFPageProxy = import("./display/api").PDFPageProxy;
+export type RenderTask = import("./display/api").RenderTask;
+export type PageViewport = import("./display/display_utils").PageViewport;
 import { AbortException } from "./shared/util.js";
 import { AnnotationEditorLayer } from "./display/editor/annotation_editor_layer.js";
 import { AnnotationEditorParamsType } from "./shared/util.js";

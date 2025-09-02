@@ -27989,7 +27989,7 @@ var _canvasInUse = {
   _: new WeakSet()
 };
 const version = "4.4.168";
-const build = "1af5fb6f3";
+const build = "2aa34a4e1";
 
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.reduce.js
 var es_array_reduce = __webpack_require__(2712);
@@ -35564,7 +35564,7 @@ function _createClipPath(defs, pathId) {
 
 
 const pdfjsVersion = "4.4.168";
-const pdfjsBuild = "1af5fb6f3";
+const pdfjsBuild = "2aa34a4e1";
 
 var __webpack_exports__AbortException = __webpack_exports__.AbortException;
 var __webpack_exports__AnnotationEditorLayer = __webpack_exports__.AnnotationEditorLayer;

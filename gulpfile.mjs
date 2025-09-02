@@ -47,6 +47,7 @@ import Vinyl from "vinyl";
 import webpack2 from "webpack";
 import webpackStream from "webpack-stream";
 import zip from "gulp-zip";
+import fg from "fast-glob";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -2426,6 +2427,44 @@ gulp.task(
     }
   )
 );
+
+// 根据 sourceDir 和 includeGlobs copy 到指定 targetDir
+gulp.task("copy-files", async function copyFiles() {
+  const sourceDir = DIST_DIR;
+  const targetDir = "examples/web-vue2/public/lib/pdfjs-dist";
+
+  // include globs（相对 sourceDir）
+  const includeGlobs = [
+    "legacy/**",
+    "types/**",
+    "LICENSE",
+    "package.json",
+    "README.md",
+    "webpack.mjs",
+  ];
+
+  const patterns = includeGlobs.length
+    ? includeGlobs.map(g => path.posix.join(sourceDir, g))
+    : [path.posix.join(sourceDir)];
+
+  const entries = await fg(patterns, {
+    dot: true,
+    onlyFiles: true,
+    followSymbolicLinks: false,
+    unique: true,
+  });
+
+  if (!entries.length) {
+    console.log(
+      `[copy-files] 未匹配到任何文件，source=${sourceDir} include=${includeGlobs.join(", ")}`
+    );
+    return;
+  }
+
+  return gulp
+    .src(entries, { base: sourceDir, encoding: false })
+    .pipe(gulp.dest(targetDir));
+});
 
 gulp.task(
   "dist-install",

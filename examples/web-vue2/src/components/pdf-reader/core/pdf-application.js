@@ -38,7 +38,9 @@ export class PdfApplication {
       }
 
       // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
-      const pdfjsViewer = await import("local-pdfjs-dist/legacy/web/pdf_viewer.mjs");
+      const pdfjsViewer = await import(
+        "local-pdfjs-dist/legacy/web/pdf_viewer.mjs"
+      );
 
       // 创建事件总线
       this.eventBus = new pdfjsViewer.EventBus();

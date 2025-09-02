@@ -19479,7 +19479,7 @@ class PDFSinglePageViewer extends PDFViewer {
 
 
 const pdfjsVersion = "4.4.168";
-const pdfjsBuild = "1af5fb6f3";
+const pdfjsBuild = "2aa34a4e1";
 
 var __webpack_exports__AnnotationLayerBuilder = __webpack_exports__.AnnotationLayerBuilder;
 var __webpack_exports__DownloadManager = __webpack_exports__.DownloadManager;
