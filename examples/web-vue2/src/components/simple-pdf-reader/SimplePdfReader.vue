@@ -1,9 +1,3 @@
-<template>
-  <div class="spr-container">
-    <div class="spr-pages" ref="pagesRoot"></div>
-  </div>
-</template>
-
 <script>
 import * as pdfjsLib from "local-pdfjs-dist/webpack.mjs";
 
@@ -11,14 +5,13 @@ export default {
   name: "SimplePdfReader",
   props: {
     src: { type: String, required: true },
-    // 最大 canvas 像素（物理像素）上限，防止 OOM；
+    // 最大 canvas 像素（物理像素）上线：1. 防止 OOM；2. 不同浏览器对 canvas 的最大渲染像素有限制；
     maxCanvasPixels: { type: Number, default: 5 * 1024 * 1024 },
   },
   data() {
     return {
-      error: "",
       pdfDocument: null,
-      pageCanvases: [],
+      pageVNodeList: [],
       // 首次布局缓存：统一缓存第一页基准尺寸与适配比例，避免重复计算
       layoutCache: null,
       // pdf.js 下载处理进度
@@ -80,9 +73,13 @@ export default {
 
       // 复用缓存的适配比例，避免重复计算与不一致
       const cache = await this.ensureLayoutCache();
+      // 根据缓存的比例计算实际的渲染尺寸
       const renderViewport = page.getViewport({ scale: cache?.fitScale || 1 });
 
-      const canvas = this.pageCanvases[pageNumber - 1];
+      const pageVNode = this.pageVNodeList[pageNumber - 1];
+
+      // vnode.elm --> el
+      const canvas = pageVNode.children[0]?.elm;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
 
@@ -113,7 +110,9 @@ export default {
 
       const renderTask = page.render({
         canvasContext: ctx,
+        // 根据宽度撑满计算的尺寸信息
         viewport: renderViewport,
+        // 根据 DPR 进行缩放
         // CanvasRenderingContext2D transform(a, b, c, d, e, f)
         // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
         transform:
@@ -130,7 +129,6 @@ export default {
 
       // 清理上一次状态
       this.cleanup();
-      this.error = "";
 
       // 初始化进度与渲染计数
       this.downloadProgress = 0;
@@ -159,32 +157,34 @@ export default {
         // 初始化页面占位并等待 DOM 准备好 canvas
         this.totalPages = pdf.numPages;
 
-        // 使用 JS 动态创建页面和 canvas，避免模板/refs 顺序问题
-        const root = this.$refs.pagesRoot;
-        if (!root) throw new Error("[SPR] pagesRoot not found");
-        root.innerHTML = "";
-        this.pageCanvases = new Array(this.totalPages);
-
         // 使用缓存的占位尺寸，避免重复计算与首次渲染抖动
         const { phW: placeholderWidth, phH: placeholderHeight } =
           await this.ensureLayoutCache();
 
         for (let i = 0; i < this.totalPages; i++) {
-          const pageEl = document.createElement("div");
-          pageEl.className = "spr-page";
           // 给 page 设置占位尺寸，避免布局跳动
-          pageEl.style.width = `${placeholderWidth}px`;
-          pageEl.style.height = `${placeholderHeight}px`;
+          const pageDataObject = {
+            class: "spr-page",
+            style: {
+              width: `${placeholderWidth}px`,
+              height: `${placeholderHeight}px`,
+            },
+          };
 
-          const canvas = document.createElement("canvas");
-          canvas.className = "spr-canvas";
           // 给 canvas 设置占位 CSS 尺寸（属性宽高在渲染时再按 DPR 设置）
-          canvas.style.width = `${placeholderWidth}px`;
-          canvas.style.height = `${placeholderHeight}px`;
+          const canvasDataObject = {
+            class: "spr-canvas",
+            style: {
+              width: `${placeholderWidth}px`,
+              height: `${placeholderHeight}px`,
+            },
+          };
 
-          pageEl.appendChild(canvas);
-          root.appendChild(pageEl);
-          this.pageCanvases[i] = canvas;
+          this.pageVNodeList.push(
+            <div {...pageDataObject}>
+              <canvas {...canvasDataObject}></canvas>
+            </div>
+          );
         }
 
         // 逐页渲染（顺序），并更新渲染进度
@@ -194,11 +194,10 @@ export default {
           this.emitProgress();
         }
 
-        this.$emit("loaded", { numPages: this.totalPages }); // 通知外部：加载完成
+        this.$emit("loaded", { numPages: this.totalPages });
       } catch (e) {
-        console.error("[SPR] loadDocument error", e);
-        this.error = e && e.message ? e.message : String(e);
-        this.$emit("error", e); // 通知外部：出现错误
+        console.error("loadDocument error", e);
+        this.$emit("error", e?.message ?? String(e));
       }
     },
     emitProgress() {
@@ -217,7 +216,7 @@ export default {
     },
     cleanup() {
       this.pdfDocument = null;
-      this.pageCanvases = [];
+      this.pageVNodeList = [];
       this.downloadProgress = 0;
       this.totalPages = 0;
       this.renderedPages = 0;
@@ -229,6 +228,15 @@ export default {
       }
     },
   },
+  render() {
+    return (
+      <div class="spr-container">
+        <div class="spr-pages" ref="pagesRoot">
+          {this.pageVNodeList}
+        </div>
+      </div>
+    );
+  },
 };
 </script>
 
@@ -239,7 +247,7 @@ export default {
   height: 100%;
   background: #fff;
 
-  .spr-pages::v-deep {
+  .spr-pages {
     .spr-page:first-child {
       margin-top: 0;
     }
