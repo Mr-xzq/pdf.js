@@ -6,6 +6,7 @@
 
 <script>
 import * as pdfjsLib from "local-pdfjs-dist/webpack.mjs";
+
 export default {
   name: "SimplePdfReader",
   props: {
@@ -18,7 +19,8 @@ export default {
       error: "",
       pdfDocument: null,
       pageCanvases: [],
-      firstPageCache: null,
+      // 首次布局缓存：统一缓存第一页基准尺寸与适配比例，避免重复计算
+      layoutCache: null,
       // pdf.js 下载处理进度
       downloadProgress: 0,
       // 渲染进度 renderedPages / totalPages
@@ -37,20 +39,48 @@ export default {
     this.cleanup();
   },
   methods: {
+    /**
+     * 计算并缓存首页的基准尺寸与适配比例（仅计算一次）
+     * - 统一占位与渲染所用的 scale，避免抖动与重复计算
+     * - 使用容器宽度进行等比适配
+     */
+    async ensureLayoutCache() {
+      // 已有缓存直接返回
+      if (this.layoutCache) return this.layoutCache;
+      if (!this.pdfDocument) return null;
+
+      // 容器宽度（逻辑像素）
+      const root = this.$refs.pagesRoot;
+      const containerWidth = root?.clientWidth || window.innerWidth || 375;
+
+      // 仅取第 1 页作为基准视口，避免对每页都调用 getPage 带来额外开销
+      const firstPage = await this.pdfDocument.getPage(1);
+      const baseViewport = firstPage.getViewport({ scale: 1 });
+
+      // 根据容器宽度计算铺满宽度的比例
+      const fitScale = containerWidth / baseViewport.width;
+
+      // 占位用 CSS 尺寸（避免首次渲染布局跳动）
+      const phW = Math.floor(baseViewport.width * fitScale);
+      const phH = Math.floor(baseViewport.height * fitScale);
+
+      this.layoutCache = {
+        baseW: baseViewport.width,
+        baseH: baseViewport.height,
+        fitScale,
+        phW,
+        phH,
+      };
+      return this.layoutCache;
+    },
+
     async renderOnePage(pageNumber) {
       if (!this.pdfDocument) return;
       const page = await this.pdfDocument.getPage(pageNumber);
 
-      const pagesRoot = this.$refs.pagesRoot;
-      const containerWidth = pagesRoot?.clientWidth || window.innerWidth || 375;
-      // 获取 PDF 页面的原始尺寸信息
-      // 利用首页缓存的基准视口，确保占位与渲染逻辑一致
-      if (!this.firstPageCache) {
-        this.firstPageCache = page.getViewport({ scale: 1 });
-      }
-      const baseViewport = page.getViewport({ scale: 1 });
-      const widthFitScale = containerWidth / baseViewport.width;
-      const renderViewport = page.getViewport({ scale: widthFitScale });
+      // 复用缓存的适配比例，避免重复计算与不一致
+      const cache = await this.ensureLayoutCache();
+      const renderViewport = page.getViewport({ scale: cache?.fitScale || 1 });
 
       const canvas = this.pageCanvases[pageNumber - 1];
       if (!canvas) return;
@@ -134,18 +164,10 @@ export default {
         if (!root) throw new Error("[SPR] pagesRoot not found");
         root.innerHTML = "";
         this.pageCanvases = new Array(this.totalPages);
-        // 预估占位尺寸，使用第 1 页的宽高比计算（一次计算），避免首次渲染抖动
-        const containerWidth =
-          (root && root.clientWidth) || window.innerWidth || 375;
-        // 复用 renderOnePage 中缓存的第一页信息，避免重复 getPage
-        const firstBaseViewport =
-          this.firstPageCache ||
-          (await this.pdfDocument.getPage(1)).getViewport({ scale: 1 });
-        const fitScale = containerWidth / firstBaseViewport.width;
-        const placeholderWidth = Math.floor(firstBaseViewport.width * fitScale);
-        const placeholderHeight = Math.floor(
-          firstBaseViewport.height * fitScale
-        );
+
+        // 使用缓存的占位尺寸，避免重复计算与首次渲染抖动
+        const { phW: placeholderWidth, phH: placeholderHeight } =
+          await this.ensureLayoutCache();
 
         for (let i = 0; i < this.totalPages; i++) {
           const pageEl = document.createElement("div");
@@ -199,7 +221,8 @@ export default {
       this.downloadProgress = 0;
       this.totalPages = 0;
       this.renderedPages = 0;
-      this.firstPageCache = null;
+      // 清理布局缓存，确保下次加载或容器尺寸变化时能重新计算
+      this.layoutCache = null;
       if (this.progressRafId) {
         cancelAnimationFrame(this.progressRafId);
         this.progressRafId = null;
