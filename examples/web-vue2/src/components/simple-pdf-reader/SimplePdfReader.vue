@@ -34,8 +34,8 @@ export default {
   methods: {
     /**
      * 计算并缓存首页的基准尺寸与适配比例（仅计算一次）
-     * - 统一占位与渲染所用的 scale，避免抖动与重复计算
-     * - 使用容器宽度进行等比适配
+     * 1. 统一占位与渲染所用的 scale，避免抖动与重复计算
+     * 2. 使用容器宽度进行等比适配
      */
     async ensureLayoutCache() {
       // 已有缓存直接返回
@@ -145,16 +145,16 @@ export default {
       try {
         // 创建 pdf.js 文档加载任务
         const task = pdfjsLib.getDocument({ url: this.src });
-        // pdf.js 处理（下载等）进度回调（0-1），合并进总进度处理
+        // pdf.js 处理（下载等）进度回调，合并进总进度处理
+        // loaded 和 total 都是 contentLength
         task.onProgress = ({ loaded = 0, total = 1 }) => {
           this.downloadProgress = total ? loaded / total : 0;
           this.emitProgress();
         };
         // 等待文档加载完成
         const pdf = await task.promise;
-        this.pdfDocument = pdf;
 
-        // 初始化页面占位并等待 DOM 准备好 canvas
+        this.pdfDocument = pdf;
         this.totalPages = pdf.numPages;
 
         // 使用缓存的占位尺寸，避免重复计算与首次渲染抖动
@@ -180,6 +180,7 @@ export default {
             },
           };
 
+          // 初始化页面占位，并提前准备好 canvas
           this.pageVNodeList.push(
             <div {...pageDataObject}>
               <canvas {...canvasDataObject}></canvas>

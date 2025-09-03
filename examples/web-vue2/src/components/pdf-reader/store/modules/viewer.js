@@ -16,7 +16,7 @@ const state = {
   // 当前页面
   currentPage: 1,
 
-  // 缩放相关
+  // 缩放相关（仅数值）
   scale: 1.0,
   minScale: 0.1,
   maxScale: 10.0,
@@ -59,6 +59,8 @@ const mutations = {
       state.scale = scale;
     }
   },
+
+
 
 
 

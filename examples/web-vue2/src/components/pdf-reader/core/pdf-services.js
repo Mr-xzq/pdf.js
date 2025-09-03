@@ -494,11 +494,11 @@ export class NavigationService {
     const previous = this.currentScale;
     this.currentScale = scale;
 
-    // 将 currentScaleValue 切换为数值，阻止后续因字符串模式触发的重算把比例“改回去”
+    // 同步 Vuex 的数值缩放
     try {
       const vc = this.pdfServices.vueComponent;
       if (vc && vc.$store && vc.$store.dispatch) {
-        vc.$store.dispatch("pdfReader/viewer/setScaleValue", scale);
+        vc.$store.dispatch("pdfReader/viewer/setScale", scale);
       }
     } catch (e) {}
 

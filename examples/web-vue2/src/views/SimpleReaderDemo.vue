@@ -53,9 +53,9 @@ export default {
       if (this.toast && this.toast.clear) this.toast.clear();
       this.$toast.success(`加载完成，共 ${numPages} 页`);
     },
-    onError(e) {
+    onError(errMsg) {
       if (this.toast && this.toast.clear) this.toast.clear();
-      this.$toast.fail(e && e.message ? e.message : "加载失败");
+      this.$toast.fail(errMsg || '文件加载失败');
     },
   },
 };

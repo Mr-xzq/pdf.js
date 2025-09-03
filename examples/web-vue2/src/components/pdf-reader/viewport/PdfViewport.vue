@@ -94,22 +94,12 @@ export default {
       // 文档信息
       documentInfo: null,
 
-      // 容器尺寸监听器
-      // 缩放重算防抖定时器
-      resizeRecomputeTimer: null,
-      resizeRecomputeDelay: 150,
 
-      resizeObserver: null,
-      windowResizeHandler: null,
-      lastContainerSize: null,
     };
   },
 
   async mounted() {
     await this.initializeServices();
-
-    // 监听容器尺寸变化，重新计算缩放
-    this.setupResizeObserver();
 
     if (this.src) {
       await this.loadDocument();
@@ -117,18 +107,6 @@ export default {
   },
 
   beforeDestroy() {
-    // 清理 ResizeObserver
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
-
-    // 清理 window resize 监听器
-    if (this.windowResizeHandler) {
-      window.removeEventListener("resize", this.windowResizeHandler);
-      this.windowResizeHandler = null;
-    }
-
     this.destroyServices();
   },
 
@@ -386,30 +364,9 @@ export default {
       }
     },
 
-    /**
-     * 设置缩放设定值（字符串或数值）
-     */
-    setScaleValue(value) {
-      if (this.$store && this.$store.dispatch) {
-        this.$store.dispatch("pdfReader/viewer/setScaleValue", value);
-      }
-      if (typeof value === "number") {
-        this.setScale(value);
-      } else {
-        // 字符串模式，触发一次重算（带防抖）
-        this.scheduleResizeRecompute();
-      }
-    },
 
-    /**
-     * 调度一次带防抖的重算
-     */
-    scheduleResizeRecompute() {
-      clearTimeout(this.resizeRecomputeTimer);
-      this.resizeRecomputeTimer = setTimeout(() => {
-        requestAnimationFrame(() => this.checkAndUpdateScale());
-      }, this.resizeRecomputeDelay);
-    },
+
+
 
     setScale(scale) {
       if (this.navigationService) {
@@ -443,7 +400,7 @@ export default {
       this.navigationService.currentPage = this.initialPage;
       this.currentPage = this.initialPage;
 
-      // 先使用默认缩放，等容器尺寸稳定后再调整
+      // 使用初始缩放
       this.navigationService.currentScale = this.initialScale;
       this.currentScale = this.initialScale;
 
@@ -457,8 +414,10 @@ export default {
         this.$store.dispatch("pdfReader/viewer/goToPage", this.initialPage);
       }
 
-      // 触发容器尺寸检查：直接按容器尺寸计算一次最佳数值缩放
-      this.checkAndUpdateScale();
+      // 初次加载按容器宽度适配一次
+      this.$nextTick(() => {
+        this.fitWidthOnce && this.fitWidthOnce();
+      });
 
       console.log(
         `PDF 文档加载完成，共 ${event?.numPages || "unknown"} 页，初始缩放: ${
@@ -467,45 +426,7 @@ export default {
       );
     },
 
-    /**
-     * 检查并更新缩放比例
-     */
-    async checkAndUpdateScale() {
-      if (!this.documentLoaded || !this.documentInfo) {
-        return;
-      }
 
-      const container = this.$refs.viewerContainer;
-      if (!container) {
-        return;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      const newSize = {
-        width: containerRect.width,
-        height: containerRect.height,
-      };
-      if (newSize.width === 0 || newSize.height === 0) {
-        return;
-      }
-
-      // 直接基于容器和页面尺寸计算一个合适的数值缩放（无预设逻辑）
-      try {
-        const page = await this.pdfServices.getPage(1);
-        const viewport = page.getViewport({ scale: 1.0 });
-        // 简单以宽高中较小的适配比例为准
-        const scaleToFitHeight = newSize.height / viewport.height;
-        const scaleToFitWidth = newSize.width / viewport.width;
-        const computed = Math.min(scaleToFitHeight, scaleToFitWidth);
-        if (Math.abs(computed - this.currentScale) > 0.01) {
-          this.applyScale(computed);
-          this.$emit("scale-changing", { scale: computed });
-        }
-      } catch (e) {
-        console.warn("容器自适应计算失败:", e);
-      }
-      return;
-    },
 
     /**
      * 应用缩放比例
@@ -530,151 +451,32 @@ export default {
     },
 
     /**
-     * 计算最佳缩放比例
-     * 根据容器尺寸和实际PDF页面尺寸自动计算合适的缩放比例
+     * 按容器宽度适配一次（无监听、无后续自动调整）
      */
-    async calculateOptimalScale(documentEvent = null) {
+    async fitWidthOnce() {
       try {
+        if (!this.documentLoaded || !this.pdfServices) return;
         const container = this.$refs.viewerContainer;
-        if (!container) {
-          return this.initialScale;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        if (!rect || rect.width === 0) return;
+
+        const page = await this.pdfServices.getPage(1);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const computed = rect.width / viewport.width;
+        if (computed > 0 && Math.abs(computed - this.currentScale) > 0.005) {
+          this.setScale(computed);
         }
-
-        // 获取容器的实际尺寸
-        const containerRect = container.getBoundingClientRect();
-
-        // 检查容器是否有有效尺寸
-        if (containerRect.width === 0 || containerRect.height === 0) {
-          return this.initialScale;
-        }
-
-        // 计算可用空间，考虑内边距和滚动条
-        const computedStyle = window.getComputedStyle(container);
-        const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-        const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
-        const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
-
-        const availableHeight =
-          containerRect.height - paddingTop - paddingBottom - 20; // 额外预留20px
-        const availableWidth =
-          containerRect.width - paddingLeft - paddingRight - 20;
-
-        let pageWidth = 595; // 默认A4宽度
-        let pageHeight = 842; // 默认A4高度
-
-        // 尝试获取实际的PDF页面尺寸
-        try {
-          if (this.pdfServices) {
-            const page = await this.pdfServices.getPage(1);
-            const viewport = page.getViewport({ scale: 1.0 });
-            pageWidth = viewport.width;
-            pageHeight = viewport.height;
-            console.log(`获取到实际页面尺寸: ${pageWidth}x${pageHeight}px`);
-          } else if (documentEvent && documentEvent.getPage) {
-            // 如果从事件中可以获取页面信息
-            const page = await documentEvent.getPage(1);
-            const viewport = page.getViewport({ scale: 1.0 });
-            pageWidth = viewport.width;
-            pageHeight = viewport.height;
-            console.log(`从事件获取页面尺寸: ${pageWidth}x${pageHeight}px`);
-          }
-        } catch (error) {
-          console.warn("无法获取实际页面尺寸，使用默认值:", error);
-        }
-
-        // 计算适合容器的缩放比例
-        const scaleToFitHeight = availableHeight / pageHeight;
-        const scaleToFitWidth = availableWidth / pageWidth;
-
-        // 选择较小的缩放比例以确保页面完全适合容器
-        const autoScale = Math.min(scaleToFitHeight, scaleToFitWidth);
-
-        // 限制缩放范围：最小0.3，最大3.0，优先保证页面适合容器
-        let optimalScale;
-        if (autoScale < 0.3) {
-          optimalScale = 0.3;
-        } else if (autoScale > 3.0) {
-          optimalScale = 3.0;
-        } else {
-          // 确保缩放比例合理，至少0.5
-          optimalScale = Math.max(0.5, autoScale);
-        }
-
-        console.log(
-          `容器尺寸: ${availableWidth}x${availableHeight}px, 页面尺寸: ${pageWidth}x${pageHeight}px, 计算缩放比例: ${optimalScale}`
-        );
-
-        return optimalScale;
-      } catch (error) {
-        console.warn("计算最佳缩放比例失败:", error);
-        return this.initialScale;
+      } catch (e) {
+        console.warn("fitWidthOnce 计算失败:", e);
       }
     },
 
-    /**
-     * 设置容器尺寸监听器
-     */
-    setupResizeObserver() {
-      if (!window.ResizeObserver) {
-        console.warn("ResizeObserver 不支持，将使用 window resize 事件");
-        // 降级到 window resize 事件
-        this.windowResizeHandler = () => {
-          this.scheduleResizeRecompute();
-        };
-        window.addEventListener("resize", this.windowResizeHandler);
-        return;
-      }
 
-      this.resizeObserver = new ResizeObserver(() =>
-        this.scheduleResizeRecompute()
-      );
 
-      // 等待 DOM 更新后再开始监听
-      this.$nextTick(() => {
-        const container = this.$refs.viewerContainer;
-        if (container && this.resizeObserver) {
-          this.resizeObserver.observe(container);
 
-          // 记录初始尺寸
-          const rect = container.getBoundingClientRect();
-          this.lastContainerSize = { width: rect.width, height: rect.height };
 
-          console.log(`开始监听容器尺寸变化: ${rect.width}x${rect.height}`);
-        }
-      });
-    },
 
-    /**
-     * 处理容器尺寸变化
-     */
-    handleContainerResize(entries) {
-      // 检查容器尺寸是否真的发生了变化
-      const entry = entries[0];
-      if (!entry) return;
-
-      const { width, height } = entry.contentRect;
-
-      // 忽略无效尺寸
-      if (width === 0 || height === 0) return;
-
-      // 检查尺寸是否真的变化了
-      if (
-        this.lastContainerSize &&
-        Math.abs(this.lastContainerSize.width - width) < 1 &&
-        Math.abs(this.lastContainerSize.height - height) < 1
-      ) {
-        return;
-      }
-
-      // 记录新的容器尺寸
-      this.lastContainerSize = { width, height };
-
-      console.log(`容器尺寸变化: ${width}x${height}`);
-
-      // 响应式更新缩放
-      this.checkAndUpdateScale();
-    },
   },
 };
 </script>

@@ -58,9 +58,10 @@
         @prev-page="onPrevPage"
         @next-page="onNextPage"
         @go-to-page="onGoToPage"
-        @zoom-in="onZoomIn"
-        @zoom-out="onZoomOut"
+        @zoom-in="zoomIn"
+        @zoom-out="zoomOut"
         @set-scale="onSetScale"
+        @fit-width-once="onFitWidthOnce"
         class="pdf-viewer__bottom-toolbar"
       />
     </div>
@@ -288,6 +289,14 @@ export default {
       // 统一入口：只保留数值缩放
       if (typeof scale === "number") {
         this.setScale(scale);
+      }
+    },
+
+    onFitWidthOnce() {
+      // 直接调用子组件核心 viewer 执行一次适配
+      const core = this.$refs.viewerCore;
+      if (core && core.fitWidthOnce) {
+        core.fitWidthOnce();
       }
     },
 

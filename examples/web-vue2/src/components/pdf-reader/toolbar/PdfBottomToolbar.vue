@@ -31,7 +31,8 @@
       <!-- 扩展功能区域 -->
       <div class="pdf-bottom-toolbar__actions">
         <slot name="actions">
-          <!-- 默认为空，可由使用方自定义功能按钮 -->
+          <!-- 默认提供一个“适配宽度”按钮，可被外部插槽覆盖 -->
+          <pdf-button size="medium" @click="onFitWidth">适配宽度</pdf-button>
         </slot>
       </div>
     </div>
@@ -41,6 +42,7 @@
 <script>
 import PdfNavigation from "./controls/PdfNavigation.vue";
 import PdfZoomControl from "./controls/PdfZoomControl.vue";
+import PdfButton from "../ui/PdfButton.vue";
 
 export default {
   name: "PdfBottomToolbar",
@@ -48,6 +50,7 @@ export default {
   components: {
     PdfNavigation,
     PdfZoomControl,
+    PdfButton,
   },
 
   props: {
@@ -108,6 +111,10 @@ export default {
 
     onSetScale(scale) {
       this.$emit("set-scale", scale);
+    },
+
+    onFitWidth() {
+      this.$emit("fit-width-once");
     },
   },
 };
