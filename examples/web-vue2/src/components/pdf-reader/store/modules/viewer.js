@@ -29,7 +29,6 @@ const state = {
   pageInfo: {
     width: 0,
     height: 0,
-    aspectRatio: 1,
   },
 
   // 滚动位置
@@ -119,7 +118,6 @@ const mutations = {
     state.pageInfo = {
       width: 0,
       height: 0,
-      aspectRatio: 1,
     };
     state.scrollPosition = { x: 0, y: 0 };
   },

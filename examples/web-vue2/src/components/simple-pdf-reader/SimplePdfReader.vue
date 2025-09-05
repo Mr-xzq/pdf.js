@@ -1,5 +1,4 @@
 <script>
-// import * as pdfjsLib from "local-pdfjs-dist/webpack.mjs";
 import * as pdfjsLib from "pdfjs-dist/webpack.mjs";
 
 export default {

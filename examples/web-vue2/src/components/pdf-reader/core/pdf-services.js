@@ -1,6 +1,7 @@
 import { getPdfApplication } from "./pdf-application.js";
 import { EventBridge } from "./pdf-events.js";
 import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale";
+import { initializePdfJs } from "./pdf-config.js";
 import store from "@/store/index.js";
 
 
@@ -10,6 +11,7 @@ import store from "@/store/index.js";
  */
 export class PdfServices {
   constructor(vueComponent, options = {}) {
+    // 为保持向后兼容保留构造签名，但不再使用 vueComponent 直接回调
     this.vueComponent = vueComponent;
     this.options = options;
 
@@ -58,13 +60,8 @@ export class PdfServices {
    */
   async preInitialize() {
     try {
-      // 导入并设置 globalThis.pdfjsLib
-      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
-
-      if (typeof globalThis !== "undefined") {
-        globalThis.pdfjsLib = pdfjsLib;
-      }
-
+      // 统一入口：幂等初始化
+      await initializePdfJs();
       console.log("PDF.js 核心库预初始化完成");
     } catch (error) {
       console.error("PDF.js 核心库预初始化失败:", error);
@@ -73,65 +70,19 @@ export class PdfServices {
   }
 
   /**
-   * 加载文档
+   * 加载文档（旧路径，逐步淘汰）
+   * 仍保留以兼容旧代码；新方案建议改由 Vuex action 执行真实加载，随后调用 attachDocument。
    */
-  async loadDocument(src, options = {}) {
-    if (!this.initialized) {
-      await this.initialize();
+
+  /**
+   * 附加外部已加载的文档（新路径配套）
+   * 可选传入 { info, metadata } 用于缓存至应用层，避免重复读取
+   */
+  attachDocument(pdfDocument, options = {}) {
+    if (!this.application) {
+      throw new Error("PdfServices 未初始化");
     }
-
-    try {
-      // 发送加载开始事件
-      this.vueComponent.$emit("load-start", { src });
-
-      // 设置进度回调
-      const loadOptions = {
-        ...options,
-        onProgress: progressData => {
-          const progressEvent = {
-            loaded: progressData.loaded,
-            total: progressData.total,
-            percentage:
-              progressData.total > 0
-                ? Math.round((progressData.loaded / progressData.total) * 100)
-                : 0,
-          };
-
-          // 直接调用组件的方法，避免事件循环
-          if (this.vueComponent.onLoadProgress) {
-            this.vueComponent.onLoadProgress(progressEvent);
-          }
-        },
-      };
-
-      const document = await this.application.loadDocument(src, loadOptions);
-
-      // 获取文档信息
-      const documentInfo = await this.application.getDocumentInfo();
-
-      // 直接调用组件方法，避免事件循环
-      const loadedEvent = {
-        document,
-        ...documentInfo,
-      };
-
-      if (this.vueComponent.onDocumentLoaded) {
-        this.vueComponent.onDocumentLoaded(loadedEvent);
-      }
-
-      return document;
-    } catch (error) {
-      // 直接调用组件方法，避免事件循环
-      const errorEvent = {
-        error: error.message,
-        src,
-      };
-
-      if (this.vueComponent.onDocumentError) {
-        this.vueComponent.onDocumentError(errorEvent);
-      }
-      throw error;
-    }
+    this.application.attachDocument(pdfDocument, options);
   }
 
   /**
@@ -238,19 +189,11 @@ export class PdfServices {
         throw new Error("无法解析目的地页码");
       }
 
-      // 统一走 Vuex viewer 动作，保持状态一致（优先全局 store）
-      try {
-        if (store && typeof store.dispatch === "function") {
-          await store.dispatch("pdfReader/viewer/goToPage", pageNumber);
-        } else if (this.vueComponent?.navigationService) {
-          // 回退：直接通过 NavigationService
-          this.vueComponent.navigationService.goToPage(pageNumber);
-        }
-      } catch (e) {
-        console.warn("goToDestination -> Vuex 同步失败，回退 NavigationService:", e);
-        if (this.vueComponent?.navigationService) {
-          this.vueComponent.navigationService.goToPage(pageNumber);
-        }
+      // 统一走 Vuex viewer 动作，保持状态一致（不再调用组件实例）
+      if (store && typeof store.dispatch === "function") {
+        await store.dispatch("pdfReader/viewer/goToPage", pageNumber);
+      } else {
+        throw new Error("Vuex store 未就绪，无法跳转页面");
       }
 
       return pageNumber;
@@ -433,8 +376,7 @@ export class PageRenderService {
 export class NavigationService {
   constructor(pdfServices) {
     this.pdfServices = pdfServices;
-    this.currentPage = 1;
-    this.currentScale = 1.0;
+    // 不再维护本地镜像状态，统一以 Vuex 为权威数据源
   }
 
   /**
@@ -450,17 +392,13 @@ export class NavigationService {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
 
-    const previous = this.currentPage;
-    this.currentPage = pageNumber;
-
-    // 直接调用组件方法，避免事件循环
-    const pageChangedEvent = {
-      pageNumber,
-      previous,
-    };
-
-    if (this.pdfServices.vueComponent.onPageChanged) {
-      this.pdfServices.vueComponent.onPageChanged(pageChangedEvent);
+    // 统一走 Vuex，同步页面状态（不直接调用组件实例）
+    if (store && typeof store.dispatch === "function") {
+      try {
+        store.dispatch("pdfReader/viewer/goToPage", pageNumber);
+      } catch (e) {
+        console.warn("goToPage -> Vuex 同步失败:", e);
+      }
     }
 
     return pageNumber;
@@ -471,20 +409,22 @@ export class NavigationService {
    */
   nextPage() {
     const state = this.pdfServices.documentState;
-    if (this.currentPage < state.totalPages) {
-      return this.goToPage(this.currentPage + 1);
+    const current = store?.state?.pdfReader?.viewer?.currentPage || 1;
+    if (current < state.totalPages) {
+      return this.goToPage(current + 1);
     }
-    return this.currentPage;
+    return current;
   }
 
   /**
    * 上一页
    */
   prevPage() {
-    if (this.currentPage > 1) {
-      return this.goToPage(this.currentPage - 1);
+    const current = store?.state?.pdfReader?.viewer?.currentPage || 1;
+    if (current > 1) {
+      return this.goToPage(current - 1);
     }
-    return this.currentPage;
+    return current;
   }
 
   /**
@@ -495,26 +435,13 @@ export class NavigationService {
       throw new Error(`缩放比例超出范围: ${scale}`);
     }
 
-    const previous = this.currentScale;
-    this.currentScale = scale;
-
-    // 同步 Vuex 的数值缩放
+    // 同步 Vuex 的数值缩放（不再调用组件实例）
     try {
       if (store && typeof store.dispatch === "function") {
         store.dispatch("pdfReader/viewer/setScale", scale);
       }
     } catch (e) {
       // 忽略：无全局 store 时静默
-    }
-
-    // 直接调用组件方法，避免事件循环
-    const scaleChangedEvent = {
-      scale,
-      previous,
-    };
-
-    if (this.pdfServices.vueComponent.onScaleChanged) {
-      this.pdfServices.vueComponent.onScaleChanged(scaleChangedEvent);
     }
 
     return scale;
@@ -524,10 +451,8 @@ export class NavigationService {
    * 放大
    */
   zoomIn() {
-    const newScale = Math.min(
-      this.currentScale * DEFAULT_SCALE_DELTA,
-      MAX_SCALE
-    );
+    const current = store?.state?.pdfReader?.viewer?.scale || 1.0;
+    const newScale = Math.min(current * DEFAULT_SCALE_DELTA, MAX_SCALE);
     return this.setScale(newScale);
   }
 
@@ -535,10 +460,8 @@ export class NavigationService {
    * 缩小
    */
   zoomOut() {
-    const newScale = Math.max(
-      this.currentScale / DEFAULT_SCALE_DELTA,
-      MIN_SCALE
-    );
+    const current = store?.state?.pdfReader?.viewer?.scale || 1.0;
+    const newScale = Math.max(current / DEFAULT_SCALE_DELTA, MIN_SCALE);
     return this.setScale(newScale);
   }
 
@@ -546,11 +469,14 @@ export class NavigationService {
    * 获取当前状态
    */
   get state() {
+    const totalPages = this.pdfServices.documentState.totalPages;
+    const currentPage = store?.state?.pdfReader?.viewer?.currentPage || 1;
+    const currentScale = store?.state?.pdfReader?.viewer?.scale || 1.0;
     return {
-      currentPage: this.currentPage,
-      currentScale: this.currentScale,
-      canGoNext: this.currentPage < this.pdfServices.documentState.totalPages,
-      canGoPrev: this.currentPage > 1,
+      currentPage,
+      currentScale,
+      canGoNext: currentPage < totalPages,
+      canGoPrev: currentPage > 1,
     };
   }
 }

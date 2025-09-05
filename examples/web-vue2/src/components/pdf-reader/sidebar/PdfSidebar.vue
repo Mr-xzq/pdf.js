@@ -193,11 +193,9 @@ export default {
 
       if (typeof this.switchToTab === "function") {
         this.switchToTab(tabKey);
-      } else {
-        // 备用方案：直接调用 store
-        if (this.$store) {
-          this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
-        }
+      } else if (this.$store) {
+        // 兜底：直接调用 store
+        this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
       }
 
       this.$emit("tab-change", tabKey);
@@ -211,11 +209,9 @@ export default {
 
       if (typeof this.hide === "function") {
         this.hide();
-      } else {
-        // 备用方案：直接调用 store
-        if (this.$store) {
-          this.$store.dispatch("pdfReader/sidebar/hide");
-        }
+      } else if (this.$store) {
+        // 兜底：直接调用 store
+        this.$store.dispatch("pdfReader/sidebar/hide");
       }
 
       this.$emit("close");

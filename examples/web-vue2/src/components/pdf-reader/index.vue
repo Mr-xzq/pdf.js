@@ -136,7 +136,7 @@ export default {
     ...mapSidebarState(["visible", "activeTab"]),
 
     // 映射Vuex getters
-    ...mapDocumentGetters(["isDocumentLoaded", "totalPages"]),
+    ...mapDocumentGetters(["isDocumentLoaded"]),
     ...mapViewerGetters(["navigationState", "zoomState"]),
     ...mapSidebarGetters(["enabledTabs", "currentTab"]),
 
@@ -152,6 +152,11 @@ export default {
 
     canGoNext() {
       return this.navigationState.canGoNext;
+    },
+
+    // 使用导航 getter 提供的 totalPages，避免依赖 document.totalPages 直接映射
+    totalPages() {
+      return this.navigationState.totalPages;
     },
 
     // 缩放状态 - 从Vuex getters获取
@@ -179,9 +184,9 @@ export default {
   },
 
   mounted() {
-    // 静态注册方案：只做一次移动端状态初始化
-    if (this.$store) {
-      this.$store.dispatch("pdfReader/sidebar/updateMobileState");
+    // 静态注册方案：只做一次移动端状态初始化（改为映射 action）
+    if (this.$store && this.updateMobileState) {
+      this.updateMobileState();
     }
 
     // 监听窗口大小变化
@@ -208,7 +213,7 @@ export default {
       "zoomIn",
       "zoomOut",
     ]),
-    ...mapSidebarActions(["toggle", "show", "hide", "switchToTab"]),
+    ...mapSidebarActions(["toggle", "show", "hide", "switchToTab", "updateMobileState"]),
 
     // 事件处理 - 更新为使用Vuex actions
     onDocumentLoaded(event) {
@@ -239,7 +244,8 @@ export default {
 
     onPageChanged(event) {
       // 只更新Vuex状态，不要再次调用goToPage避免循环
-      this.$store.commit("pdfReader/viewer/SET_CURRENT_PAGE", event.pageNumber);
+      // 使用映射 action，避免手动 commit
+      this.goToPage(event.pageNumber);
       this.$emit("page-changed", event);
     },
 
@@ -303,12 +309,11 @@ export default {
      */
     toggleSidebar(tabKey = null) {
       console.log("PdfViewer.toggleSidebar 被调用");
-
-      // 直接使用 store dispatch，避免映射问题
-      if (this.$store) {
+      if (typeof this.toggle === "function") {
+        return this.toggle(tabKey);
+      } else if (this.$store) {
+        // 极端兜底
         return this.$store.dispatch("pdfReader/sidebar/toggle", tabKey);
-      } else {
-        console.error("Vuex store 未找到");
       }
     },
 
@@ -317,7 +322,9 @@ export default {
      * @param {string} tabKey - 可选，指定要显示的标签页
      */
     showSidebar(tabKey = null) {
-      if (this.$store) {
+      if (typeof this.show === "function") {
+        return this.show(tabKey);
+      } else if (this.$store) {
         return this.$store.dispatch("pdfReader/sidebar/show", tabKey);
       }
     },
@@ -326,7 +333,9 @@ export default {
      * 隐藏侧边栏
      */
     hideSidebar() {
-      if (this.$store) {
+      if (typeof this.hide === "function") {
+        return this.hide();
+      } else if (this.$store) {
         return this.$store.dispatch("pdfReader/sidebar/hide");
       }
     },
@@ -336,7 +345,9 @@ export default {
      * @param {string} tabKey - 标签页键名
      */
     switchSidebarTab(tabKey) {
-      if (this.$store) {
+      if (typeof this.switchToTab === "function") {
+        return this.switchToTab(tabKey);
+      } else if (this.$store) {
         return this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
       }
     },
@@ -346,7 +357,9 @@ export default {
      * 处理侧边栏关闭事件
      */
     onSidebarClose() {
-      if (this.$store) {
+      if (typeof this.hide === "function") {
+        this.hide();
+      } else if (this.$store) {
         this.$store.dispatch("pdfReader/sidebar/hide");
       }
     },
@@ -355,7 +368,9 @@ export default {
      * 处理侧边栏标签页变化事件
      */
     onSidebarTabChange(tabKey) {
-      if (this.$store) {
+      if (typeof this.switchToTab === "function") {
+        this.switchToTab(tabKey);
+      } else if (this.$store) {
         this.$store.dispatch("pdfReader/sidebar/switchToTab", tabKey);
       }
     },
@@ -371,7 +386,9 @@ export default {
      * 处理窗口大小变化
      */
     handleResize() {
-      if (this.$store) {
+      if (this.updateMobileState) {
+        this.updateMobileState();
+      } else if (this.$store) {
         this.$store.dispatch("pdfReader/sidebar/updateMobileState");
       }
     },

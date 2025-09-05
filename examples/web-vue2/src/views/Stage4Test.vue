@@ -218,8 +218,8 @@ export default {
       if (!this.pdfUrl) return;
 
       try {
-        // 使用Vuex action加载文档
-        await this.loadDocument(this.pdfUrl);
+        // 使用Vuex action加载文档（按约定传入对象参数）
+        await this.loadDocument({ src: this.pdfUrl });
         console.log("PDF文档加载完成");
       } catch (error) {
         this.onError(error);

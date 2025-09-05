@@ -1,18 +1,12 @@
-// PDF.js 基础配置
-export const PDF_CONFIG = {
-  // 高质量渲染配置
-  maxCanvasPixels: 16777216, // 16M像素限制 (4096x4096)，支持高分辨率渲染
-  // maxImageSize: 移除限制，使用PDF.js默认值，后期可根据需求添加
-  textLayerMode: 1, // 启用文本层
-  enableScripting: false, // 禁用 PDF JavaScript（MVP阶段安全优先，后期可扩展）
-  annotationMode: 1, // 仅启用表单注释
-  useSystemFonts: true, // 使用系统字体提高渲染质量
-  disableFontFace: false, // 启用字体渲染
-};
+// 仅保留移动端配置：全局只需要移动端逻辑，去掉桌面端相关配置
+// 注意：此文件导出 initializePdfJs 与 MOBILE_CONFIG 即可，避免不必要的配置项。
 
-// Worker 配置（使用本地 PDF.js 库 + webpack alias）
 export async function initializePdfJs() {
-  // 使用 webpack alias 'local-pdfjs-dist' 指向本地库
+  // 如果已初始化，直接返回
+  if (typeof globalThis !== "undefined" && globalThis.pdfjsLib) {
+    return globalThis.pdfjsLib;
+  }
+
   const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
 
   // 确保 globalThis.pdfjsLib 可用，供 pdf_viewer.mjs 使用
@@ -23,15 +17,10 @@ export async function initializePdfJs() {
   return pdfjsLib;
 }
 
-// 移动端专用配置
-export const MOBILE_CONFIG = {
-  ...PDF_CONFIG,
-  // 移动端特殊优化 - 保持高质量渲染但限制像素数
-  maxCanvasPixels: 8388608, // 8M像素限制 (2896x2896)，平衡性能和质量
-  // maxImageSize: 移除限制，使用PDF.js默认值，后期可根据移动端性能需求添加
-  disableAutoFetch: false,
-  disableStream: false,
-  disableRange: false,
-  // 移动端安全配置（MVP阶段）
-  enableScripting: false, // 移动端禁用脚本，后期可根据需求开放
+// 默认阅读器配置（仅保留功能必需项）：文本层、注释层、禁用脚本。
+// 其它项均采用 PDF.js 默认值，便于维护与升级。
+export const READER_CONFIG = {
+  textLayerMode: 1, // 启用文本层（支持搜索/选中）
+  annotationMode: 1, // 启用表单注释
+  enableScripting: false, // 禁用 PDF 内嵌脚本
 };

@@ -1,4 +1,4 @@
-import { PDF_CONFIG, MOBILE_CONFIG } from "./pdf-config.js";
+import { initializePdfJs } from "./pdf-config.js";
 
 /**
  * PDF 应用控制器
@@ -10,10 +10,11 @@ export class PdfApplication {
     this.eventBus = null;
     this.linkService = null;
     this.findController = null;
-    this.options = {
-      isMobile: true,
-      ...options,
-    };
+    this.options = { ...options };
+
+    // 缓存从 headless 加载得到的文档信息，避免重复读取 metadata
+    this.lastInfo = null;
+    this.lastMetadata = null;
 
     // 初始化状态
     this.initialized = false;
@@ -29,13 +30,8 @@ export class PdfApplication {
     }
 
     try {
-      // 首先导入核心 PDF.js 库，确保 globalThis.pdfjsLib 可用
-      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
-
-      // 确保 globalThis.pdfjsLib 存在
-      if (typeof globalThis !== "undefined") {
-        globalThis.pdfjsLib = pdfjsLib;
-      }
+      // 初始化 PDF.js 核心库（幂等）
+      await initializePdfJs();
 
       // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
       const pdfjsViewer = await import(
@@ -79,56 +75,6 @@ export class PdfApplication {
     };
   }
 
-  /**
-   * 加载 PDF 文档
-   */
-  async loadDocument(src, options = {}) {
-    if (this.loading) {
-      throw new Error("文档正在加载中，请稍候");
-    }
-
-    try {
-      this.loading = true;
-
-      // 使用已经导入的 PDF.js 核心库
-      let pdfjsLib;
-      if (typeof globalThis !== "undefined" && globalThis.pdfjsLib) {
-        pdfjsLib = globalThis.pdfjsLib;
-      } else {
-        // 如果没有初始化，先导入
-        pdfjsLib = await import("pdfjs-dist/webpack.mjs");
-      }
-
-      // 合并配置
-      const config = this.options.isMobile ? MOBILE_CONFIG : PDF_CONFIG;
-      const loadingTask = pdfjsLib.getDocument({
-        url: src,
-        ...config,
-        ...options,
-      });
-
-      // 监听加载进度
-      if (options.onProgress) {
-        loadingTask.onProgress = options.onProgress;
-      }
-
-      this.pdfDocument = await loadingTask.promise;
-
-      // 设置链接服务的文档
-      if (this.linkService) {
-        this.linkService.setDocument(this.pdfDocument);
-      }
-
-      this.loading = false;
-      console.log(`PDF 文档加载成功，共 ${this.pdfDocument.numPages} 页`);
-
-      return this.pdfDocument;
-    } catch (error) {
-      this.loading = false;
-      console.error("PDF 文档加载失败:", error);
-      throw error;
-    }
-  }
 
   /**
    * 获取文档信息
@@ -138,9 +84,18 @@ export class PdfApplication {
       throw new Error("文档未加载");
     }
 
+    // 优先返回缓存信息
+    if (this.lastInfo || this.lastMetadata) {
+      return {
+        numPages: this.pdfDocument.numPages,
+        fingerprint: this.pdfDocument.fingerprint,
+        info: this.lastInfo,
+        metadata: this.lastMetadata,
+      };
+    }
+
     try {
       const metadataResult = await this.pdfDocument.getMetadata();
-
       return {
         numPages: this.pdfDocument.numPages,
         fingerprint: this.pdfDocument.fingerprint,
@@ -214,6 +169,32 @@ export class PdfApplication {
     this.loading = false;
 
     console.log("PDF 应用控制器已销毁");
+  }
+
+  /**
+   * 外部接管：附加已加载的文档
+   * 供上层（如 Vuex action 完成真实加载后）注入 pdfDocument
+   *
+   * @param {Object} pdfDocument - 必填，PDF.js 的 PDFDocumentProxy
+   * @param {Object} [options] - 可选，元信息缓存
+   * @param {Object} [options.info] - 文档 info（从 pdfDocument.getMetadata() 获取的 info）
+   * @param {Object} [options.metadata] - 文档 metadata（从 pdfDocument.getMetadata() 获取的 metadata）
+   */
+  attachDocument(pdfDocument, options = {}) {
+    if (!pdfDocument) {
+      throw new Error("attachDocument 需要有效的 pdfDocument");
+    }
+    this.pdfDocument = pdfDocument;
+
+    // 缓存外部提供的元信息，避免后续重复读取
+    const { info = null, metadata = null } = options || {};
+    this.lastInfo = info;
+    this.lastMetadata = metadata;
+
+    if (this.linkService) {
+      this.linkService.setDocument(this.pdfDocument);
+    }
+    console.log(`PDF 文档已附加，共 ${this.pdfDocument.numPages} 页`);
   }
 
   /**

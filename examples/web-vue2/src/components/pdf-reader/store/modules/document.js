@@ -33,15 +33,10 @@ const state = {
   // 文档源
   src: "",
 
-  // 密码状态
-  passwordRequired: false,
-  passwordIncorrect: false,
 
-  // 文档特性（简化版）
-  features: {
-    hasOutline: false,
-    isEncrypted: false,
-  },
+  // 加载控制
+  loadToken: 0,
+  abortController: null,
 };
 
 const mutations = {
@@ -70,7 +65,6 @@ const mutations = {
   // 设置文档大纲
   SET_OUTLINE(state, outline) {
     state.outline = outline;
-    state.features.hasOutline = !!outline && outline.length > 0;
   },
 
   // 设置加载状态
@@ -105,23 +99,6 @@ const mutations = {
     state.src = src;
   },
 
-  // 设置密码状态（MVP阶段：基础状态管理）
-  // 后期扩展：密码缓存、重试次数、安全策略等
-  SET_PASSWORD_REQUIRED(state, required) {
-    state.passwordRequired = required;
-  },
-
-  SET_PASSWORD_INCORRECT(state, incorrect) {
-    state.passwordIncorrect = incorrect;
-  },
-
-  // 设置文档特性
-  SET_FEATURES(state, features) {
-    state.features = {
-      ...state.features,
-      ...features,
-    };
-  },
 
   // 重置状态
   RESET_DOCUMENT(state) {
@@ -140,37 +117,24 @@ const mutations = {
     state.error = null;
     state.errorType = null;
     state.src = "";
-    state.passwordRequired = false;
-    state.passwordIncorrect = false;
-    state.features = {
-      hasOutline: false,
-      isEncrypted: false,
-    };
+    // 取消控制
+    state.loadToken = 0;
+    if (state.abortController) {
+      try { state.abortController.abort(); } catch (_) {}
+    }
+    state.abortController = null;
   },
 };
 
 const actions = {
   /**
-   * 加载文档
+   * 加载文档（开始）- 仅置状态
    */
-  async loadDocument({ commit, dispatch }, { src, options = {} }) {
-    try {
-      commit("SET_LOADING", true);
-      commit("CLEAR_ERROR");
-      commit("SET_SRC", src);
-
-      // 这里实际的加载逻辑会在组件中通过 PdfServices 处理
-      // 这个 action 主要用于状态管理和事件协调
-
-      return { success: true };
-    } catch (error) {
-      commit("SET_ERROR", {
-        error: error.message,
-        type: "load",
-      });
-      commit("SET_LOADING", false);
-      throw error;
-    }
+  async loadDocument({ commit }, { src }) {
+    commit("SET_LOADING", true);
+    commit("CLEAR_ERROR");
+    commit("SET_SRC", src);
+    return { success: true };
   },
 
   /**
@@ -190,6 +154,85 @@ const actions = {
     if (totalPages > 0) {
       // 初始化当前页面为第1页（使用绝对命名空间路径）
       dispatch("pdfReader/viewer/goToPage", 1, { root: true });
+    }
+  },
+
+  /**
+   * 真实加载文档（Headless 服务）
+   */
+  async realLoadDocument({ state, commit, dispatch }, { src }) {
+    try {
+      // 取消上一轮
+      if (state.abortController) {
+        try { state.abortController.abort(); } catch (_) {}
+      }
+      const currentToken = (state.loadToken || 0) + 1;
+      state.loadToken = currentToken;
+      state.abortController = new AbortController();
+
+      // 置状态（便于直接调用 realLoadDocument）
+      commit("SET_LOADING", true);
+      commit("CLEAR_ERROR");
+      commit("SET_SRC", src);
+
+      // 动态导入 headless loader，避免循环依赖
+      const { loadPdfDocument } = await import(
+        "../../core/headless-pdf-loader.js"
+      );
+
+      let lastProgress = 0;
+      const { pdfDocument, info, metadata } = await loadPdfDocument({
+        src,
+        signal: state.abortController.signal,
+        onProgress: ({ percentage }) => {
+          // 陈旧任务丢弃
+          if (state.loadToken !== currentToken) return;
+          // 去抖：避免过于频繁的提交
+          if (percentage !== lastProgress) {
+            lastProgress = percentage;
+            commit("SET_LOAD_PROGRESS", {
+              progress: percentage,
+              message: `正在加载... ${percentage}%`,
+            });
+          }
+        },
+      });
+
+      // 若已被新任务取代，直接丢弃
+      if (state.loadToken !== currentToken) {
+        try { pdfDocument?.destroy?.(); } catch (_) {}
+        return null;
+      }
+
+      // 提交文档与信息
+      commit("SET_DOCUMENT", pdfDocument);
+      commit("SET_DOCUMENT_INFO", {
+        numPages: pdfDocument?.numPages || 0,
+        fingerprint: pdfDocument?.fingerprint || null,
+        title: info?.Title || "",
+        author: info?.Author || "",
+      });
+      // 元数据（可选）
+      if (metadata) {
+        commit("SET_METADATA", metadata);
+      }
+
+      // 加载完成
+      commit("SET_LOADING", false);
+      commit("CLEAR_ERROR");
+
+      // 初始化到第 1 页
+      if (pdfDocument?.numPages > 0) {
+        dispatch("pdfReader/viewer/goToPage", 1, { root: true });
+      }
+
+      return { pdfDocument, info, metadata };
+    } catch (error) {
+      // 忽略因取消导致的错误
+      if (error?.name === "AbortError") return null;
+      commit("SET_ERROR", { error: error.message, type: "load" });
+      commit("SET_LOADING", false);
+      throw error;
     }
   },
 
@@ -257,13 +300,6 @@ const actions = {
   /**
    * 设置密码状态
    */
-  setPasswordRequired({ commit }, required) {
-    commit("SET_PASSWORD_REQUIRED", required);
-  },
-
-  setPasswordIncorrect({ commit }, incorrect) {
-    commit("SET_PASSWORD_INCORRECT", incorrect);
-  },
 
   /**
    * 重置文档状态
@@ -292,17 +328,8 @@ const getters = {
   // 文档作者
   documentAuthor: state => state.documentInfo.author,
 
-  // 是否有大纲
-  hasOutline: state => state.features.hasOutline,
-
-  // 是否需要密码
-  needsPassword: state => state.passwordRequired,
-
-  // 密码是否错误
-  isPasswordIncorrect: state => state.passwordIncorrect,
-
-  // 文档特性
-  documentFeatures: state => state.features,
+  // 是否有大纲（由 outline 推导）
+  hasOutline: state => Array.isArray(state.outline) && state.outline.length > 0,
 
   // 加载进度信息
   loadProgressInfo: state => ({
@@ -325,6 +352,9 @@ const getters = {
     author: state.documentInfo.author,
     fingerprint: state.documentInfo.fingerprint,
   }),
+
+  // 文档元数据
+  metadata: state => state.metadata,
 };
 
 export default {
