@@ -13,7 +13,7 @@ export const PDF_CONFIG = {
 // Worker 配置（使用本地 PDF.js 库 + webpack alias）
 export async function initializePdfJs() {
   // 使用 webpack alias 'local-pdfjs-dist' 指向本地库
-  const pdfjsLib = await import("local-pdfjs-dist/webpack.mjs");
+  const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
 
   // 确保 globalThis.pdfjsLib 可用，供 pdf_viewer.mjs 使用
   if (typeof globalThis !== "undefined") {

@@ -16,26 +16,6 @@ export const pdfReaderModule = {
   },
 };
 
-/**
- * 安装 PDF 阅读器模块到 Vuex store
- */
-export function installPdfReaderModule(store, moduleName = "pdfReader") {
-  if (!store.hasModule(moduleName)) {
-    store.registerModule(moduleName, pdfReaderModule);
-    console.log(`PDF 阅读器模块已注册: ${moduleName}`);
-  }
-  return moduleName;
-}
-
-/**
- * 卸载 PDF 阅读器模块
- */
-export function uninstallPdfReaderModule(store, moduleName = "pdfReader") {
-  if (store.hasModule(moduleName)) {
-    store.unregisterModule(moduleName);
-    console.log(`PDF 阅读器模块已卸载: ${moduleName}`);
-  }
-}
 
 /**
  * 创建命名空间辅助函数 - 简化版
@@ -107,7 +87,5 @@ export const {
  */
 export default {
   pdfReaderModule,
-  installPdfReaderModule,
-  uninstallPdfReaderModule,
   createPdfReaderHelpers,
 };

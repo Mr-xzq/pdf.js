@@ -24,15 +24,15 @@
       <div class="pdf-top-toolbar__right">
         <slot name="right">
           <!-- 搜索按钮 -->
-          <pdf-button
+          <van-button
             v-if="documentLoaded"
             @click="onSearchToggle"
-            :active="searchActive"
-            class="pdf-top-toolbar__search-btn"
+            class="pdf-button pdf-top-toolbar__search-btn"
             size="small"
+            :class="{ 'pdf-button--active': searchActive }"
           >
             🔍
-          </pdf-button>
+          </van-button>
         </slot>
       </div>
     </div>
@@ -40,13 +40,12 @@
 </template>
 
 <script>
-import PdfButton from "../ui/PdfButton.vue";
+
 
 export default {
   name: "PdfTopToolbar",
 
   components: {
-    PdfButton,
   },
 
   props: {
@@ -77,9 +76,10 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@import "../styles/common.less";
 .pdf-top-toolbar {
   width: 100%;
-  height: 48px;
+  height: 44px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
@@ -90,7 +90,7 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding: 0 12px;
   }
 
   &__left,
@@ -110,53 +110,32 @@ export default {
   }
 
   &__title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
     color: #333;
     line-height: 1.4;
   }
 
   &__page-info {
-    font-size: 14px;
+    font-size: 12px;
     color: #666;
     font-weight: normal;
     margin-left: 8px;
   }
 
   &__search-btn {
-    min-width: 36px;
-    height: 36px;
+    min-width: 40px;
+    height: 40px;
     border-radius: 50%;
 
-    &.active {
+    &.active,
+    &.pdf-button--active {
       background: #1890ff;
-      color: white;
+      color: #fff;
     }
   }
 }
 
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-top-toolbar {
-    height: 44px;
 
-    &__container {
-      padding: 0 12px;
-    }
-
-    &__title {
-      font-size: 14px;
-    }
-
-    &__page-info {
-      font-size: 12px;
-    }
-
-    &__search-btn {
-      min-width: 40px;
-      height: 40px;
-    }
-  }
-}
 </style>
 

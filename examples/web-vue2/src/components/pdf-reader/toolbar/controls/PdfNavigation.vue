@@ -1,14 +1,14 @@
 <template>
   <div class="pdf-navigation">
     <!-- 上一页按钮 -->
-    <pdf-button
+    <van-button
       @click="onPrevPage"
       :disabled="!canGoPrev"
-      size="medium"
-      class="pdf-navigation__prev"
+      size="normal"
+      class="pdf-button pdf-navigation__prev"
     >
       <template #icon>◀</template>
-    </pdf-button>
+    </van-button>
 
     <!-- 页码信息和输入 -->
     <div class="pdf-navigation__page-info">
@@ -21,26 +21,26 @@
     </div>
 
     <!-- 下一页按钮 -->
-    <pdf-button
+    <van-button
       @click="onNextPage"
       :disabled="!canGoNext"
-      size="medium"
-      class="pdf-navigation__next"
+      size="normal"
+      class="pdf-button pdf-navigation__next"
     >
       <template #icon>▶</template>
-    </pdf-button>
+    </van-button>
   </div>
 </template>
 
 <script>
-import PdfButton from "../../ui/PdfButton.vue";
+
 import PdfPageInput from "./PdfPageInput.vue";
 
 export default {
   name: "PdfNavigation",
 
   components: {
-    PdfButton,
+
     PdfPageInput,
   },
 
@@ -80,10 +80,11 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@import "../../styles/common.less";
 .pdf-navigation {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
   &__prev,
   &__next {
@@ -97,65 +98,16 @@ export default {
   }
 
   &__page-input {
-    min-width: 80px;
+    min-width: 85px;
   }
 }
 
 // 紧凑模式（在底部工具栏中使用）
 .pdf-bottom-toolbar .pdf-navigation {
-  gap: 4px;
+  gap: 6px;
 
   &__page-input {
-    min-width: 70px;
-  }
-}
-
-// 平板适配
-@media (max-width: 1024px) and (min-width: 769px) {
-  .pdf-navigation {
-    gap: 10px;
-
-    &__page-input {
-      min-width: 90px;
-    }
-  }
-
-  .pdf-bottom-toolbar .pdf-navigation {
-    gap: 6px;
-
-    &__page-input {
-      min-width: 80px;
-    }
-  }
-}
-
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-navigation {
-    gap: 12px;
-
-    &__page-input {
-      min-width: 100px;
-    }
-  }
-
-  .pdf-bottom-toolbar .pdf-navigation {
-    gap: 6px;
-
-    &__page-input {
-      min-width: 85px;
-    }
-  }
-}
-
-// 小屏幕移动端适配
-@media (max-width: 480px) {
-  .pdf-bottom-toolbar .pdf-navigation {
-    gap: 4px;
-
-    &__page-input {
-      min-width: 75px;
-    }
+    min-width: 85px;
   }
 }
 </style>

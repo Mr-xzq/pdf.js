@@ -297,7 +297,8 @@ export default {
 <style lang="less" scoped>
 .pdf-sidebar {
   position: relative;
-  width: 280px;
+  width: 100vw;
+  max-width: 320px;
   height: 100%;
   background: #fff;
   border-right: 1px solid #ebedf0;
@@ -332,16 +333,16 @@ export default {
   &__tabs {
     flex: 1;
 
-    :deep(.van-tabs__nav) {
+    ::v-deep .van-tabs__nav {
       background: transparent;
     }
 
-    :deep(.van-tab) {
+    ::v-deep .van-tab {
       font-size: 12px;
       padding: 8px 12px;
     }
 
-    :deep(.van-tab__text) {
+    ::v-deep .van-tab__text {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -400,13 +401,6 @@ export default {
   }
 }
 
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-sidebar {
-    width: 100vw;
-    max-width: 320px;
-  }
-}
 
 /* 全局样式：防止滚动穿透 */
 :global(body.sidebar-open) {

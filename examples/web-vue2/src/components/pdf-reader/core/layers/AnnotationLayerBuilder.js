@@ -1,4 +1,6 @@
 // AnnotationLayerBuilder：封装 Link 注释渲染与行为，优先复用 linkService
+import store from "@/store/index.js";
+
 import { BaseLayerBuilder } from "./BaseLayerBuilder";
 
 export class AnnotationLayerBuilder extends BaseLayerBuilder {
@@ -69,11 +71,15 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
                 } else if (Number.isInteger(destRef)) {
                   pageNumber = destRef + 1;
                 }
-                if (pageNumber && this.pdfServices.vueComponent?.$store) {
-                  this.pdfServices.vueComponent.$store.dispatch(
-                    "pdfReader/viewer/goToPage",
-                    pageNumber
-                  );
+                if (pageNumber) {
+                  try {
+                    store && store.dispatch && store.dispatch(
+                      "pdfReader/viewer/goToPage",
+                      pageNumber
+                    );
+                  } catch (e) {
+                    // 忽略：无全局 store 时静默
+                  }
                 }
               }
             } catch (e) {

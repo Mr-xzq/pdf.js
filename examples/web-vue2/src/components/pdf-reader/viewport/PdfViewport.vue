@@ -296,11 +296,7 @@ export default {
      * 跳转到指定页面（统一入口：优先通过 Vuex action；无 store 时回退 NavigationService）
      */
     goToPage(pageNumber) {
-      if (
-        this.$store &&
-        this.$store.hasModule &&
-        this.$store.hasModule(["pdfReader", "viewer"])
-      ) {
+      if (this.$store) {
         return this.$store.dispatch("pdfReader/viewer/goToPage", pageNumber);
       }
       if (this.navigationService) {
@@ -336,11 +332,7 @@ export default {
      * 下一页（统一从 Vuex action 派发；无 store 回退）
      */
     nextPage() {
-      if (
-        this.$store &&
-        this.$store.hasModule &&
-        this.$store.hasModule(["pdfReader", "viewer"])
-      ) {
+      if (this.$store) {
         return this.$store.dispatch("pdfReader/viewer/nextPage");
       }
       if (this.navigationService) {
@@ -352,11 +344,7 @@ export default {
      * 上一页（统一从 Vuex action 派发；无 store 回退）
      */
     prevPage() {
-      if (
-        this.$store &&
-        this.$store.hasModule &&
-        this.$store.hasModule(["pdfReader", "viewer"])
-      ) {
+      if (this.$store) {
         return this.$store.dispatch("pdfReader/viewer/prevPage");
       }
       if (this.navigationService) {
@@ -405,11 +393,7 @@ export default {
       this.currentScale = this.initialScale;
 
       // 同步到 Vuex 状态
-      if (
-        this.$store &&
-        this.$store.hasModule &&
-        this.$store.hasModule(["pdfReader", "viewer"])
-      ) {
+      if (this.$store) {
         this.$store.dispatch("pdfReader/viewer/setScale", this.initialScale);
         this.$store.dispatch("pdfReader/viewer/goToPage", this.initialPage);
       }
@@ -436,11 +420,7 @@ export default {
       this.currentScale = scale;
 
       // 同步到 Vuex 状态
-      if (
-        this.$store &&
-        this.$store.hasModule &&
-        this.$store.hasModule(["pdfReader", "viewer"])
-      ) {
+      if (this.$store) {
         this.$store.dispatch("pdfReader/viewer/setScale", scale);
       }
 
@@ -495,7 +475,7 @@ export default {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 16px 16px 80px 16px; // 增加底部padding为控制条留出空间
+    padding: 12px 12px 100px 12px; // 移动端控制条更高，默认给足空间
     min-height: 0; // 确保flex子元素能够正确缩放
   }
 
@@ -561,13 +541,6 @@ export default {
   }
 }
 
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-viewer-core {
-    &__content {
-      padding: 12px 12px 100px 12px; // 移动端控制条更高，需要更多底部空间
-    }
-  }
-}
+
 </style>
 

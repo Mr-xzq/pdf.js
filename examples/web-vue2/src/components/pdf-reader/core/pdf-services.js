@@ -1,6 +1,8 @@
 import { getPdfApplication } from "./pdf-application.js";
 import { EventBridge } from "./pdf-events.js";
 import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale";
+import store from "@/store/index.js";
+
 
 /**
  * PDF 服务层封装
@@ -37,8 +39,8 @@ export class PdfServices {
       // 初始化应用
       const services = await this.application.initialize();
 
-      // 创建事件桥接器
-      this.eventBridge = new EventBridge(services.eventBus, this.vueComponent);
+      // 创建事件桥接器（仅依赖 EventBus，全局 store 同步）
+      this.eventBridge = new EventBridge(services.eventBus);
       this.eventBridge.register();
 
       this.initialized = true;
@@ -57,7 +59,7 @@ export class PdfServices {
   async preInitialize() {
     try {
       // 导入并设置 globalThis.pdfjsLib
-      const pdfjsLib = await import("local-pdfjs-dist/webpack.mjs");
+      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
 
       if (typeof globalThis !== "undefined") {
         globalThis.pdfjsLib = pdfjsLib;
@@ -236,14 +238,16 @@ export class PdfServices {
         throw new Error("无法解析目的地页码");
       }
 
-      // 统一走 Vuex viewer 动作，保持状态一致
-      if (this.vueComponent && this.vueComponent.$store) {
-        await this.vueComponent.$store.dispatch(
-          "pdfReader/viewer/goToPage",
-          pageNumber
-        );
-      } else {
-        // 回退：直接通过 NavigationService
+      // 统一走 Vuex viewer 动作，保持状态一致（优先全局 store）
+      try {
+        if (store && typeof store.dispatch === "function") {
+          await store.dispatch("pdfReader/viewer/goToPage", pageNumber);
+        } else if (this.vueComponent?.navigationService) {
+          // 回退：直接通过 NavigationService
+          this.vueComponent.navigationService.goToPage(pageNumber);
+        }
+      } catch (e) {
+        console.warn("goToDestination -> Vuex 同步失败，回退 NavigationService:", e);
         if (this.vueComponent?.navigationService) {
           this.vueComponent.navigationService.goToPage(pageNumber);
         }
@@ -496,11 +500,12 @@ export class NavigationService {
 
     // 同步 Vuex 的数值缩放
     try {
-      const vc = this.pdfServices.vueComponent;
-      if (vc && vc.$store && vc.$store.dispatch) {
-        vc.$store.dispatch("pdfReader/viewer/setScale", scale);
+      if (store && typeof store.dispatch === "function") {
+        store.dispatch("pdfReader/viewer/setScale", scale);
       }
-    } catch (e) {}
+    } catch (e) {
+      // 忽略：无全局 store 时静默
+    }
 
     // 直接调用组件方法，避免事件循环
     const scaleChangedEvent = {

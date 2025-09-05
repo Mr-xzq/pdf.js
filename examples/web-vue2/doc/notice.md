@@ -587,13 +587,56 @@ class PdfDataService {
 
 1. **内存管理**：
    - CSS缩放模式
-   
+
 2. **渲染优化**：
    - 简化文本层配置
    - 禁用非必要功能
    - 移动端手势优化
 
 ## 4. 重要注意事项
+
+### 2025-09 改动汇总：事件系统与 Store 策略
+
+本次对事件系统和 Vuex 使用方式进行了精简与统一，核心目标：
+- 减少不必要的事件桥接，避免多源事件和维护成本
+- 统一采用“全局静态注册 + 全局 store 导入”的状态管理策略
+
+具体变更：
+- 事件桥接器 EventBridge（examples/web-vue2/src/components/pdf-reader/core/pdf-events.js）
+  - 仅监听 PDF.js EventBus 的 pagechanging、scalechanging
+  - 通过全局 store 同步到 Vuex：dispatch('pdfReader/viewer/...')
+  - 不再向组件 $emit 任何事件
+  - 构造函数签名简化为 constructor(eventBus)
+
+- 服务层 PdfServices（examples/web-vue2/src/components/pdf-reader/core/pdf-services.js）
+  - 创建 EventBridge 时改为 new EventBridge(services.eventBus)
+  - goToDestination/NavigationService.setScale 使用全局 store.dispatch，同步状态
+
+- 层内跳转 AnnotationLayerBuilder（examples/web-vue2/src/components/pdf-reader/core/layers/AnnotationLayerBuilder.js）
+  - 静态导入全局 store，并使用 store.dispatch('pdfReader/viewer/goToPage', pageNumber) 进行内部链接跳转
+
+- 组件层精简（examples/web-vue2/src/components/pdf-reader/viewport/PdfViewport.vue）
+  - 移除 this.$store.hasModule 的防御性判断，直接使用 this.$store
+  - 仍保留 this.$store 存在性判断，以避免极端环境报错
+
+- Vuex 注册方式统一（examples/web-vue2/src/store/index.js）
+  - 静态注册 pdfReader 模块：modules: { pdfReader: pdfReaderModule }
+  - 移除动态注册 API 的使用
+
+- 移除动态注册 API（examples/web-vue2/src/components/pdf-reader/store/index.js）
+  - 删除 installPdfReaderModule / uninstallPdfReaderModule 导出
+  - 默认导出仅保留 { pdfReaderModule, createPdfReaderHelpers }
+
+影响与收益：
+- 事件流更清晰：PDF.js -> EventBridge -> Vuex -> 组件 watcher -> Core
+- 避免重复 $emit 与循环风险，降低维护成本
+- 服务/桥接/LayerBuilder 等非组件上下文无需依赖 this.$store，均可静态导入全局 store
+
+验证建议：
+- 打开 Stage2/Stage3 页面，验证文档加载、翻页、缩放、侧边栏、内部链接跳转
+- 观察 Vue Devtools：pdfReader 模块应在应用启动时即存在
+- 控制台无动态注册相关日志
+
 
 ### 关键注意事项
 

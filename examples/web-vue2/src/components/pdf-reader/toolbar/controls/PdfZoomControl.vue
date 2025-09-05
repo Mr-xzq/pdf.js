@@ -1,15 +1,14 @@
 <template>
   <div class="pdf-zoom-control">
     <!-- 缩小按钮 -->
-    <pdf-button
+    <van-button
       @click="onZoomOut"
       :disabled="!canZoomOut"
-      size="medium"
-      round
-      class="pdf-zoom-control__out"
+      size="normal"
+      class="pdf-button pdf-button--round pdf-zoom-control__out"
     >
       <template #icon>−</template>
-    </pdf-button>
+    </van-button>
 
     <!-- 缩放比例显示 -->
     <div class="pdf-zoom-control__scale">
@@ -17,28 +16,26 @@
     </div>
 
     <!-- 放大按钮 -->
-    <pdf-button
+    <van-button
       @click="onZoomIn"
       :disabled="!canZoomIn"
-      size="medium"
-      round
-      class="pdf-zoom-control__in"
+      size="normal"
+      class="pdf-button pdf-button--round pdf-zoom-control__in"
     >
       <template #icon>+</template>
-    </pdf-button>
+    </van-button>
 
 
   </div>
 </template>
 
 <script>
-import PdfButton from "../../ui/PdfButton.vue";
+
 
 export default {
   name: "PdfZoomControl",
 
   components: {
-    PdfButton,
   },
 
   props: {
@@ -79,10 +76,11 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@import "../../styles/common.less";
 .pdf-zoom-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
   &__out,
   &__in {
@@ -150,7 +148,7 @@ export default {
         }
       }
 
-      :deep(.van-grid-item) {
+      ::v-deep .van-grid-item {
         &.active .preset-item {
           background: #e6f7ff;
           color: #1890ff;
@@ -176,71 +174,12 @@ export default {
 
 // 紧凑模式（在底部工具栏中使用）
 .pdf-bottom-toolbar .pdf-zoom-control {
-  gap: 4px;
+  gap: 6px;
 
   &__scale {
-    min-width: 45px;
-    font-size: 12px;
-    padding: 2px 6px;
-  }
-}
-
-// 平板适配
-@media (max-width: 1024px) and (min-width: 769px) {
-  .pdf-zoom-control {
-    gap: 10px;
-
-    &__scale {
-      font-size: 15px;
-      min-width: 55px;
-      padding: 6px 10px;
-    }
-  }
-
-  .pdf-bottom-toolbar .pdf-zoom-control {
-    gap: 6px;
-
-    &__scale {
-      min-width: 50px;
-      font-size: 13px;
-      padding: 4px 8px;
-    }
-  }
-}
-
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-zoom-control {
-    gap: 12px;
-
-    &__scale {
-      font-size: 16px;
-      min-width: 60px;
-      padding: 8px 12px;
-    }
-  }
-
-  .pdf-bottom-toolbar .pdf-zoom-control {
-    gap: 6px;
-
-    &__scale {
-      min-width: 50px;
-      font-size: 14px;
-      padding: 4px 8px;
-    }
-  }
-}
-
-// 小屏幕移动端适配
-@media (max-width: 480px) {
-  .pdf-bottom-toolbar .pdf-zoom-control {
-    gap: 4px;
-
-    &__scale {
-      min-width: 45px;
-      font-size: 13px;
-      padding: 2px 6px;
-    }
+    min-width: 50px;
+    font-size: 14px;
+    padding: 4px 8px;
   }
 }
 </style>

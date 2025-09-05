@@ -30,7 +30,7 @@ export class PdfApplication {
 
     try {
       // 首先导入核心 PDF.js 库，确保 globalThis.pdfjsLib 可用
-      const pdfjsLib = await import("local-pdfjs-dist/webpack.mjs");
+      const pdfjsLib = await import("pdfjs-dist/webpack.mjs");
 
       // 确保 globalThis.pdfjsLib 存在
       if (typeof globalThis !== "undefined") {
@@ -39,7 +39,7 @@ export class PdfApplication {
 
       // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
       const pdfjsViewer = await import(
-        "local-pdfjs-dist/legacy/web/pdf_viewer.mjs"
+        "pdfjs-dist/legacy/web/pdf_viewer.mjs"
       );
 
       // 创建事件总线
@@ -96,7 +96,7 @@ export class PdfApplication {
         pdfjsLib = globalThis.pdfjsLib;
       } else {
         // 如果没有初始化，先导入
-        pdfjsLib = await import("local-pdfjs-dist/webpack.mjs");
+        pdfjsLib = await import("pdfjs-dist/webpack.mjs");
       }
 
       // 合并配置

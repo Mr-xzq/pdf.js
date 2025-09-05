@@ -32,3 +32,4 @@ type: "always_apply"
 + 写 js 语法的内容时，注意使用 es6 或者更新的稳定的语法，不要尝试一些实验性的语法。如果要写一些工具函数等 es 中原生没有提供的，可以尝试使用 lodash，而且引入方式注意使用具名导入。
 + 写样式时更偏向于 less，比如在 vue 中，如果必须要抽离样式文件的话，那么偏向于 less。
 + 当在 vue 中当渲染结构高度动态、模板表达力受限时（复杂条件、嵌套循环、动态 slot 组合）可以尝试使用 render 函数 + jsx 语法，具体可以参考 `examples\web-vue2\doc\vue2-jsx-usage.md`
++ 对于无法直接访问都 this.$store 的上下文，比如非 vue 组件的上下文等，可以通过静态引入全局 store(import store from '@/path/to/store/index...') 更简洁

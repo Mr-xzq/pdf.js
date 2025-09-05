@@ -32,7 +32,9 @@
       <div class="pdf-bottom-toolbar__actions">
         <slot name="actions">
           <!-- 默认提供一个“适配宽度”按钮，可被外部插槽覆盖 -->
-          <pdf-button size="medium" @click="onFitWidth">适配宽度</pdf-button>
+          <van-button size="normal" class="pdf-button" @click="onFitWidth"
+            >适配宽度</van-button
+          >
         </slot>
       </div>
     </div>
@@ -42,7 +44,6 @@
 <script>
 import PdfNavigation from "./controls/PdfNavigation.vue";
 import PdfZoomControl from "./controls/PdfZoomControl.vue";
-import PdfButton from "../ui/PdfButton.vue";
 
 export default {
   name: "PdfBottomToolbar",
@@ -50,7 +51,6 @@ export default {
   components: {
     PdfNavigation,
     PdfZoomControl,
-    PdfButton,
   },
 
   props: {
@@ -121,9 +121,10 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@import "../styles/common.less";
 .pdf-bottom-toolbar {
   width: 100%;
-  height: 56px;
+  height: 60px;
   background: rgba(255, 255, 255, 0.95);
   border-top: 1px solid #e8e8e8;
   box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
@@ -135,12 +136,11 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 12px;
-    gap: 8px;
+    padding: 0 8px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
 
-    // 隐藏滚动条但保持滚动功能
     scrollbar-width: none;
     -ms-overflow-style: none;
     &::-webkit-scrollbar {
@@ -150,22 +150,21 @@ export default {
 
   &__navigation {
     flex: 0 0 auto;
+  }
 
-    // 紧凑布局
-    :deep(.pdf-navigation) {
-      gap: 4px;
+  &__navigation.pdf-navigation {
+    gap: 4px;
 
-      .pdf-button {
-        min-width: 32px;
-        height: 32px;
-        padding: 0;
-        font-size: 14px;
-      }
+    ::v-deep .pdf-button {
+      min-width: 32px;
+      height: 32px;
+      padding: 0;
+      font-size: 14px;
+    }
 
-      .pdf-navigation__page-input {
-        min-width: 70px;
-        font-size: 13px;
-      }
+    ::v-deep .pdf-navigation__page-input {
+      min-width: 70px;
+      font-size: 13px;
     }
   }
 
@@ -179,28 +178,27 @@ export default {
 
   &__zoom {
     flex: 0 0 auto;
+  }
 
-    // 紧凑布局
-    :deep(.pdf-zoom-control) {
-      gap: 4px;
+  &__zoom.pdf-zoom-control {
+    gap: 4px;
 
-      .pdf-button {
-        min-width: 28px;
+    ::v-deep .pdf-button {
+      min-width: 28px;
+      height: 28px;
+      padding: 0;
+      font-size: 16px;
+
+      &.pdf-button--round {
+        width: 28px;
         height: 28px;
-        padding: 0;
-        font-size: 16px;
-
-        &.pdf-button--round {
-          width: 28px;
-          height: 28px;
-        }
       }
+    }
 
-      .pdf-zoom-control__scale {
-        min-width: 45px;
-        font-size: 12px;
-        padding: 2px 6px;
-      }
+    ::v-deep .pdf-zoom-control__scale {
+      min-width: 45px;
+      font-size: 12px;
+      padding: 2px 6px;
     }
   }
 
@@ -212,208 +210,18 @@ export default {
     gap: 4px;
     min-width: 0; // 允许收缩
 
-    // 操作按钮样式
-    :deep(.pdf-button) {
-      min-width: 28px;
-      height: 28px;
+    ::v-deep .pdf-button {
+      min-width: 36px;
+      height: 36px;
       padding: 0 6px;
-      font-size: 12px;
+      font-size: 13px;
 
       &.pdf-button--round {
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
         padding: 0;
       }
     }
   }
 }
-
-// 平板适配
-@media (max-width: 1024px) and (min-width: 769px) {
-  .pdf-bottom-toolbar {
-    &__container {
-      padding: 0 16px;
-      gap: 10px;
-    }
-
-    &__navigation {
-      :deep(.pdf-navigation) {
-        gap: 6px;
-
-        .pdf-button {
-          min-width: 36px;
-          height: 36px;
-        }
-
-        .pdf-navigation__page-input {
-          min-width: 80px;
-        }
-      }
-    }
-
-    &__zoom {
-      :deep(.pdf-zoom-control) {
-        gap: 6px;
-
-        .pdf-button {
-          min-width: 32px;
-          height: 32px;
-
-          &.pdf-button--round {
-            width: 32px;
-            height: 32px;
-          }
-        }
-
-        .pdf-zoom-control__scale {
-          min-width: 50px;
-          font-size: 13px;
-        }
-      }
-    }
-
-    &__actions {
-      gap: 6px;
-
-      :deep(.pdf-button) {
-        min-width: 32px;
-        height: 32px;
-        padding: 0 8px;
-        font-size: 13px;
-
-        &.pdf-button--round {
-          width: 32px;
-          height: 32px;
-        }
-      }
-    }
-  }
-}
-
-// 移动端适配
-@media (max-width: 768px) {
-  .pdf-bottom-toolbar {
-    height: 60px;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-
-    &__container {
-      padding: 0 8px;
-      gap: 6px;
-    }
-
-    &__navigation {
-      :deep(.pdf-navigation) {
-        gap: 6px;
-
-        .pdf-button {
-          min-width: 40px;
-          height: 40px;
-          font-size: 16px;
-        }
-
-        .pdf-navigation__page-input {
-          min-width: 85px;
-          font-size: 14px;
-        }
-      }
-    }
-
-    &__divider {
-      height: 16px;
-      margin: 0 1px;
-    }
-
-    &__zoom {
-      :deep(.pdf-zoom-control) {
-        gap: 6px;
-
-        .pdf-button {
-          min-width: 36px;
-          height: 36px;
-          font-size: 18px;
-
-          &.pdf-button--round {
-            width: 36px;
-            height: 36px;
-          }
-        }
-
-        .pdf-zoom-control__scale {
-          min-width: 50px;
-          font-size: 14px;
-          padding: 4px 8px;
-        }
-      }
-    }
-
-    &__actions {
-      gap: 4px;
-
-      :deep(.pdf-button) {
-        min-width: 36px;
-        height: 36px;
-        padding: 0 6px;
-        font-size: 13px;
-
-        &.pdf-button--round {
-          width: 36px;
-          height: 36px;
-        }
-      }
-    }
-  }
-}
-
-// 小屏幕移动端适配
-@media (max-width: 480px) {
-  .pdf-bottom-toolbar {
-    &__container {
-      padding: 0 6px;
-      gap: 4px;
-    }
-
-    &__navigation {
-      :deep(.pdf-navigation) {
-        gap: 4px;
-
-        .pdf-navigation__page-input {
-          min-width: 75px;
-          font-size: 13px;
-        }
-      }
-    }
-
-    &__zoom {
-      :deep(.pdf-zoom-control) {
-        gap: 4px;
-
-        .pdf-zoom-control__scale {
-          min-width: 45px;
-          font-size: 13px;
-          padding: 2px 6px;
-        }
-      }
-    }
-
-    &__actions {
-      gap: 3px;
-
-      :deep(.pdf-button) {
-        min-width: 32px;
-        height: 32px;
-        padding: 0 4px;
-        font-size: 12px;
-
-        &.pdf-button--round {
-          width: 32px;
-          height: 32px;
-        }
-      }
-    }
-  }
-}
 </style>
-

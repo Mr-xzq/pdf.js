@@ -74,7 +74,6 @@ import PdfTopToolbar from "./toolbar/PdfTopToolbar.vue";
 import PdfBottomToolbar from "./toolbar/PdfBottomToolbar.vue";
 import PdfSidebar from "./sidebar/PdfSidebar.vue";
 import {
-  installPdfReaderModule,
   mapDocumentState,
   mapViewerState,
   mapSidebarState,
@@ -180,11 +179,8 @@ export default {
   },
 
   mounted() {
-    // 确保 Vuex store 中有 PDF 阅读器模块
+    // 静态注册方案：只做一次移动端状态初始化
     if (this.$store) {
-      installPdfReaderModule(this.$store);
-
-      // 初始化侧边栏移动端状态
       this.$store.dispatch("pdfReader/sidebar/updateMobileState");
     }
 
@@ -404,6 +400,8 @@ export default {
     display: flex;
     flex-direction: column;
     position: relative;
+    // 为移动端底部工具栏预留空间
+    padding-bottom: @pdf-safe-area-bottom;
   }
 
   &__top-toolbar {
@@ -417,6 +415,8 @@ export default {
     position: relative;
     display: flex;
     flex-direction: row;
+    // 为固定的底部工具栏预留空间
+    margin-bottom: @pdf-bottom-toolbar-height-mobile;
   }
 
   &__sidebar {
@@ -433,31 +433,15 @@ export default {
   &__bottom-toolbar {
     flex: 0 0 auto;
     z-index: @pdf-z-index-toolbar;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    // 考虑安全区域
+    padding-bottom: @pdf-safe-area-bottom;
   }
 }
 
-// 移动端适配
-@media (max-width: @pdf-breakpoint-md) {
-  .pdf-viewer {
-    &__container {
-      // 为移动端底部工具栏预留空间
-      padding-bottom: @pdf-safe-area-bottom;
-    }
 
-    &__bottom-toolbar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      // 考虑安全区域
-      padding-bottom: @pdf-safe-area-bottom;
-    }
-
-    &__content {
-      // 为固定的底部工具栏预留空间
-      margin-bottom: @pdf-bottom-toolbar-height-mobile;
-    }
-  }
-}
 </style>
 

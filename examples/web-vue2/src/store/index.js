@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { installPdfReaderModule } from "../components/pdf-reader/store/index.js";
+import { pdfReaderModule } from "../components/pdf-reader/store/index.js";
 
 Vue.use(Vuex);
 
@@ -9,10 +9,9 @@ const store = new Vuex.Store({
   getters: {},
   mutations: {},
   actions: {},
-  modules: {},
+  modules: {
+    pdfReader: pdfReaderModule,
+  },
 });
-
-// 注册PDF阅读器模块
-installPdfReaderModule(store);
 
 export default store;
