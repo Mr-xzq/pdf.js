@@ -130,15 +130,6 @@ export default {
       // 清理上一次状态
       this.cleanup();
 
-      // 初始化进度与渲染计数
-      this.downloadProgress = 0;
-      this.totalPages = 0;
-      this.renderedPages = 0;
-      if (this.progressRafId) {
-        cancelAnimationFrame(this.progressRafId);
-        this.progressRafId = null;
-      }
-
       // 开始加载
       this.$emit("loading-start");
 
@@ -218,6 +209,7 @@ export default {
     cleanup() {
       this.pdfDocument = null;
       this.pageVNodeList = [];
+      // 初始化进度与渲染计数
       this.downloadProgress = 0;
       this.totalPages = 0;
       this.renderedPages = 0;

@@ -6,6 +6,17 @@
       left-arrow
       @click-left="$router.back()"
     />
+    <van-field
+      v-model="localPdfUrl"
+      label="PDF地址"
+      placeholder="输入PDF文件URL"
+    >
+      <template #button>
+        <van-button @click="pdfUrl = localPdfUrl" size="small" type="primary"
+          >确认</van-button
+        >
+      </template>
+    </van-field>
     <div class="content">
       <simple-pdf-reader
         :src="pdfUrl"
@@ -26,8 +37,9 @@ export default {
   components: { SimplePdfReader },
   data() {
     return {
+      localPdfUrl: "",
       pdfUrl:
-        // "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        // "http://127.0.0.1:5678/pdfs/compressed.tracemonkey-pldi-09.pdf",
         "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
       progress: 0,
       toast: null,
@@ -55,7 +67,7 @@ export default {
     },
     onError(errMsg) {
       if (this.toast && this.toast.clear) this.toast.clear();
-      this.$toast.fail(errMsg || '文件加载失败');
+      this.$toast.fail(errMsg || "文件加载失败");
     },
   },
 };
