@@ -54,6 +54,10 @@ const routes = [
     path: "/simple-reader-demo",
     component: () => import("@/views/SimpleReaderDemo.vue"),
   },
+  {
+    path: "/demo1",
+    component: () => import("@/views/Demo1.vue"),
+  },
 ];
 
 Vue.use(VueRouter);
