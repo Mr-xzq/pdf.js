@@ -14,6 +14,7 @@
       <van-image
         class="thumbnail-tool-item"
         :src="thumbnailIconUrl"
+        @click="handleClickThumbnail"
       ></van-image>
       <van-image class="outline-tool-item" :src="outlineIconUrl"></van-image>
       <van-image class="page-flip-tool-item" :src="pageFlipIconUrl"></van-image>
@@ -26,6 +27,10 @@
       <van-image class="auto-play-tool-item" :src="autoPlayIconUrl"></van-image>
       <!--<van-image class="auto-play-tool-item" :src="pauseIconUrl"></van-image>-->
     </div>
+
+    <van-popup v-model="isShowPopup" position="left" style="height: 100%; width: 100%;" closeable>
+      <div>显示内容</div>
+    </van-popup>
   </div>
 </template>
 
@@ -65,7 +70,13 @@ export default {
       autoPlayIconUrl,
       // 暂停
       // pauseIconUrl,
+      isShowPopup: false,
     };
+  },
+  methods: {
+    handleClickThumbnail() {
+      this.isShowPopup = !this.isShowPopup;
+    },
   },
 };
 </script>

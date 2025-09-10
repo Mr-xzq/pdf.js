@@ -1,5 +1,47 @@
 <script>
-import * as pdfjsLib from "pdfjs-dist/webpack.mjs";
+// import * as pdfjsLib from "pdfjs-dist/webpack.mjs";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
+// pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+//   "pdfjs-dist/legacy/build/pdf.worker.mjs",
+//   import.meta.url
+// ).toString();
+
+
+// 不支持，可能是因为 new Worker 不允许变量的形式，还是因为别的原因
+// const workerPath = new URL(
+//   "pdfjs-dist/legacy/build/pdf.worker.mjs",
+//   import.meta.url
+// );
+// pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(workerPath, {
+//   type: "module",
+// });
+
+
+pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(new URL(
+  "pdfjs-dist/legacy/build/pdf.worker.mjs",
+  import.meta.url
+), {
+  type: "module",
+});
+
+// pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
+//   'http://127.0.0.1:5678' + '/pdfjs-dist/legacy/build/pdf.worker.mjs',
+//   { type: "module" }
+// );
+
+// success
+// pdfjsLib.GlobalWorkerOptions.workerSrc =
+//   "http://127.0.0.1:5678" + "/libs/pdfjs-dist/legacy/build/pdf.worker.mjs";
+
+// 调试代码
+// const workerPath = new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url);
+// console.log('workerPath:', workerPath.href);
+// console.log('import.meta.url:', import.meta.url);
+
+// // 对比两个 URL 是否相同
+// const inlineUrl = new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url);
+// console.log('URLs equal:', workerPath.href === inlineUrl.href);
 
 export default {
   name: "SimplePdfReader",
