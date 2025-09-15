@@ -14,6 +14,7 @@
       <van-image
         class="thumbnail-tool-item"
         :src="thumbnailIconUrl"
+        @click="handleClickThumbnail"
       ></van-image>
       <van-image class="outline-tool-item" :src="outlineIconUrl"></van-image>
       <van-image class="page-flip-tool-item" :src="pageFlipIconUrl"></van-image>
@@ -26,14 +27,15 @@
       <van-image class="auto-play-tool-item" :src="autoPlayIconUrl"></van-image>
       <!--<van-image class="auto-play-tool-item" :src="pauseIconUrl"></van-image>-->
     </div>
+
+    <drawer :is-show.sync="isShowPopup"></drawer>
   </div>
 </template>
 
 <script>
-// 三方组件
+// 组件
+import Drawer from "./components/Drawer/index.vue";
 
-
-// 静态资源
 import fullscreenIconUrl from "@/assets/images/demo1/fullscreen-2x.png";
 import searchIconUrl from "@/assets/images/demo1/search-2x.png";
 import thumbnailIconUrl from "@/assets/images/demo1/thumbnail-2x.png";
@@ -47,6 +49,9 @@ import autoPlayIconUrl from "@/assets/images/demo1/auto-play-2x.png";
 
 export default {
   name: "Demo1",
+  components: {
+    Drawer,
+  },
   data() {
     return {
       // 全屏
@@ -69,7 +74,13 @@ export default {
       autoPlayIconUrl,
       // 暂停
       // pauseIconUrl,
+      isShowPopup: false,
     };
+  },
+  methods: {
+    handleClickThumbnail() {
+      this.isShowPopup = !this.isShowPopup;
+    },
   },
 };
 </script>

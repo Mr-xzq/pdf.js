@@ -1,12 +1,14 @@
 <script>
+// suceess
 // import * as pdfjsLib from "pdfjs-dist/webpack.mjs";
+
+// 尝试另外的导入方式
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 //   "pdfjs-dist/legacy/build/pdf.worker.mjs",
 //   import.meta.url
 // ).toString();
-
 
 // 不支持，可能是因为 new Worker 不允许变量的形式，还是因为别的原因
 // const workerPath = new URL(
@@ -17,13 +19,12 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 //   type: "module",
 // });
 
-
-pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(new URL(
-  "pdfjs-dist/legacy/build/pdf.worker.mjs",
-  import.meta.url
-), {
-  type: "module",
-});
+pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
+  new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
+  {
+    type: "module",
+  }
+);
 
 // pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
 //   'http://127.0.0.1:5678' + '/pdfjs-dist/legacy/build/pdf.worker.mjs',
@@ -176,8 +177,18 @@ export default {
       this.$emit("loading-start");
 
       try {
+        // const arrayBuffer = await fetch(this.src).then(response => {
+        //   if (!response.ok) {
+        //     throw new Error("Network response was not ok");
+        //   }
+        //   return response.arrayBuffer(); // 获取 ArrayBuffer 格式的数据
+        // });
+        //
+        // console.log("arrayBuffer: ", arrayBuffer);
+
         // 创建 pdf.js 文档加载任务
         const task = pdfjsLib.getDocument({ url: this.src });
+        // const task = pdfjsLib.getDocument({ data: arrayBuffer });
         // pdf.js 处理（下载等）进度回调，合并进总进度处理
         // loaded 和 total 都是 contentLength
         task.onProgress = ({ loaded = 0, total = 1 }) => {

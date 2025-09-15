@@ -56,7 +56,11 @@ const routes = [
   },
   {
     path: "/demo1",
-    component: () => import("@/views/Demo1.vue"),
+    component: () => import("@/views/Demo1/index.vue"),
+  },
+  {
+    path: "/tree-test",
+    component: () => import("@/views/Demo1/components/Tree/Test.vue"),
   },
 ];
 
