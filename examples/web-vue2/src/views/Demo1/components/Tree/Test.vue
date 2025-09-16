@@ -23,13 +23,14 @@
         >行高：
         <input type="number" v-model.number="itemHeight" min="24" step="2" />
       </label>
-      <label><input type="checkbox" v-model="transition" /> 动画</label>
-      <label><input type="checkbox" v-model="selectable" /> 可选中</label>
+      <label><input type="checkbox" v-model="transition" />动画</label>
+      <label><input type="number" v-model.number="transitionDuration" />动画 duration</label>
+      <label><input type="checkbox" v-model="selectable" />可选中</label>
       <label
-        ><input type="checkbox" v-model="useCustomSwitcher" /> 自定义开关</label
+        ><input type="checkbox" v-model="useCustomSwitcher" />自定义开关</label
       >
       <label
-        ><input type="checkbox" v-model="useMapped" /> 使用字段映射 demo</label
+        ><input type="checkbox" v-model="useMapped" />使用字段映射 demo</label
       >
     </div>
 
@@ -54,6 +55,7 @@
         :indent="indent"
         :item-height="itemHeight"
         :transition="transition"
+        :duration="transitionDuration || 0"
         :selectable="selectable"
       >
         <template v-if="useCustomSwitcher" #switcher="{ expanded }">
@@ -84,6 +86,7 @@ export default {
       indent: 16,
       itemHeight: 44,
       transition: true,
+      transitionDuration: 300,
       selectable: true,
       useCustomSwitcher: true,
       useMapped: false,

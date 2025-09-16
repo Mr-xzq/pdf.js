@@ -258,7 +258,7 @@ export default {
             requestAnimationFrame(check);
           }
         };
-        this.$nextTick(() => requestAnimationFrame(check));
+        requestAnimationFrame(check)
       });
     },
 

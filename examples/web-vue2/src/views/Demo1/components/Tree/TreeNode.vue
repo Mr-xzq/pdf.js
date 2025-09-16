@@ -9,7 +9,7 @@ export default {
     indent: { type: Number, default: 16 },
     itemHeight: { type: Number, default: 44 },
     useTransition: { type: Boolean, default: true },
-    duration: { type: Number, default: 160 },
+    duration: { type: Number, default: 250 },
     easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
     // 字段映射
     props: {
@@ -75,12 +75,11 @@ export default {
     },
     onEnter(el) {
       console.log("onEnter");
+      // 手动改 height 触发 transiton height 过渡动画
       el.style.height = "0px";
       const h = el.scrollHeight + "px";
-      this.$nextTick(() => {
-        requestAnimationFrame(() => {
-          el.style.height = h;
-        });
+      requestAnimationFrame(() => {
+        el.style.height = h;
       });
     },
     onAfterEnter(el) {
@@ -88,26 +87,22 @@ export default {
     },
     onLeave(el) {
       console.log("onLeave");
+      // 手动改 height 触发 transiton height 过渡动画
       el.style.height = el.scrollHeight + "px";
-      this.$nextTick(() => {
-        requestAnimationFrame(() => {
-          el.style.height = "0px";
-        });
+      requestAnimationFrame(() => {
+        el.style.height = "0px";
       });
     },
     onAfterLeave(el) {
       el.style.height = "";
     },
   },
-  // 保留递归处对 this.$options 的引用以避免自引用引入
   render() {
-    const labelClass = "tree__label";
-
-    const switcher = this.isLeaf ? (
+    const switcherVnode = this.isLeaf ? (
       <div class="tree__toggle tree__toggle--placeholder" />
     ) : (
       <div
-        class={{ tree__toggle: true, "is-expanded": this.expanded }}
+        class={["tree__toggle", { "is-expanded": this.expanded }]}
         onClick={this.toggle}
       >
         {this.$scopedSlots.switcher ? (
@@ -122,27 +117,28 @@ export default {
       </div>
     );
 
-    const contentSection = (
+    const contentSectionVnode = (
       <div class="tree__content" onClick={this.select}>
         {this.$scopedSlots.label ? (
           this.$scopedSlots.label({ node: this.node })
         ) : (
-          <div class={labelClass} attrs={{ title: this.getLabel(this.node) }}>
+          <div class="tree__label" attrs={{ title: this.getLabel(this.node) }}>
             {this.getLabel(this.node)}
           </div>
         )}
-        {this.$scopedSlots.suffix
-          ? this.$scopedSlots.suffix({ node: this.node })
-          : null}
+        {this.$scopedSlots.suffix &&
+          this.$scopedSlots.suffix({ node: this.node })}
       </div>
     );
 
-    const nodeVnodeConfig = {
-      class: {
-        tree__node: true,
-        "tree__node--active": this.isActive,
-        ["tree__node--level-" + this.level]: true,
-      },
+    const mainVnodeConfig = {
+      class: [
+        "tree__node",
+        "tree__node--level-" + this.level,
+        {
+          "tree__node--active": this.isActive,
+        },
+      ],
       style: {
         paddingLeft: (this.level - 1) * this.indent + "px",
         height: this.itemHeight + "px",
@@ -150,24 +146,24 @@ export default {
       attrs: { "data-key": this.getKey(this.node) },
     };
 
-    const nodeMain = (
-      <div {...nodeVnodeConfig}>
-        {switcher}
-        {contentSection}
+    const mainVnode = (
+      <div {...mainVnodeConfig}>
+        {switcherVnode}
+        {contentSectionVnode}
       </div>
     );
 
-    let children = null;
+    let childrenVnode = null;
     const list = this.getChildren(this.node);
 
     if (list && list.length) {
-      const body = (
+      const expandedChildrenVnode = (
         <div ref="wrap" class="tree__children">
-          {list.map(ch => {
+          {list.map(childItem => {
             const treeNodeVnodeConfig = {
               props: {
                 ...this.$props,
-                node: ch,
+                node: childItem,
                 level: this.level + 1,
               },
               on: {
@@ -180,7 +176,7 @@ export default {
           })}
         </div>
       );
-      children = this.useTransition ? (
+      childrenVnode = this.useTransition ? (
         <transition
           on={{
             enter: this.onEnter,
@@ -189,17 +185,17 @@ export default {
             "after-leave": this.onAfterLeave,
           }}
         >
-          {this.expanded ? body : null}
+          {this.expanded && expandedChildrenVnode}
         </transition>
-      ) : this.expanded ? (
-        body
-      ) : null;
+      ) : (
+        this.expanded && expandedChildrenVnode
+      );
     }
 
     return (
       <div class="tree__item">
-        {nodeMain}
-        {children}
+        {mainVnode}
+        {childrenVnode}
       </div>
     );
   },
