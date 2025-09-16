@@ -9,7 +9,7 @@
   >
     <tree-node
       v-for="n in data"
-      :key="n.key"
+      :key="getKey(n)"
       :node="n"
       :level="1"
       :expanded-map="expandedMap"
@@ -19,15 +19,22 @@
       :use-transition="transition"
       :duration="duration"
       :easing="easing"
+      :props="props"
       @toggle="onToggle"
       @select="onSelect"
     >
-      <template v-if="$scopedSlots.switcher" #switcher="slotProps"><slot name="switcher" v-bind="slotProps" /></template>
+      <template v-if="$scopedSlots.switcher" #switcher="slotProps"
+        ><slot name="switcher" v-bind="slotProps"
+      /></template>
 
       <template #label="slotProps"
-        ><slot name="label" v-bind="slotProps">{{ slotProps.node.label }}</slot></template
+        ><slot name="label" v-bind="slotProps">{{
+          getLabel(slotProps.node)
+        }}</slot></template
       >
-      <template #suffix="slotProps"><slot name="suffix" v-bind="slotProps" /></template>
+      <template #suffix="slotProps"
+        ><slot name="suffix" v-bind="slotProps"
+      /></template>
     </tree-node>
     <div v-if="!data || !data.length"><slot name="empty">无数据</slot></div>
   </div>
@@ -50,24 +57,47 @@ export default {
     transition: { type: Boolean, default: true },
     duration: { type: Number, default: 160 },
     easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
+    // 字段映射：对齐 element-ui 的 props 习惯
+    props: {
+      type: Object,
+      default: () => ({
+        key: "key",
+        label: "label",
+        children: "children",
+        disabled: "disabled",
+        isLeaf: "isLeaf",
+      }),
+    },
   },
   data() {
-    const m = Object.create(null);
-    (this.expandedKeys || []).forEach(k => { m[k] = true; });
-    return { expandedMap: m };
+    const m = {};
+    (this.expandedKeys || []).forEach(k => {
+      m[k] = true;
+    });
+    return {
+      expandedMap: m,
+      maps: { nodesMap: {}, parentMap: {} },
+    };
   },
   watch: {
     expandedKeys: {
       deep: true,
       handler(v) {
-        const m = Object.create(null);
-        (v || []).forEach(k => { m[k] = true; });
+        const m = {};
+        (v || []).forEach(k => {
+          m[k] = true;
+        });
         this.expandedMap = m;
       },
+    },
+    activeKey(v) {
+      if (v !== undefined && v !== null) this.expandToKey(v);
     },
     data: {
       immediate: true,
       handler() {
+        // Rebuild nodesMap/parentMap
+        this.maps = this.buildMaps(this.data);
         if (
           this.defaultExpandAll &&
           (!this.expandedKeys || !this.expandedKeys.length)
@@ -86,13 +116,52 @@ export default {
         expandToKey: this.expandToKey,
         scrollToKey: this.scrollToKey,
         flashHighlight: this.flashHighlight,
+        activate: this.activate,
+        getAncestorKeys: this.getAncestorKeys,
+        getLabelByKey: this.getLabelByKey,
       },
     });
   },
   methods: {
+    // field mapping helpers
+    getKey(n) {
+      const kf = (this.props && this.props.key) || "key";
+      return n && n[kf];
+    },
+    getChildren(n) {
+      const cf = (this.props && this.props.children) || "children";
+      return (n && n[cf]) || [];
+    },
+    getLabel(n) {
+      const lf = (this.props && this.props.label) || "label";
+      return n ? n[lf] : undefined;
+    },
+    isLeafNode(n) {
+      const lf = (this.props && this.props.isLeaf) || "isLeaf";
+      const children = this.getChildren(n);
+      return !!(n && (n[lf] || !children || children.length === 0));
+    },
+    // maps builder
+    buildMaps(list, parent = null, maps = { nodesMap: {}, parentMap: {} }) {
+      for (const n of list || []) {
+        const key = this.getKey(n);
+        if (key != null) {
+          maps.nodesMap[key] = n;
+          if (parent != null) {
+            const pkey = this.getKey(parent);
+            if (pkey != null) maps.parentMap[key] = pkey;
+          }
+        }
+        const ch = this.getChildren(n);
+        if (ch && ch.length) this.buildMaps(ch, n, maps);
+      }
+      return maps;
+    },
     onToggle(node, ex) {
+      const key = this.getKey(node);
       const map = { ...(this.expandedMap || {}) };
-      if (ex) map[node.key] = true; else delete map[node.key];
+      if (ex) map[key] = true;
+      else delete map[key];
       const next = Object.keys(map);
       this.expandedMap = map;
       this.$emit("update:expandedKeys", next);
@@ -100,37 +169,50 @@ export default {
     },
     onSelect(node) {
       if (!this.selectable) return;
-      const k = node.key;
+      const k = this.getKey(node);
+      // 激活时：仅展开其祖先，不展开其子级
+      this.expandToKey(k);
       this.$emit("update:activeKey", k);
       this.$emit("select", node, { activeKey: k });
     },
     collectAllExpandable(list, acc = []) {
       for (const n of list || []) {
-        if (n.children && n.children.length)
-          acc.push(n.key), this.collectAllExpandable(n.children, acc);
+        const ch = this.getChildren(n);
+        if (ch && ch.length) {
+          const k = this.getKey(n);
+          if (k != null) acc.push(k);
+          this.collectAllExpandable(ch, acc);
+        }
       }
       return acc;
     },
     buildParentMap(list, parent = null, map = {}) {
       for (const n of list || []) {
-        if (parent) map[n.key] = parent.key;
-        if (n.children) this.buildParentMap(n.children, n, map);
+        const nk = this.getKey(n);
+        const pk = parent ? this.getKey(parent) : null;
+        if (parent && nk != null && pk != null) map[nk] = pk;
+        const ch = this.getChildren(n);
+        if (ch && ch.length) this.buildParentMap(ch, n, map);
       }
       return map;
     },
     expandAll() {
       const keys = this.collectAllExpandable(this.data);
-      const m = Object.create(null);
-      keys.forEach(k => { m[k] = true; });
+      const m = {};
+      keys.forEach(k => {
+        m[k] = true;
+      });
       this.expandedMap = m;
       this.$emit("update:expandedKeys", keys);
     },
     collapseAll() {
-      this.expandedMap = Object.create(null);
+      this.expandedMap = {};
       this.$emit("update:expandedKeys", []);
     },
     expandToKey(key) {
-      const pm = this.buildParentMap(this.data);
+      const pm =
+        (this.maps && this.maps.parentMap) ||
+        this.buildMaps(this.data).parentMap;
       const map = { ...(this.expandedMap || {}) };
       let cur = pm[key];
       while (cur) {
@@ -162,6 +244,39 @@ export default {
         () => el && el.classList && el.classList.remove("tree__node--flash"),
         ms
       );
+    },
+    // unified activate: expand ancestors, set active, optional scroll/flash
+    activate(key, opts = {}) {
+      if (key === undefined || key === null) return;
+      this.expandToKey(key);
+      this.$emit("update:activeKey", key);
+      if (opts && opts.scroll) {
+        const align = typeof opts.scroll === "string" ? opts.scroll : "center";
+        this.scrollToKey(key, align);
+      }
+      if (opts && opts.flash) {
+        const ms = typeof opts.flash === "number" ? opts.flash : 800;
+        this.flashHighlight(key, ms);
+      }
+    },
+    // get ancestor keys from root -> parent of key
+    getAncestorKeys(key) {
+      const pm =
+        (this.maps && this.maps.parentMap) ||
+        this.buildMaps(this.data).parentMap;
+      const chain = [];
+      let cur = pm[key];
+      while (cur) {
+        chain.push(cur);
+        cur = pm[cur];
+      }
+      return chain.reverse();
+    },
+    // get label by key with current mapping
+    getLabelByKey(key) {
+      const n =
+        this.maps && this.maps.nodesMap ? this.maps.nodesMap[key] : null;
+      return n ? this.getLabel(n) : undefined;
     },
   },
 };

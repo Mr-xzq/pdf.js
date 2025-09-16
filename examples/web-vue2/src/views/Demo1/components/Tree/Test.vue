@@ -6,8 +6,8 @@
       >
       <van-button size="small" @click="collapseAll">收起全部</van-button>
       <van-field
-        v-model="gotoKey"
-        placeholder="输入 key 定位"
+        v-model="gotoValue"
+        :placeholder="gotoPlaceholder"
         clearable
         input-align="left"
       />
@@ -25,18 +25,30 @@
       </label>
       <label><input type="checkbox" v-model="transition" /> 动画</label>
       <label><input type="checkbox" v-model="selectable" /> 可选中</label>
-      <label><input type="checkbox" v-model="useCustomSwitcher"/> 自定义开关</label>
       <label
-        >激活 key：
-        <input v-model="activeInput" placeholder="输入 key" />
-        <button @click="activate">激活</button>
-      </label>
+        ><input type="checkbox" v-model="useCustomSwitcher" /> 自定义开关</label
+      >
+      <label
+        ><input type="checkbox" v-model="useMapped" /> 使用字段映射 demo</label
+      >
+    </div>
+
+    <div class="hint" v-if="activePathLabels && activePathLabels.length">
+      <span class="crumb" v-for="(lbl, i) in activePathLabels" :key="i">
+        <span class="crumb__text">{{ lbl }}</span>
+        <van-icon
+          v-if="i < activePathLabels.length - 1"
+          name="arrow"
+          class="crumb__sep"
+        />
+      </span>
     </div>
 
     <div class="pane">
       <Tree
         ref="tree"
-        :data="nodes"
+        :data="treeData"
+        :props="treeProps"
         :expanded-keys.sync="expanded"
         :active-key.sync="active"
         :indent="indent"
@@ -45,22 +57,18 @@
         :selectable="selectable"
       >
         <template v-if="useCustomSwitcher" #switcher="{ expanded }">
-          <span class="switcher">{{ expanded ? "▼" : "▶" }}</span>
+          <van-icon
+            :name="expanded ? 'arrow-down' : 'arrow'"
+            class="switcher-icon"
+          />
         </template>
-        <template #label="{ node }">
-          <span>{{ node.label }}</span>
-        </template>
+        >
         <template #suffix="{ node }">
           <span v-if="node.meta && node.meta.count" class="badge">{{
             node.meta.count
           }}</span>
+          <span v-else-if="node.tips" class="badge">{{ node.tips }}</span>
         </template>
-      </Tree>
-    </div>
-
-    <div class="pane">
-      <Tree :data="[]" :indent="indent">
-        <template #empty>自定义空状态：暂无数据</template>
       </Tree>
     </div>
   </div>
@@ -78,6 +86,8 @@ export default {
       transition: true,
       selectable: true,
       useCustomSwitcher: true,
+      useMapped: false,
+
       nodes: [
         {
           key: "1",
@@ -98,7 +108,7 @@ export default {
         { key: "2", label: "根 2（叶子）", isLeaf: true },
         {
           key: "3",
-          label: "一个很长很长很长的节点标题，测试多行或单行截断策略的表现",
+          label: "一个很长很长很长的节点标题",
           children: [
             { key: "3-1", label: "子 3-1" },
             { key: "3-2", label: "子 3-2" },
@@ -107,10 +117,64 @@ export default {
       ],
       expanded: ["1"],
       active: null,
-      activeInput: "",
       gotoKey: "1-2-1",
+
+      // 自定义字段映射用例（id/name/nodes/leaf）
+      mappedProps: {
+        key: "id",
+        label: "name",
+        children: "nodes",
+        isLeaf: "leaf",
+        disabled: "disabled",
+      },
+      mappedNodes: [
+        {
+          id: "a",
+          name: "部门A",
+          nodes: [
+            {
+              id: "a-1",
+              name: "A-1",
+              nodes: [{ id: "a-1-1", name: "A-1-1", leaf: true, tips: "leaf" }],
+            },
+          ],
+        },
+        { id: "b", name: "部门B", nodes: [{ id: "b-1", name: "B-1" }] },
+        { id: "c", name: "节点C(叶子)", leaf: true },
+      ],
+      gotoId: "a-1-1",
     };
   },
+  computed: {
+    treeData() {
+      return this.useMapped ? this.mappedNodes : this.nodes;
+    },
+    treeProps() {
+      return this.useMapped ? this.mappedProps : undefined;
+    },
+    gotoValue: {
+      get() {
+        return this.useMapped ? this.gotoId : this.gotoKey;
+      },
+      set(v) {
+        if (this.useMapped) this.gotoId = v;
+        else this.gotoKey = v;
+      },
+    },
+    gotoPlaceholder() {
+      return this.useMapped ? "输入 id 定位（自定义映射）" : "输入 key 定位";
+    },
+    activePathLabels() {
+      const k = this.active;
+      const t = this.$refs.tree;
+      if (!k || !t || !t.getAncestorKeys) return [];
+      const keys = [...(t.getAncestorKeys(k) || []), k];
+      return keys.map(x =>
+        t.getLabelByKey ? t.getLabelByKey(x) || String(x) : String(x)
+      );
+    },
+  },
+
   methods: {
     expandAll() {
       this.$refs.tree.expandAll();
@@ -120,13 +184,10 @@ export default {
     },
 
     activate() {
-      const k = ((this.activeInput || this.gotoKey) || "").trim();
+      const k = (this.gotoValue || "").trim();
       if (!k) return;
-      // 展开到目标（仅展开祖先，不强制展开该节点的子级），设置激活并滚动与高亮
-      this.$refs.tree.expandToKey(k);
-      this.active = k;
-      this.$refs.tree.scrollToKey(k, "center");
-      this.$refs.tree.flashHighlight(k, 900);
+      // 统一“定位 + 激活”：仅展开祖先，设置 active，并可选滚动与高亮
+      this.$refs.tree.activate(k, { scroll: "center", flash: 900 });
     },
   },
 };
@@ -174,6 +235,11 @@ export default {
     border-radius: 6px;
     padding: 4px;
 
+    .switcher-icon {
+      font-size: 14px;
+      color: #999;
+      width: 16px;
+    }
     .switcher {
       width: 16px;
       display: inline-block;
@@ -186,6 +252,28 @@ export default {
       border-radius: 10px;
       padding: 0 6px;
       font-size: 12px;
+    }
+  }
+  .hint {
+    margin: 8px 0 6px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    .crumb {
+      display: inline-flex;
+      align-items: center;
+    }
+    .crumb__text {
+      background: #f6f7f9;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 2px 8px;
+    }
+    .crumb__sep {
+      margin: 0 6px;
+      color: #999;
     }
   }
 }

@@ -11,29 +11,59 @@ export default {
     useTransition: { type: Boolean, default: true },
     duration: { type: Number, default: 160 },
     easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
+    // 字段映射：对齐 element-ui 的 props 习惯
+    props: {
+      type: Object,
+      default: () => ({
+        key: "key",
+        label: "label",
+        children: "children",
+        disabled: "disabled",
+        isLeaf: "isLeaf",
+      }),
+    },
   },
   data() {
     return { expanded: false };
   },
   computed: {
     isLeaf() {
-      return (
-        this.node.isLeaf || !this.node.children || !this.node.children.length
-      );
+      return this.getIsLeaf(this.node);
     },
     isActive() {
-      return this.activeKey === this.node.key;
+      return this.activeKey === this.getKey(this.node);
     },
   },
   watch: {
     expandedMap: {
       immediate: true,
       handler() {
-        this.expanded = !!(this.expandedMap && this.expandedMap[this.node.key]);
+        this.expanded = !!(
+          this.expandedMap && this.expandedMap[this.getKey(this.node)]
+        );
       },
     },
   },
   methods: {
+    // mapping helpers
+    getKey(n) {
+      const kf = (this.props && this.props.key) || "key";
+      return n && n[kf];
+    },
+    getChildren(n) {
+      const cf = (this.props && this.props.children) || "children";
+      return (n && n[cf]) || [];
+    },
+    getLabel(n) {
+      const lf = (this.props && this.props.label) || "label";
+      return n ? n[lf] : undefined;
+    },
+    getIsLeaf(n) {
+      const lf = (this.props && this.props.isLeaf) || "isLeaf";
+      const ch = this.getChildren(n);
+      return !!(n && (n[lf] || !ch || ch.length === 0));
+    },
+
     toggle(e) {
       e && e.stopPropagation();
       if (this.isLeaf) return;
@@ -63,40 +93,34 @@ export default {
   },
   // 使用 JSX 提升可读性；保留递归处对 this.$options 的引用以避免自引用引入
   render() {
-    const nodeStyle = {
-      paddingLeft: (this.level - 1) * this.indent + "px",
-      height: this.itemHeight + "px",
-    };
-
     const labelClass = "tree__label";
 
-    const switcher = this.isLeaf
-      ? (
-        <div class="tree__toggle tree__toggle--placeholder" aria-hidden="true" />
-      )
-      : (
-        <div
-          class={{ tree__toggle: true, "is-expanded": this.expanded }}
-          onClick={this.toggle}
-        >
-          {this.$scopedSlots.switcher
-            ? this.$scopedSlots.switcher({
-                node: this.node,
-                expanded: this.expanded,
-                level: this.level,
-              })
-            : <span class="arrow" />}
-        </div>
-      );
+    const switcher = this.isLeaf ? (
+      <div class="tree__toggle tree__toggle--placeholder" />
+    ) : (
+      <div
+        class={{ tree__toggle: true, "is-expanded": this.expanded }}
+        onClick={this.toggle}
+      >
+        {this.$scopedSlots.switcher ? (
+          this.$scopedSlots.switcher({
+            node: this.node,
+            expanded: this.expanded,
+            level: this.level,
+          })
+        ) : (
+          <span class="arrow" />
+        )}
+      </div>
+    );
 
     const contentSection = (
       <div class="tree__content" onClick={this.select}>
-
         {this.$scopedSlots.label ? (
           this.$scopedSlots.label({ node: this.node })
         ) : (
-          <div class={labelClass} attrs={{ title: this.node.label }}>
-            {this.node.label}
+          <div class={labelClass} attrs={{ title: this.getLabel(this.node) }}>
+            {this.getLabel(this.node)}
           </div>
         )}
         {this.$scopedSlots.suffix
@@ -105,28 +129,32 @@ export default {
       </div>
     );
 
-    const nodeClass = {
-      tree__node: true,
-      "tree__node--active": this.isActive,
-      ["tree__node--level-" + this.level]: true,
+    const nodeVnodeConfig = {
+      class: {
+        tree__node: true,
+        "tree__node--active": this.isActive,
+        ["tree__node--level-" + this.level]: true,
+      },
+      style: {
+        paddingLeft: (this.level - 1) * this.indent + "px",
+        height: this.itemHeight + "px",
+      },
+      attrs: { "data-key": this.getKey(this.node) },
     };
 
     const nodeMain = (
-      <div
-        class={nodeClass}
-        style={nodeStyle}
-        attrs={{ "data-key": this.node.key }}
-      >
+      <div {...nodeVnodeConfig}>
         {switcher}
         {contentSection}
       </div>
     );
 
     let children = null;
-    if (this.node.children && this.node.children.length) {
+    const list = this.getChildren(this.node);
+    if (list && list.length) {
       const body = (
         <div ref="wrap" class="tree__children">
-          {this.node.children.map(ch =>
+          {list.map(ch =>
             this.$createElement(this.$options, {
               props: {
                 node: ch,
@@ -138,6 +166,7 @@ export default {
                 useTransition: this.useTransition,
                 duration: this.duration,
                 easing: this.easing,
+                props: this.props,
               },
               on: {
                 toggle: (n, next) => this.$emit("toggle", n, next),

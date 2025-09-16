@@ -37,6 +37,8 @@ export interface TreeNode {
 - `transition: boolean` 是否开启展开/折叠动画，默认 `true`
 - `duration: number` 展开/折叠动画时长，默认 `160`（ms）
 - `easing: string` 动画缓动，默认 `cubic-bezier(0.2, 0, 0, 1)`
+- `props`: { key, label, children, disabled, isLeaf } 字段映射（已支持；默认同名）
+
 - `ellipsis: 'single' | 'multi' | 'none'` 文本截断策略，默认 `single`
 - `maxLines: number` 多行截断行数（当 `ellipsis='multi'` 时生效），默认 `2`
 - `showGuideLine: boolean` 是否显示层级引导线（轻量视觉辅助），默认 `false`
@@ -47,6 +49,9 @@ export interface TreeNode {
 - `@toggle(node: TreeNode, expanded: boolean, ctx: { expandedKeys: string[] })`
 - `@select(node: TreeNode, ctx: { activeKey: string | null })`
 - `@ready(ctx: { methods })` 组件挂载后回调（可从中获取实例方法）
+
+
+> 行为说明：激活与定位合一——当通过点击触发 `@select` 或外部设置 `activeKey` 时，组件会自动“仅展开该节点的所有祖先”，但不会展开该节点的子级；高亮始终作用于当前激活节点。
 
 ### 3.3 Methods（通过 `ref` 暴露）
 - `expandAll()` / `collapseAll()`
@@ -243,3 +248,217 @@ export default {
 - 是否直接复用现有 `index.vue` 作为实现入口
 - 是否需要提供少量示例数据与 Demo 页集成
 
+
+
+
+## 与 Element-UI Tree 实现对比与优化建议（基于本仓库源码对照）
+
+### 1）整体架构对比
+- 我们的 Tree（examples/.../Tree）：
+  - 轻量无 Store 架构，数据直接来自 props（`data`）；展开态用受控的 `expandedKeys.sync` + 本地 `expandedMap` 管理。
+  - 递归节点用 JSX 渲染（TreeNode.vue），展开/折叠用高度过渡，提供定位 API：`expandAll/collapseAll/expandToKey/scrollToKey/flashHighlight`。
+  - 插槽：`switcher`/`label`/`suffix`/`empty`，移动端体验友好（行高、动效、可自定义开关）。
+- Element-UI Tree（lib/element-ui/packages/tree）：
+  - 完整的 Store + Node 模型（TreeStore、Node、util），集中管理：选中、展开、过滤、懒加载、拖拽、键盘可达性等。
+  - 功能丰富：checkbox 三态、`checkStrictly`、`defaultCheckedKeys`、`filterNodeMethod`、`lazy load`、拖拽排序（`allowDrag/allowDrop`）、`accordion`、键盘导航、ARIA。
+
+结论：Element-UI 以“数据模型 + 能力矩阵”为中心，我们以“移动端轻交互 + 受控外部状态”为中心，各有所长，服务的场景不同。
+
+### 2）核心能力对照（节选）
+- 选中/高亮：
+  - 我方：`activeKey` 受控高亮，点击整行触发；无多选。
+  - Element-UI：内置 `show-checkbox` 多选、父子联动与半选、`checkOnClickNode`。
+- 懒加载：
+  - 我方：暂不支持。
+  - Element-UI：`lazy + load(node, resolve)`，含 loading 态与叶子判断。
+- 过滤：
+  - 我方：暂不支持。
+  - Element-UI：`filterNodeMethod` + 自动展开可见分支。
+- 拖拽：
+  - 我方：暂不支持。
+  - Element-UI：内置 DnD，放置指示线、`allowDrag/allowDrop`、结构变更 API。
+- 可达性与键盘：
+  - 我方：基础为触控优先，未加 ARIA/键盘导航。
+  - Element-UI：`role=tree/treeitem`、`aria-expanded`、`tabindex`、上下左右及 Enter/Space 行为。
+
+### 3）移动端体验与性能
+- 我方优势：
+  - 行高、点击热区、滚动定位、闪烁高亮，贴合 H5 场景；体积更小、心智负担低。
+  - 展开动画使用“高度测量 + 过渡”，视觉连续；封装的定位 API 直观。
+- 我方短板：
+  - 缺失常见“树形”高级能力（多选、懒加载、过滤、拖拽）与基础 A11y。
+  - 数据查询/定位每次临时构建 parentMap，`expandToKey` 在大数据时有额外开销。
+- Element-UI 优势：
+  - 能力齐全、模型稳健、事件完备，可覆盖管理后台复杂需求。
+- Element-UI 短板：
+  - 较重；桌面端交互为主，移动端触控体验与样式需要适配。
+
+### 4）我们现有 Tree 的具体优劣小结
+- 优点：
+  - 轻量、API 简洁、移动端交互自然；插槽可定制；受控状态易于集成。
+  - 提供定位相关一揽子方法（展开到、滚动到、闪烁高亮）。
+- 不足：
+  - 缺少：checkbox 多选/半选、过滤、懒加载、拖拽、键盘/ARIA、禁用态、批量节点操作（追加/移除/插入）。
+  - 性能细节：已内置 `nodesMap/parentMap` 缓存，定位/展开更高效。
+
+### 5）可落地的优化方向（按优先级）
+1. 性能与通用性基础
+   - 已完成：在 Tree 根组件初始化/`data` 变更时构建 `nodesMap` 与 `parentMap`（O(n)），供 `expandToKey/scrollToKey` 与后续高级能力复用。
+   - 已完成：支持 props 字段映射：`props={ children:'children', label:'label', disabled:'disabled', isLeaf:'isLeaf', key:'key' }`。
+2. 可达性与一致性
+   - 补充 `role="tree/treeitem"` 与 `aria-expanded/aria-level`；可选开启基础键盘导航（↑↓选择、←→展开）。
+3. 过滤 API（轻量版）
+   - 增加 `filterNodeMethod(value, node)` 与 `filter(value)` 方法：仅保留匹配节点与祖先；可选高亮 label 命中片段。
+4. 懒加载（最小实现）
+   - 增加 `lazy + load(node, resolve)` 支持与 `node.loading` 展示；维持现有受控展开模型。
+5. 选择能力（可选）
+   - 逐步引入 checkbox 三态（可基于 Element-UI 的 `getChildState` 思路做轻量改造），默认关闭以维持轻量。
+6. 结构操作（可选）
+   - 暴露 `append/remove/insertBefore/insertAfter` 等方法，配合 `nodesMap` 实现 O(1) 查询与 O(log n) 结构调整。
+
+### 6）实现示例片段（不改变现有 API 的基础上平滑增强）
+- 在 Tree/index.vue 中缓存映射（构建一次，多处复用）
+<augment_code_snippet path="examples/web-vue2/src/views/Demo1/components/Tree/index.vue" mode="EXCERPT">
+````javascript
+buildMaps(list, parent=null, maps={ nodesMap:{}, parentMap:{} }){
+  for(const n of list||[]) {
+    const k = this.getKey(n); const pk = parent ? this.getKey(parent) : null;
+    if (k!=null) maps.nodesMap[k]=n;
+    if (parent && k!=null && pk!=null) maps.parentMap[k]=pk;
+    const ch = this.getChildren(n); if (ch && ch.length) this.buildMaps(ch, n, maps);
+  }
+  return maps;
+}
+````
+</augment_code_snippet>
+
+- 使用缓存优化 `expandToKey`
+<augment_code_snippet path="examples/web-vue2/src/views/Demo1/components/Tree/index.vue" mode="EXCERPT">
+````javascript
+expandToKey(key){
+  const pm = this.maps?.parentMap || this.buildMaps(this.data).parentMap;
+  const map = { ...(this.expandedMap||{}) };
+  for(let cur=pm[key]; cur; cur=pm[cur]) map[cur]=true;
+  const next = Object.keys(map);
+  this.expandedMap = map; this.$emit('update:expandedKeys', next);
+}
+````
+</augment_code_snippet>
+
+- 基础 ARIA（容器与节点示意）
+<augment_code_snippet path="examples/web-vue2/src/views/Demo1/components/Tree/index.vue" mode="EXCERPT">
+````html
+<div class="tree" role="tree">
+  <tree-node v-for="n in data" :key="n.key" :node="n" :level="1" />
+  <div v-if="!data||!data.length" class="tree__empty" role="note">无数据</div>
+</div>
+````
+</augment_code_snippet>
+
+- 过滤方法签名建议（与 Element-UI 对齐风格）
+<augment_code_snippet path="examples/web-vue2/src/views/Demo1/components/Tree/index.vue" mode="EXCERPT">
+````javascript
+props:{ filterNodeMethod: Function },
+methods:{
+  filter(value){
+    // 遍历 data，设置 node.__visible 与展开祖先；命中可标记 node.__matched
+  }
+}
+````
+</augment_code_snippet>
+
+### 7）为何不直接“引入”Element-UI Tree
+- 我们重点场景在移动端，所需能力与交互取舍不同；直接引入将显著增加体积与复杂度。
+- 通过“有选择地借鉴”其 Store/Node 思路，可在保持轻量的前提下补齐关键能力（如三态选择、懒加载、过滤），并保留我们现有的移动端体验与 API。
+
+—— 以上建议均可逐步实施，优先做“映射缓存 + ARIA + 过滤（轻量）”，风险小、收益大；随后按业务需要引入懒加载与多选能力。
+
+
+
+## 移动端定位与功能边界（务必遵守）
+
+- 必选能力（Must-haves）
+  - 展开/折叠（含轻量动画，可关闭）；受控 expandedKeys 同步
+  - 行点击选中高亮（activeKey 受控），可关闭 selectable
+  - 定位相关方法：expandToKey / scrollToKey / flashHighlight
+  - 基础插槽：switcher / label / suffix / empty
+  - 轻量样式变量与 44px 触控热区，单/多行省略策略
+- 优选能力（Should-haves）
+  - 可选的轻量 filter(value) + filterNodeMethod(value, node)
+  - 基础 ARIA 语义（role/aria-expanded），可选键盘导航（默认关闭）
+- 非目标（本期与中期不做，或默认关闭）
+  - 拖拽排序/跨树拖拽、复杂右键菜单、行内编辑
+  - 重型数据模型（完整 Store/Node）与深度联动（默认不引入）
+  - 虚拟滚动（可作为特定大数据场景的独立增强组件）
+  - 与桌面端一致的全量 API 兼容（不强追 element-ui 全量）
+
+说明：始终以“移动端轻交互 + 轻量心智 + 清晰边界”为原则，避免引入桌面端复杂能力造成体积和认知负担膨胀。
+
+## 健壮性 / 扩展性 / 易读性评估与建议
+
+### 健壮性（Robustness）
+- 输入数据健壮：
+  - 容错 children: null/undefined/非数组；无 key 或重复 key 时给出 dev-only 警告且跳过地图缓存
+  - 不变性要求：不直接改写外部 data；内部仅读 + 自有状态（expandedMap 等）
+- 交互边界：
+  - 选中与展开热区分离；滚动阈值防误触；transition 可全局关闭
+  - CSS.escape 兼容性兜底；scrollIntoView 失败 fallback 到 el.scrollIntoView(true)
+- 性能/风格：
+  - 构建 nodesMap/parentMap 一次 O(n)，后续 O(1) 查询；避免深度 watch
+  - 批量更新（一次性 set expandedMap 后再 emit），减少抖动
+- 开发时提示：
+  - dev 环境下对重复 key、深层循环引用、超长 label（建议截断）给出 console.warn
+
+### 扩展性（Extensibility）
+- 轻量 Store/Adapter 思路：保持当前受控 API 不变，引入内部“可选的”适配层，承载后续拓展（checkbox、lazy、filter）。
+<augment_code_snippet mode="EXCERPT">
+````javascript
+// 轻量适配层接口（示意）
+export function createTreeAdapter({ propsMap, on }){
+  return {
+    normalize(data){ /* 字段映射与预处理 */ },
+    maps(data){ /* nodesMap/parentMap 构建 */ },
+    hooks: on || {} // beforeToggle/afterToggle/beforeSelect/...
+  };
+}
+````
+</augment_code_snippet>
+- 可插拔的增强：
+  - filter 插件（仅标记可见/命中，不改数据）
+  - lazy 插件（load(node, resolve) + loading 态）
+  - checkbox 插件（复用 getChildState 思路，默认关闭）
+- API 稳定：保持 props/事件命名稳定；新增能力以可选 props 启用，默认不改变既有行为
+
+### 易读性（Readability）
+- 结构：index.vue 仅负责容器与受控逻辑；节点渲染留在 TreeNode（JSX），必要时拆辅助渲染函数
+- 命名与注释：统一 slotProps 命名（node, level, expanded）；仅在边界与关键路径处添加简短有效注释
+- 工具与样式：将通用工具抽到 utils（如 buildMaps）；样式使用 BEM + 变量，避免魔法数
+- 一致性：事件 payload 结构一致（{ activeKey }、{ expandedKeys }），便于外部集成
+
+## 可借鉴的 Element-UI 设计点（适配后引入）
+- 数据索引与路径：
+  - nodesMap 的注册/注销机制；getNode(key)/getNodePath(data) 的接口语义
+- 过滤与签名：
+  - filterNodeMethod(value, data, node) 的函数签名与仅展开可见祖先的策略
+- 三态选择的判定：
+  - getChildState 的半选/全选/全未选计算逻辑，可裁剪后用于轻量 checkbox 插件
+- 事件与方法命名：
+  - setCheckedKeys/getCheckedKeys、updateKeyChildren 等命名风格可作为参考，保持语义直观
+
+## 分阶段落地计划（建议）
+- 阶段 1（优先）
+  - 构建 nodesMap/parentMap 缓存；优化 expandToKey/scrollToKey O(1) 查询（已完成）
+  - 补充 ARIA 语义（role/aria-expanded）；可选开启键盘导航（默认关闭）
+  - 引入轻量 filter(value) + filterNodeMethod（不改数据，仅控制可见/展开）
+- 阶段 2（按需）
+  - props 字段映射（props: { key/label/children/disabled/isLeaf }）（已完成）
+  - 懒加载最小实现：lazy + load(node, resolve) + node.loading 显示
+- 阶段 3（可选）
+  - 轻量 checkbox（三态、父子可选联动，默认关闭）
+  - 结构操作 API：append/remove/insertBefore/insertAfter（在不引入完整 Store 的前提下实现）
+
+验收指标（Definition of Done）
+- 体积控制：新增能力默认关闭时打包体积增长 < 3KB（gzip）
+- 性能：1k 节点下展开/定位平均 < 16ms，首屏渲染无明显卡顿
+- API 稳定：现有 Demo 行为不变；新增能力通过 props 显式开启
+- 可维护性：核心文件注释覆盖关键边界，工具函数单测覆盖主要分支
