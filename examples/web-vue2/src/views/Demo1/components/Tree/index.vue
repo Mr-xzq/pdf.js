@@ -57,7 +57,7 @@ export default {
     transition: { type: Boolean, default: true },
     duration: { type: Number, default: 160 },
     easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
-    // 字段映射：对齐 element-ui 的 props 习惯
+    // 字段映射
     props: {
       type: Object,
       default: () => ({
@@ -115,7 +115,7 @@ export default {
         collapseAll: this.collapseAll,
         expandToKey: this.expandToKey,
         scrollToKey: this.scrollToKey,
-        flashHighlight: this.flashHighlight,
+
         activate: this.activate,
         getAncestorKeys: this.getAncestorKeys,
         getLabelByKey: this.getLabelByKey,
@@ -234,29 +234,43 @@ export default {
         el.scrollIntoView(true);
       }
     },
-    flashHighlight(key, ms = 800) {
+
+    // Wait until the target node exists in DOM and no height transitions are running
+    waitForNodeReady(key, maxMs = 2000) {
       const root = this.$refs.root;
-      const el =
-        root && root.querySelector(`[data-key="${CSS.escape(String(key))}"]`);
-      if (!el) return;
-      el.classList.add("tree__node--flash");
-      setTimeout(
-        () => el && el.classList && el.classList.remove("tree__node--flash"),
-        ms
-      );
+      const start = Date.now();
+      return new Promise(resolve => {
+        const check = () => {
+          const el =
+            root &&
+            root.querySelector(`[data-key="${CSS.escape(String(key))}"]`);
+          const present = !!(
+            el &&
+            el.getClientRects &&
+            el.getClientRects().length
+          );
+          // During expand/collapse, TreeNode sets inline style.height; cleared on after-enter/after-leave
+          const running =
+            root && root.querySelector('.tree__children[style*="height"]');
+          if ((present && !running) || Date.now() - start > maxMs) {
+            resolve();
+          } else {
+            requestAnimationFrame(check);
+          }
+        };
+        this.$nextTick(() => requestAnimationFrame(check));
+      });
     },
-    // unified activate: expand ancestors, set active, optional scroll/flash
-    activate(key, opts = {}) {
+
+    // unified activate: expand ancestors, set active, optional scroll
+    async activate(key, opts = {}) {
       if (key === undefined || key === null) return;
       this.expandToKey(key);
       this.$emit("update:activeKey", key);
       if (opts && opts.scroll) {
         const align = typeof opts.scroll === "string" ? opts.scroll : "center";
+        await this.waitForNodeReady(key);
         this.scrollToKey(key, align);
-      }
-      if (opts && opts.flash) {
-        const ms = typeof opts.flash === "number" ? opts.flash : 800;
-        this.flashHighlight(key, ms);
       }
     },
     // get ancestor keys from root -> parent of key

@@ -8,7 +8,7 @@
   - 展示层级结构（缩进、图标可选）
   - 展开/折叠（带动效）
   - 选中高亮（点击反馈，便于“定位”）
-  - 通过方法定位到指定节点并闪烁高亮
+  - 通过方法定位到指定节点
 - 暂不实现：搜索/过滤、多选与三态、拖拽、虚拟滚动、复杂手势（长按/侧滑）
 
 ## 2. 数据模型
@@ -57,7 +57,7 @@ export interface TreeNode {
 - `expandAll()` / `collapseAll()`
 - `expandToKey(key: string)` 展开到目标节点（逐级展开）
 - `scrollToKey(key: string, align: 'start'|'center'|'end' = 'center')` 滚动定位
-- `flashHighlight(key: string, ms: number = 800)` 闪烁高亮用于“定位提示”
+
 
 ### 3.4 Slots
 - `icon` 自定义前缀图标，参数：`{ node, expanded, level }`
@@ -194,7 +194,7 @@ export default {
     goTo(key) {
       this.$refs.treeRef.expandToKey(key);
       this.$refs.treeRef.scrollToKey(key, 'center');
-      this.$refs.treeRef.flashHighlight(key);
+
     },
   },
 };
@@ -215,9 +215,9 @@ export default {
 
 ## 8. 定位与高亮策略
 - `scrollToKey(key, align)`：滚动至目标行，`align` 默认 `center`
-- `flashHighlight(key, ms)`：添加 `--flash` 类并在 `ms` 后移除
+
 - 视觉建议：
-  - `--flash`：背景从主题色浅色过渡至透明（渐隐 600–1000ms）
+
   - `--active`：稳定的选中背景，不自动消失
 
 ## 9. 无障碍（基础）
@@ -229,7 +229,7 @@ export default {
 - [x] 树形渲染（缩进、图标占位）
 - [x] 展开/折叠（高度与箭头旋转动画）
 - [x] 行点击选中高亮（与展开热区隔离）
-- [x] 定位 API：`expandToKey`、`scrollToKey`、`flashHighlight`
+- [x] 定位 API：`expandToKey`、`scrollToKey`
 - [x] 文本截断策略（单行默认，多行可选）
 - [x] 受控属性：`expandedKeys.sync`、`activeKey.sync`
 - [ ] 视觉/主题变量（Less）与暗色模式适配（可后续加）
@@ -256,7 +256,7 @@ export default {
 ### 1）整体架构对比
 - 我们的 Tree（examples/.../Tree）：
   - 轻量无 Store 架构，数据直接来自 props（`data`）；展开态用受控的 `expandedKeys.sync` + 本地 `expandedMap` 管理。
-  - 递归节点用 JSX 渲染（TreeNode.vue），展开/折叠用高度过渡，提供定位 API：`expandAll/collapseAll/expandToKey/scrollToKey/flashHighlight`。
+  - 递归节点用 JSX 渲染（TreeNode.vue），展开/折叠用高度过渡，提供定位 API：`expandAll/collapseAll/expandToKey/scrollToKey`。
   - 插槽：`switcher`/`label`/`suffix`/`empty`，移动端体验友好（行高、动效、可自定义开关）。
 - Element-UI Tree（lib/element-ui/packages/tree）：
   - 完整的 Store + Node 模型（TreeStore、Node、util），集中管理：选中、展开、过滤、懒加载、拖拽、键盘可达性等。
@@ -283,7 +283,7 @@ export default {
 
 ### 3）移动端体验与性能
 - 我方优势：
-  - 行高、点击热区、滚动定位、闪烁高亮，贴合 H5 场景；体积更小、心智负担低。
+  - 行高、点击热区、滚动定位，贴合 H5 场景；体积更小、心智负担低。
   - 展开动画使用“高度测量 + 过渡”，视觉连续；封装的定位 API 直观。
 - 我方短板：
   - 缺失常见“树形”高级能力（多选、懒加载、过滤、拖拽）与基础 A11y。
@@ -296,7 +296,7 @@ export default {
 ### 4）我们现有 Tree 的具体优劣小结
 - 优点：
   - 轻量、API 简洁、移动端交互自然；插槽可定制；受控状态易于集成。
-  - 提供定位相关一揽子方法（展开到、滚动到、闪烁高亮）。
+  - 提供定位相关一揽子方法（展开到、滚动到）。
 - 不足：
   - 缺少：checkbox 多选/半选、过滤、懒加载、拖拽、键盘/ARIA、禁用态、批量节点操作（追加/移除/插入）。
   - 性能细节：已内置 `nodesMap/parentMap` 缓存，定位/展开更高效。
@@ -380,7 +380,7 @@ methods:{
 - 必选能力（Must-haves）
   - 展开/折叠（含轻量动画，可关闭）；受控 expandedKeys 同步
   - 行点击选中高亮（activeKey 受控），可关闭 selectable
-  - 定位相关方法：expandToKey / scrollToKey / flashHighlight
+  - 定位相关方法：expandToKey / scrollToKey
   - 基础插槽：switcher / label / suffix / empty
   - 轻量样式变量与 44px 触控热区，单/多行省略策略
 - 优选能力（Should-haves）

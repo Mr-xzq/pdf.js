@@ -11,7 +11,7 @@ export default {
     useTransition: { type: Boolean, default: true },
     duration: { type: Number, default: 160 },
     easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
-    // 字段映射：对齐 element-ui 的 props 习惯
+    // 字段映射
     props: {
       type: Object,
       default: () => ({
@@ -74,24 +74,32 @@ export default {
       this.$emit("select", this.node);
     },
     onEnter(el) {
+      console.log("onEnter");
       el.style.height = "0px";
       const h = el.scrollHeight + "px";
-      void el.offsetHeight;
-      el.style.height = h;
+      this.$nextTick(() => {
+        requestAnimationFrame(() => {
+          el.style.height = h;
+        });
+      });
     },
     onAfterEnter(el) {
       el.style.height = "";
     },
     onLeave(el) {
+      console.log("onLeave");
       el.style.height = el.scrollHeight + "px";
-      void el.offsetHeight;
-      el.style.height = "0px";
+      this.$nextTick(() => {
+        requestAnimationFrame(() => {
+          el.style.height = "0px";
+        });
+      });
     },
     onAfterLeave(el) {
       el.style.height = "";
     },
   },
-  // 使用 JSX 提升可读性；保留递归处对 this.$options 的引用以避免自引用引入
+  // 保留递归处对 this.$options 的引用以避免自引用引入
   render() {
     const labelClass = "tree__label";
 
@@ -151,30 +159,25 @@ export default {
 
     let children = null;
     const list = this.getChildren(this.node);
+
     if (list && list.length) {
       const body = (
         <div ref="wrap" class="tree__children">
-          {list.map(ch =>
-            this.$createElement(this.$options, {
+          {list.map(ch => {
+            const treeNodeVnodeConfig = {
               props: {
+                ...this.$props,
                 node: ch,
                 level: this.level + 1,
-                expandedMap: this.expandedMap,
-                activeKey: this.activeKey,
-                indent: this.indent,
-                itemHeight: this.itemHeight,
-                useTransition: this.useTransition,
-                duration: this.duration,
-                easing: this.easing,
-                props: this.props,
               },
               on: {
                 toggle: (n, next) => this.$emit("toggle", n, next),
                 select: n => this.$emit("select", n),
               },
               scopedSlots: this.$scopedSlots,
-            })
-          )}
+            };
+            return <tree-node {...treeNodeVnodeConfig} />;
+          })}
         </div>
       );
       children = this.useTransition ? (
@@ -210,21 +213,12 @@ export default {
   padding: 0 12px 0 8px;
   user-select: none;
   transition: background 120ms ease;
-}
-.tree__node--active {
-  background: rgba(0, 0, 0, 0.06);
-}
-.tree__node--flash {
-  animation: flashBg var(--tree-duration, 160ms) ease;
-}
-@keyframes flashBg {
-  from {
-    background: rgba(24, 144, 255, 0.25);
-  }
-  to {
-    background: transparent;
+
+  &--active {
+    background: rgba(0, 0, 0, 0.06);
   }
 }
+
 .tree__toggle {
   width: 32px;
   height: 100%;
@@ -241,6 +235,7 @@ export default {
     transition: transform var(--tree-duration, 160ms)
       var(--tree-ease, cubic-bezier(0.2, 0, 0, 1));
   }
+
   &.is-expanded {
     .arrow {
       transform: rotate(45deg);

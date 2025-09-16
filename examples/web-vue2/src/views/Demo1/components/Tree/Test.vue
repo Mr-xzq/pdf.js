@@ -108,10 +108,36 @@ export default {
         { key: "2", label: "根 2（叶子）", isLeaf: true },
         {
           key: "3",
-          label: "一个很长很长很长的节点标题",
+          label: "一个很长很长很长很长很长很长很长很长很长的节点标题",
           children: [
             { key: "3-1", label: "子 3-1" },
             { key: "3-2", label: "子 3-2" },
+            { key: "3-3", label: "子 3-3" },
+            { key: "3-4", label: "子 3-4" },
+            { key: "3-5", label: "子 3-5" },
+            { key: "3-6", label: "子 3-6" },
+            { key: "3-7", label: "子 3-7" },
+          ],
+        },
+        {
+          key: "4",
+          label: "多级嵌套",
+          children: [
+            {
+              key: "4-1",
+              label: "子 4-1",
+              children: [
+                { key: "4-1-2", label: "子 4-1-2" },
+                { key: "4-1-3", label: "子 4-1-3" },
+                { key: "4-1-4", label: "子 4-1-4" },
+              ],
+            },
+            { key: "4-2", label: "子 4-2" },
+            { key: "4-3", label: "子 4-3" },
+            { key: "4-4", label: "子 4-4" },
+            { key: "4-5", label: "子 4-5" },
+            { key: "4-6", label: "子 4-6" },
+            { key: "4-7", label: "子 4-7" },
           ],
         },
       ],
@@ -186,8 +212,8 @@ export default {
     activate() {
       const k = (this.gotoValue || "").trim();
       if (!k) return;
-      // 统一“定位 + 激活”：仅展开祖先，设置 active，并可选滚动与高亮
-      this.$refs.tree.activate(k, { scroll: "center", flash: 900 });
+      // 统一“定位 + 激活”：仅展开祖先，设置 active，并可选滚动
+      this.$refs.tree.activate(k, { scroll: "center" });
     },
   },
 };
