@@ -175,7 +175,7 @@ export default {
   data() {
     return {
       // 仅保留组件特有的临时状态
-      pdfUrl: "/assets/sample.pdf", // 默认测试PDF
+      pdfUrl: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf", // 默认测试PDF
 
       // 测试页码输入
       testPageNumber: 1,

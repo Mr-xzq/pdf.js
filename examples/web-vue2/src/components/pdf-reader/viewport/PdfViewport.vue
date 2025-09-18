@@ -15,8 +15,11 @@
     </div>
 
     <!-- PDF 内容区域 -->
-    <div v-else-if="documentLoaded" class="pdf-viewer-core__content">
-      <pdf-page
+    <div v-else-if="documentLoaded" class="pdf-viewer-core__content" ref="content"
+         @mousedown="onPanStart" @mousemove="onPanMove" @mouseup="onPanEnd" @mouseleave="onPanEnd"
+         @touchstart.prevent="onPanStart" @touchmove.prevent="onPanMove" @touchend="onPanEnd">
+      <div class="pdf-viewer-core__pan" :style="panStyle()">
+        <pdf-page
         :page-number="currentPage"
         :scale="currentScale"
         :pdf-services="pdfServices"
@@ -24,7 +27,9 @@
         :annotations-enabled="true"
         @page-rendered="onPageRendered"
         @render-error="onRenderError"
+        @canvas-click="onCanvasClick"
       />
+      </div>
     </div>
 
     <!-- 空状态 -->
@@ -39,6 +44,7 @@
 import { PdfServices, NavigationService } from "../core/pdf-services.js";
 import PdfPage from "./PdfPage.vue";
 import PdfLoadingProgress from "../ui/PdfLoadingProgress.vue";
+import { MIN_SCALE, MAX_SCALE } from "../core/scale";
 import { mapDocumentState, mapViewerState, mapDocumentActions, mapViewerActions, mapDocumentGetters } from "../store/index.js";
 
 export default {
@@ -70,6 +76,10 @@ export default {
       type: Number,
       default: 1,
     },
+    // 手势开关（默认启用）
+    gesturesEnabled: { type: Boolean, default: true },
+    // 双击放大目标（优先使用外部传入；未传则使用 baseline*1.5）
+    zoomTarget: { type: Number, default: null },
   },
 
   data() {
@@ -88,6 +98,36 @@ export default {
 
       // 文档信息
       documentInfo: null,
+
+      // 平移与边界
+      panX: 0,
+      panY: 0,
+      panStartX: 0,
+      panStartY: 0,
+      panAtStartX: 0,
+      panAtStartY: 0,
+      isPanning: false,
+      contentWidth: 0,
+      contentHeight: 0,
+      containerWidth: 0,
+      containerHeight: 0,
+
+      // Pinch 缩放状态
+      isPinching: false,
+      pinchStartDistance: 0,
+      pinchStartScale: 1,
+      pinchCenterX: 0,
+      pinchCenterY: 0,
+      pinchStartContentWidth: 0,
+      pinchStartContentHeight: 0,
+
+      // 双击检测
+      lastTapTime: 0,
+      lastTapX: 0,
+      lastTapY: 0,
+
+      // 初次适配的基线缩放（用于“缩小”恢复）
+      initialFitScale: 0,
     };
   },
 
@@ -137,6 +177,9 @@ export default {
     docError() {
       return this.error;
     },
+
+
+
     docErrorMessage() {
       const e = this.error;
       return typeof e === "string" ? e : e?.message || e || null;
@@ -176,6 +219,15 @@ export default {
   },
 
   methods: {
+
+    panStyle() {
+      return {
+        transform: `translate(${this.panX}px, ${this.panY}px)`,
+        willChange: 'transform',
+        cursor: this.currentScale > 1 ? (this.isPanning ? 'grabbing' : 'grab') : 'default',
+      };
+    },
+
       ...mapDocumentActions([
         "realLoadDocument",
         "setLoadProgress",
@@ -327,6 +379,8 @@ export default {
         info: {
           numPages: event.numPages,
           title: event.info?.Title || "",
+
+
           author: event.info?.Author || "",
           fingerprint: event.fingerprint,
         },
@@ -378,6 +432,16 @@ export default {
      * 处理页面渲染完成
      */
     onPageRendered(event) {
+      // 更新内容尺寸并约束平移边界
+      const vp = event && event.viewport;
+      if (vp) {
+        this.contentWidth = vp.width;
+        this.contentHeight = vp.height;
+      }
+      this.$nextTick(() => {
+        this.updateContainerSize();
+        this.clampPan();
+      });
       this.$emit("page-rendered", event);
     },
 
@@ -387,6 +451,71 @@ export default {
     onRenderError(event) {
       console.error("页面渲染错误:", event);
       this.$emit("render-error", event);
+    },
+
+    /**
+     * 画布点击：左右翻页
+     * 左半边 -> 上一页；右半边 -> 下一页
+     */
+    onCanvasClick(payload) {
+      try {
+        const { x, event } = payload || {};
+        const target = event?.target;
+        const width = target?.clientWidth || 0;
+        if (!width) return;
+
+        const now = Date.now();
+        const dt = now - this.lastTapTime;
+        const dx = Math.abs((x || 0) - (this.lastTapX || 0));
+        const isDoubleTap = dt < 300 && dx < 24;
+        this.lastTapTime = now;
+        this.lastTapX = x || 0;
+        this.lastTapY = 0;
+
+        if (this.gesturesEnabled && isDoubleTap) {
+          // 双击：基线 <-> 目标倍数 切换（优先使用外部 zoomTarget；否则 baseline*1.5），并以点击位置为锚点
+          const baseline = this.getBaselineScale();
+          const oldScale = this.currentScale || 1;
+          const targetZoom = (typeof this.zoomTarget === 'number' && this.zoomTarget > 0)
+            ? this.zoomTarget
+            : baseline * 1.5;
+          const newScale = oldScale <= baseline + 0.01
+            ? Math.min(targetZoom, MAX_SCALE)
+            : baseline;
+
+          // 计算点击点在容器内的坐标
+          const container = this.$refs.content || this.$refs.viewerContainer || target?.parentElement;
+          const rect = container?.getBoundingClientRect?.();
+          if (rect) {
+            const Cx = event.clientX - rect.left;
+            const Cy = event.clientY - rect.top;
+            const k = newScale / (oldScale || 1);
+            // o' = o + (1 - k) * (C - o)
+            this.panX = this.panX + (1 - k) * (Cx - this.panX);
+            this.panY = this.panY + (1 - k) * (Cy - this.panY);
+            // 更新临时内容尺寸用于边界裁剪
+            const startW = this.contentWidth || 0;
+            const startH = this.contentHeight || 0;
+            this.contentWidth = startW * k;
+            this.contentHeight = startH * k;
+            this.$nextTick(() => this.clampPan());
+          }
+
+          this.currentScale = newScale;
+          this.setScale(newScale);
+          return; // 阻止翻页
+        }
+
+        // 单击：左右翻页
+        if (x < width / 2) {
+          this.prevPage();
+        } else {
+          this.nextPage();
+        }
+      } catch (e) {
+        // 兜底不抛出，避免影响正常渲染
+        console.warn("onCanvasClick 处理失败:", e);
+      }
     },
 
     // 公共方法
@@ -541,12 +670,140 @@ export default {
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.currentScale) > 0.005) {
+          this.initialFitScale = computed;
           this.setScale(computed);
         }
       } catch (e) {
+
         console.warn("fitWidthOnce 计算失败:", e);
       }
     },
+
+    /**
+     * 工具：容器尺寸、基线缩放、边界裁剪
+     */
+    updateContainerSize() {
+      const el = this.$refs.content || this.$refs.viewerContainer;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      this.containerWidth = rect.width || 0;
+      this.containerHeight = rect.height || 0;
+    },
+
+    // 获取基线缩放（优先取首次适配的宽度比例）
+    getBaselineScale() {
+      return this.initialFitScale || this.initialScale || 1.0;
+    },
+
+    // 约束平移边界（横向以居中为原点，纵向以顶部对齐为原点）
+    clampPan() {
+      const cw = this.containerWidth || 0;
+      const ch = this.containerHeight || 0;
+      const pw = this.contentWidth || 0;
+      const ph = this.contentHeight || 0;
+
+      // X 轴：内容居中 -> 允许范围 [-((pw-cw)/2), +((pw-cw)/2)]
+      let minX = 0, maxX = 0;
+      if (pw > cw) {
+        const cx = (pw - cw) / 2;
+        minX = -cx; maxX = cx;
+      }
+
+      // Y 轴：内容顶部对齐 -> 允许范围 [-(ph-ch), 0]
+      let minY = 0, maxY = 0;
+      if (ph > ch) {
+        minY = -(ph - ch);
+        maxY = 0;
+      }
+
+      if (this.panX < minX) this.panX = minX;
+      if (this.panX > maxX) this.panX = maxX;
+      if (this.panY < minY) this.panY = minY;
+      if (this.panY > maxY) this.panY = maxY;
+    },
+
+    /**
+     * 简单双指/鼠标拖拽平移
+     */
+    onPanStart(e) {
+      if (!this.gesturesEnabled) return;
+      const touches = e.touches ? e.touches : null;
+      if (touches && touches.length >= 2) {
+        // 开始捏合
+        this.isPinching = true;
+        const [t1, t2] = touches;
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        this.pinchStartDistance = Math.hypot(dx, dy) || 1;
+        this.pinchStartScale = this.currentScale;
+        // 手势中心（相对容器）
+        const rect = (this.$refs.content || this.$refs.viewerContainer).getBoundingClientRect();
+        this.pinchCenterX = (t1.clientX + t2.clientX) / 2 - rect.left;
+        this.pinchCenterY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        // 记录开始时的内容尺寸
+        this.pinchStartContentWidth = this.contentWidth || 0;
+        this.pinchStartContentHeight = this.contentHeight || 0;
+        // 计算该中心点在内容中的相对位置（用于保持中心）
+        this.panStartX = this.pinchCenterX; // 复用字段
+        this.panStartY = this.pinchCenterY;
+        this.panAtStartX = this.panX;
+        this.panAtStartY = this.panY;
+        return;
+      }
+
+      // 单指拖拽
+      const point = touches ? touches[0] : e;
+      this.isPanning = this.currentScale > (this.getBaselineScale() + 0.001);
+      this.panStartX = point.clientX;
+      this.panStartY = point.clientY;
+      this.panAtStartX = this.panX;
+      this.panAtStartY = this.panY;
+    },
+    onPanMove(e) {
+      if (!this.gesturesEnabled) return;
+      const touches = e.touches ? e.touches : null;
+      if (this.isPinching && touches && touches.length >= 2) {
+        const [t1, t2] = touches;
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        const dist = Math.hypot(dx, dy) || 1;
+        const scaleFactor = dist / (this.pinchStartDistance || 1);
+        let nextScale = this.pinchStartScale * scaleFactor;
+        // 约束缩放范围
+        nextScale = Math.min(Math.max(nextScale, MIN_SCALE), MAX_SCALE);
+        if (Math.abs(nextScale - this.currentScale) > 0.001) {
+          // 以手势中心为锚点保持位置：o' = o + (1 - k) * (C - o)
+          const k = (nextScale / (this.pinchStartScale || 1));
+          const Cx = this.pinchCenterX;
+          const Cy = this.pinchCenterY;
+          this.panX = this.panAtStartX + (1 - k) * (Cx - this.panAtStartX);
+          this.panY = this.panAtStartY + (1 - k) * (Cy - this.panAtStartY);
+          // 临时更新内容尺寸供边界计算
+          const startW = this.pinchStartContentWidth || this.contentWidth || 0;
+          const startH = this.pinchStartContentHeight || this.contentHeight || 0;
+          this.contentWidth = startW * k;
+          this.contentHeight = startH * k;
+          this.currentScale = nextScale;
+          // 同步到 Store 以便外层 UI 更新
+          this.setScale(nextScale);
+          this.$nextTick(() => this.clampPan());
+        }
+        return;
+      }
+
+      if (!this.isPanning) return;
+      const point = touches ? touches[0] : e;
+      const dx = point.clientX - this.panStartX;
+      const dy = point.clientY - this.panStartY;
+      this.panX = this.panAtStartX + dx;
+      this.panY = this.panAtStartY + dy;
+      this.clampPan();
+    },
+    onPanEnd() {
+      this.isPanning = false;
+      this.isPinching = false;
+    },
+
   },
 };
 </script>
@@ -557,16 +814,21 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: transparent;
 
   &__content {
     flex: 1;
-    overflow: auto; // 允许滚动
+    overflow: hidden; // 不出现滚动条
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 12px 12px 100px 12px; // 移动端控制条更高，默认给足空间
+    padding: 0; // 由外层控制留白
     min-height: 0; // 确保flex子元素能够正确缩放
+    touch-action: none; // 允许自定义手势（禁用浏览器默认手势）
+  }
+
+  &__pan {
+    will-change: transform;
   }
 
   &__error {

@@ -36,7 +36,6 @@ export class TextLayerBuilder extends BaseLayerBuilder {
       }
     } catch (e) {
       // 降级：忽略文本层失败
-      // eslint-disable-next-line no-console
       console.warn("TextLayerBuilder 渲染失败（忽略）:", e);
     }
   }

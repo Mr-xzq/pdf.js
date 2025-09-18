@@ -34,6 +34,7 @@
             :initial-scale="initialScale"
             :max-canvas-pixels="maxCanvasPixels"
             :text-layer-mode="textLayerMode"
+            :zoom-target="zoomTarget"
             @document-loaded="onDocumentLoaded"
             @document-error="onDocumentError"
             @load-progress="onLoadProgress"
@@ -73,6 +74,7 @@ import PdfViewport from "./viewport/PdfViewport.vue";
 import PdfTopToolbar from "./toolbar/PdfTopToolbar.vue";
 import PdfBottomToolbar from "./toolbar/PdfBottomToolbar.vue";
 import PdfSidebar from "./sidebar/PdfSidebar.vue";
+import { PageRenderService } from "./core/pdf-services.js";
 import {
   mapDocumentState,
   mapViewerState,
@@ -120,12 +122,31 @@ export default {
       type: Boolean,
       default: true,
     },
+
+    // 外层通过 props 控制自动播放
+    autoPlayEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    autoPlayIntervalMs: {
+      type: Number,
+      default: 3000,
+    },
+    // 双击放大目标（透传到 PdfViewport）
+    zoomTarget: {
+      type: Number,
+      default: null,
+    },
   },
 
   data() {
     return {
       // UI状态下沉到组件本地
       searchActive: false,
+
+      // 自动播放（由 props 控制启停）
+      autoPlaying: false,
+      autoPlayTimer: null,
     };
   },
 
@@ -167,11 +188,9 @@ export default {
     canZoomIn() {
       return this.zoomState.canZoomIn;
     },
-
     canZoomOut() {
       return this.zoomState.canZoomOut;
     },
-
 
     // 侧边栏相关计算属性
     sidebarVisible() {
@@ -180,6 +199,17 @@ export default {
 
     sidebarActiveTab() {
       return this.activeTab;
+    },
+  },
+
+  watch: {
+    autoPlayEnabled(val) {
+      if (val) {
+        // 若文档已加载则立即启动
+        if (this.isDocumentLoaded) this.startAutoPlay();
+      } else {
+        this.stopAutoPlay(true);
+      }
     },
   },
 
@@ -196,6 +226,8 @@ export default {
   beforeDestroy() {
     // 清理事件监听器
     window.removeEventListener("resize", this.handleResize);
+    // 停止自动播放
+    this.stopAutoPlay && this.stopAutoPlay(true);
   },
 
   methods: {
@@ -226,6 +258,11 @@ export default {
         event.document?.numPages || event.info?.numPages
       );
       console.log("当前导航状态:", this.navigationState);
+
+      //  
+      if (this.autoPlayEnabled) {
+        this.startAutoPlay();
+      }
 
       this.$emit("document-loaded", event);
     },
@@ -364,6 +401,77 @@ export default {
       }
     },
 
+    // ===== 对外 API：目录与缩略图 =====
+    async getOutline() {
+      try {
+        const core = this.$refs.viewerCore;
+        const services = core && core.pdfServices;
+        if (!services || typeof services.getOutline !== "function") {
+          throw new Error("pdfServices 不可用或不支持 getOutline");
+        }
+        return await services.getOutline();
+      } catch (e) {
+        console.warn("getOutline 调用失败:", e);
+        return [];
+      }
+    },
+
+    async renderThumbnail(pageNumber, canvasEl, options = {}) {
+      try {
+        const core = this.$refs.viewerCore;
+        const services = core && core.pdfServices;
+        if (!services) throw new Error("pdfServices 不可用");
+        const renderer = new PageRenderService(services);
+        const opts = { scale: options.scale || 0.2, ...options };
+        await renderer.renderPageToCanvas(pageNumber, canvasEl, opts);
+      } catch (e) {
+        console.warn("renderThumbnail 失败:", e);
+      }
+    },
+
+    getTotalPages() {
+      return this.totalPages || 0;
+    },
+
+    async navigateToDestination(dest) {
+      try {
+        const core = this.$refs.viewerCore;
+        const services = core && core.pdfServices;
+        if (services && typeof services.goToDestination === "function") {
+          await services.goToDestination(dest);
+        }
+      } catch (e) {
+        console.warn("navigateToDestination 失败:", e);
+      }
+    },
+
+    // ===== 自动播放（由 props 控制启停） =====
+    startAutoPlay() {
+      if (this.autoPlaying || !this.isDocumentLoaded) return;
+      this.autoPlaying = true;
+      // 即刻尝试一次
+      if (this.canGoNext && typeof this.nextPage === "function") this.nextPage();
+      this.autoPlayTimer = setInterval(() => {
+        if (!this.canGoNext || typeof this.nextPage !== "function") {
+          this.stopAutoPlay(true);
+          return;
+        }
+        this.nextPage();
+      }, this.autoPlayIntervalMs);
+    },
+
+    stopAutoPlay(silent = false) {
+      if (this.autoPlayTimer) {
+        clearInterval(this.autoPlayTimer);
+        this.autoPlayTimer = null;
+      }
+      this.autoPlaying = false;
+      if (!silent) {
+        // 可在此处 emit 事件通知外层自动播放已停止
+        // this.$emit("auto-play-stopped");
+      }
+    },
+
     /**
      * 处理侧边栏标签页变化事件
      */
@@ -396,6 +504,17 @@ export default {
     // 注意：不再定义重复的方法，直接使用映射的Vuex actions
     // prevPage, nextPage, goToPage, zoomIn, zoomOut, setScale, setScaleMode
     // 这些方法已经通过 mapViewerActions 映射，避免无限递归
+
+	    //  ff API: ffffff
+	    /**
+	     * ffffffff
+	     */
+	    getBaselineScale() {
+	      const core = this.$refs.viewerCore;
+	      if (core && typeof core.getBaselineScale === "function") return core.getBaselineScale();
+	      return typeof this.currentScale === 'number' ? this.currentScale : 1;
+	    },
+
   },
 };
 </script>
@@ -409,7 +528,7 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: @pdf-viewer-background;
+  background: transparent;
 
   &__container {
     width: 100%;
@@ -417,8 +536,8 @@ export default {
     display: flex;
     flex-direction: column;
     position: relative;
-    // 为移动端底部工具栏预留空间
-    padding-bottom: @pdf-safe-area-bottom;
+    // 去除内部预留空间，由外部页面控制
+    padding-bottom: 0;
   }
 
   &__top-toolbar {
@@ -432,8 +551,8 @@ export default {
     position: relative;
     display: flex;
     flex-direction: row;
-    // 为固定的底部工具栏预留空间
-    margin-bottom: @pdf-bottom-toolbar-height-mobile;
+    // 去除内部预留空间，由外部页面控制
+    margin-bottom: 0;
   }
 
   &__sidebar {

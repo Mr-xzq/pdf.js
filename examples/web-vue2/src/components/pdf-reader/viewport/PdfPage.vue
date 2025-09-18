@@ -127,7 +127,13 @@ export default {
      * 渲染页面
      */
     async renderPage() {
-      if (!this.pdfServices || !this.renderService || this.rendering) {
+      if (!this.pdfServices || !this.renderService) {
+        return;
+      }
+      // 记录开始渲染时希望使用的缩放值，用于检测渲染期间是否发生变化
+      const desiredScale = this.scale;
+      if (this.rendering) {
+        // 若正在渲染，则跳过本次请求。渲染完成后会根据 desiredScale 与当前 scale 的差异决定是否立即补一次渲染。
         return;
       }
 
@@ -169,6 +175,13 @@ export default {
           scale: this.scale,
           viewport: this.viewport,
         });
+
+        // 如果在渲染过程中外部缩放值已发生变化，则在当前渲染完成后立刻按最新缩放补一次渲染
+        if (this.scale !== desiredScale) {
+          await this.$nextTick();
+          this.rendering = false; // 显式确保状态正确
+          return this.renderPage();
+        }
 
         console.log(`页面 ${this.pageNumber} 渲染完成`);
       } catch (error) {
@@ -352,15 +365,16 @@ export default {
 
 <style lang="less" scoped>
 .pdf-page-container {
+/* 清理默认视觉风格，交给外部控制 */
   position: relative;
   display: inline-block;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: 8px;
+  background: transparent;
+  box-shadow: none;
+  margin: 0;
 
   &__canvas {
     display: block;
-    border: 1px solid #e8e8e8;
+    border: none;
 
     // 移除 object-fit，让Canvas保持原始尺寸
     // object-fit: contain; // 这可能导致意外的缩放

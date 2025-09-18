@@ -83,7 +83,6 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
                 }
               }
             } catch (e) {
-              // eslint-disable-next-line no-console
               console.warn("内部链接解析失败:", e);
             }
           });
@@ -112,7 +111,6 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         this.layer.style.height = `${this.viewport.height}px`;
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.warn("AnnotationLayerBuilder 渲染失败（忽略）:", e);
     }
   }

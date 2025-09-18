@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "format": "prettier . --write --cache"
+    "format": "prettier . --write --cache",
+    "playwright-mcp": "npx @playwright/mcp@latest --extension --port 8931"
   },
   "dependencies": {
     "core-js": "^3.8.3",
