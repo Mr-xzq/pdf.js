@@ -17,8 +17,8 @@
 </template>
 
 <script>
-import PdfViewport from "./viewport/PdfViewport.vue";
-import { PageRenderService } from "./core/pdf-services.js";
+import PdfViewport from "./components";
+import { PageRenderService } from "./core";
 import {
   mapDocumentState,
   mapViewerState,

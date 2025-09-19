@@ -37,15 +37,15 @@
 </template>
 
 <script>
-import { PageRenderService } from "../core/pdf-services.js";
-import { TextLayerBuilder } from "../core/layers/TextLayerBuilder";
-import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder";
+import { PageRenderService } from "../core";
+import { TextLayerBuilder } from "../core";
+import { AnnotationLayerBuilder } from "../core";
 import {
   createLayer,
   updateAndRenderLayer,
   cancelLayer,
   destroyLayer,
-} from "../core/layers/lifecycle";
+} from "../core";
 
 export default {
   name: "PdfPage",
@@ -477,3 +477,4 @@ export default {
   }
 }
 </style>
+

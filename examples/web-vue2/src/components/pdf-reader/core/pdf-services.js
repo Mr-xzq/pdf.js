@@ -432,7 +432,7 @@ export class PageRenderService {
  * 导航服务
  * 处理页面导航相关功能
  */
-export class NavigationService {
+export class ControlsService {
   constructor(pdfServices) {
     this.pdfServices = pdfServices;
     // 不再维护本地镜像状态，统一以 Vuex 为权威数据源

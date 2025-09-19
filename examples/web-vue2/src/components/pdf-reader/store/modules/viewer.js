@@ -215,18 +215,6 @@ const actions = {
   },
 
   /**
-   * 更新查看器配置
-   */
-
-  /**
-   * 加载缩略图（从navigation模块合并）
-   */
-
-  /**
-   * 添加导航历史（从navigation模块合并）
-   */
-
-  /**
    * 重置查看器
    */
   resetViewer({ commit }) {
