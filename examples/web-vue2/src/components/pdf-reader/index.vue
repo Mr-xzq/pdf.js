@@ -1,27 +1,19 @@
 <template>
-  <div class="pdf-viewer">
-    <div class="pdf-viewer__container">
-      <div class="pdf-viewer__content">
-        <div class="pdf-viewer__main">
-          <pdf-viewport
-            :src="src"
-            :initial-page="initialPage"
-            :initial-scale="initialScale"
-            :max-canvas-pixels="maxCanvasPixels"
-            :text-layer-mode="textLayerMode"
-            :zoom-target="zoomTarget"
-            @document-loaded="onDocumentLoaded"
-            @document-error="onDocumentError"
-            @load-progress="onLoadProgress"
-            @page-changed="onPageChanged"
-            @scale-changed="onScaleChanged"
-            @page-rendered="onPageRendered"
-            ref="viewerCore"
-          />
-        </div>
-      </div>
-    </div>
-  </div>
+  <pdf-viewport
+    :src="src"
+    :initial-page="initialPage"
+    :initial-scale="initialScale"
+    :max-canvas-pixels="maxCanvasPixels"
+    :text-layer-mode="textLayerMode"
+    :zoom-target="zoomTarget"
+    @document-loaded="onDocumentLoaded"
+    @document-error="onDocumentError"
+    @load-progress="onLoadProgress"
+    @page-changed="onPageChanged"
+    @scale-changed="onScaleChanged"
+    @page-rendered="onPageRendered"
+    ref="viewerCore"
+  />
 </template>
 
 <script>
@@ -131,7 +123,6 @@ export default {
     canZoomOut() {
       return this.zoomState.canZoomOut;
     },
-
   },
 
   watch: {
@@ -144,7 +135,6 @@ export default {
       }
     },
   },
-
 
   beforeDestroy() {
     // 停止自动播放
@@ -179,7 +169,6 @@ export default {
       );
       console.log("当前导航状态:", this.navigationState);
 
-      //  
       if (this.autoPlayEnabled) {
         this.startAutoPlay();
       }
@@ -259,7 +248,6 @@ export default {
       }
     },
 
-
     // ===== 对外 API：目录与缩略图 =====
     async getOutline() {
       try {
@@ -277,12 +265,18 @@ export default {
 
     async renderThumbnail(pageNumber, canvasEl, options = {}) {
       try {
-        const isCanvas = canvasEl && (
-          (typeof HTMLCanvasElement !== 'undefined' && canvasEl instanceof HTMLCanvasElement) ||
-          (canvasEl.tagName && String(canvasEl.tagName).toLowerCase() === 'canvas')
-        );
+        const isCanvas =
+          canvasEl &&
+          ((typeof HTMLCanvasElement !== "undefined" &&
+            canvasEl instanceof HTMLCanvasElement) ||
+            (canvasEl.tagName &&
+              String(canvasEl.tagName).toLowerCase() === "canvas"));
         if (!isCanvas) {
-          console.warn('renderThumbnail: 非法的 canvas 元素，已跳过', pageNumber, canvasEl);
+          console.warn(
+            "renderThumbnail: 非法的 canvas 元素，已跳过",
+            pageNumber,
+            canvasEl
+          );
           return;
         }
         const core = this.$refs.viewerCore;
@@ -317,7 +311,8 @@ export default {
       if (this.autoPlaying || !this.isDocumentLoaded) return;
       this.autoPlaying = true;
       // 即刻尝试一次
-      if (this.canGoNext && typeof this.nextPage === "function") this.nextPage();
+      if (this.canGoNext && typeof this.nextPage === "function")
+        this.nextPage();
       this.autoPlayTimer = setInterval(() => {
         if (!this.canGoNext || typeof this.nextPage !== "function") {
           this.stopAutoPlay(true);
@@ -339,66 +334,16 @@ export default {
       }
     },
 
-
     // 注意：不再定义重复的方法，直接使用映射的Vuex actions
     // prevPage, nextPage, goToPage, zoomIn, zoomOut, setScale, setScaleMode
     // 这些方法已经通过 mapViewerActions 映射，避免无限递归
 
-	    //  ff API: ffffff
-	    /**
-	     * ffffffff
-	     */
-	    getBaselineScale() {
-	      const core = this.$refs.viewerCore;
-	      if (core && typeof core.getBaselineScale === "function") return core.getBaselineScale();
-	      return typeof this.currentScale === 'number' ? this.currentScale : 1;
-	    },
-
+    getBaselineScale() {
+      const core = this.$refs.viewerCore;
+      if (core && typeof core.getBaselineScale === "function")
+        return core.getBaselineScale();
+      return typeof this.currentScale === "number" ? this.currentScale : 1;
+    },
   },
 };
 </script>
-
-<style lang="less" scoped>
-// 引入样式变量
-@import "./styles/variables.less";
-
-.pdf-viewer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-
-  &__container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    // 去除内部预留空间，由外部页面控制
-    padding-bottom: 0;
-  }
-
-
-  &__content {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    flex-direction: row;
-    // 去除内部预留空间，由外部页面控制
-    margin-bottom: 0;
-  }
-
-
-  &__main {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-
-}
-
-
-</style>
-

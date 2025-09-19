@@ -9,7 +9,12 @@ import { initializePdfJs, READER_CONFIG } from "./pdf-config.js";
  * - signal?: AbortSignal 取消信号
  * - getDocumentOptions?: 传递给 pdfjsLib.getDocument 的附加参数（headers、withCredentials 等）
  */
-export async function loadPdfDocument({ src, onProgress, signal, ...getDocumentOptions } = {}) {
+export async function loadPdfDocument({
+  src,
+  onProgress,
+  signal,
+  ...getDocumentOptions
+} = {}) {
   if (!src) throw new Error("loadPdfDocument 需要 src");
 
   const pdfjsLib = await initializePdfJs();
@@ -21,9 +26,10 @@ export async function loadPdfDocument({ src, onProgress, signal, ...getDocumentO
   // 进度回调
   if (typeof onProgress === "function") {
     loadingTask.onProgress = progressData => {
-      const percentage = progressData.total > 0
-        ? Math.round((progressData.loaded / progressData.total) * 100)
-        : 0;
+      const percentage =
+        progressData.total > 0
+          ? Math.round((progressData.loaded / progressData.total) * 100)
+          : 0;
       onProgress({ ...progressData, percentage });
     };
   }
@@ -36,7 +42,8 @@ export async function loadPdfDocument({ src, onProgress, signal, ...getDocumentO
     aborted = true;
     try {
       const p = loadingTask.destroy();
-      destroyPromise = p && typeof p.then === "function" ? p : Promise.resolve();
+      destroyPromise =
+        p && typeof p.then === "function" ? p : Promise.resolve();
     } catch (_) {
       destroyPromise = Promise.resolve();
     }
@@ -60,7 +67,9 @@ export async function loadPdfDocument({ src, onProgress, signal, ...getDocumentO
     return { pdfDocument, info, metadata };
   } catch (err) {
     if (aborted) {
-      try { await destroyPromise; } catch (_) {}
+      try {
+        await destroyPromise;
+      } catch (_) {}
       // 标准化为 AbortError
       const abortError = new DOMException("Aborted", "AbortError");
       throw abortError;
@@ -68,8 +77,9 @@ export async function loadPdfDocument({ src, onProgress, signal, ...getDocumentO
     throw err;
   } finally {
     if (signal) {
-      try { signal.removeEventListener("abort", onAbort); } catch (_) {}
+      try {
+        signal.removeEventListener("abort", onAbort);
+      } catch (_) {}
     }
   }
 }
-

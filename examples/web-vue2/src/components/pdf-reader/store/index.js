@@ -13,7 +13,6 @@ export const pdfReaderModule = {
   },
 };
 
-
 /**
  * 创建命名空间辅助函数 - 简化版
  */
@@ -61,7 +60,6 @@ export const {
   mapMutations: mapViewerMutations,
   mapActions: mapViewerActions,
 } = defaultHelpers.viewer;
-
 
 /**
  * 默认导出 - 简化版

@@ -10,8 +10,6 @@ import {
   round2,
 } from "../../core/scale";
 
-
-
 const state = {
   // 当前页面
   currentPage: 1,
@@ -36,12 +34,6 @@ const state = {
     x: 0,
     y: 0,
   },
-
-
-
-
-
-
 };
 
 const mutations = {
@@ -58,12 +50,6 @@ const mutations = {
       state.scale = scale;
     }
   },
-
-
-
-
-
-
 
   // 设置渲染状态
   SET_RENDERING(state, rendering) {
@@ -102,12 +88,6 @@ const mutations = {
   SET_SCROLL_POSITION(state, { x, y }) {
     state.scrollPosition = { x, y };
   },
-
-
-
-
-
-
 
   // 重置查看器状态
   RESET_VIEWER(state) {
@@ -193,8 +173,6 @@ const actions = {
     return scale;
   },
 
-
-
   /**
    * 放大（乘法步进）
    */
@@ -210,8 +188,6 @@ const actions = {
     const next = Math.max(state.scale / DEFAULT_SCALE_DELTA, state.minScale);
     return dispatch("setScale", round2(next));
   },
-
-
 
   /**
    * 设置页面渲染状态
@@ -242,16 +218,13 @@ const actions = {
    * 更新查看器配置
    */
 
-
   /**
    * 加载缩略图（从navigation模块合并）
    */
 
-
   /**
    * 添加导航历史（从navigation模块合并）
    */
-
 
   /**
    * 重置查看器
@@ -305,16 +278,12 @@ const getters = {
   // 页面信息
   pageInfo: state => state.pageInfo,
 
-
-
   // 当前视图状态
   viewState: state => ({
     currentPage: state.currentPage,
     scale: state.scale,
     rendering: state.rendering,
   }),
-
-
 };
 
 export default {

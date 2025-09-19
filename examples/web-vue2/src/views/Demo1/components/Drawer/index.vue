@@ -10,7 +10,11 @@
     <div class="drawer">
       <div v-if="showHeader" class="drawer__header">
         <slot name="header">
-          <van-icon name="arrow-left" class="drawer__back" @click="handleClose" />
+          <van-icon
+            name="arrow-left"
+            class="drawer__back"
+            @click="handleClose"
+          />
           <div class="drawer__title">{{ title }}</div>
           <div class="drawer__header-spacer" />
         </slot>
@@ -24,16 +28,16 @@
 
 <script>
 export default {
-  name: 'Drawer',
+  name: "Drawer",
   props: {
     isShow: { type: Boolean, default: false },
-    title: { type: String, default: '' },
+    title: { type: String, default: "" },
     showHeader: { type: Boolean, default: true },
   },
   methods: {
     handleClose() {
-      this.$emit('update:is-show', false);
-      this.$emit('close');
+      this.$emit("update:is-show", false);
+      this.$emit("close");
     },
   },
 };
@@ -63,7 +67,9 @@ export default {
   font-size: 16px;
   font-weight: 600;
 }
-.drawer__header-spacer { width: 18px; }
+.drawer__header-spacer {
+  width: 18px;
+}
 .drawer__body {
   flex: 1;
   overflow: auto;
@@ -71,4 +77,3 @@ export default {
   background: #fff;
 }
 </style>
-

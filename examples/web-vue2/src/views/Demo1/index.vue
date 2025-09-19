@@ -67,8 +67,12 @@
     </div>
     <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
       <div class="nav-row">
-        <van-button size="small" type="default" plain @click="goFirstPage">首页</van-button>
-        <van-button size="small" type="default" plain @click="goPrevPage">上一页</van-button>
+        <van-button size="small" type="default" plain @click="goFirstPage"
+          >首页</van-button
+        >
+        <van-button size="small" type="default" plain @click="goPrevPage"
+          >上一页</van-button
+        >
         <van-field
           class="page-input"
           v-model.number="gotoPageInput"
@@ -78,8 +82,12 @@
           @keyup.enter.native="goToPageByInput"
         />
         <span class="page-count">{{ sliderValue }}/{{ totalPages }}</span>
-        <van-button size="small" type="default" plain @click="goNextPage">下一页</van-button>
-        <van-button size="small" type="default" plain @click="goLastPage">尾页</van-button>
+        <van-button size="small" type="default" plain @click="goNextPage"
+          >下一页</van-button
+        >
+        <van-button size="small" type="default" plain @click="goLastPage"
+          >尾页</van-button
+        >
       </div>
       <div class="slider-wrap">
         <van-slider

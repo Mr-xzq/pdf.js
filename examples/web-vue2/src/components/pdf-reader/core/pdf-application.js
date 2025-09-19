@@ -60,7 +60,6 @@ export class PdfApplication {
     };
   }
 
-
   /**
    * 获取文档信息
    */

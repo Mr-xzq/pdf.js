@@ -58,7 +58,10 @@ export class EventBridge {
     this.addListener(PDF_EVENTS.PAGE_CHANGING, event => {
       try {
         const current = store.state.pdfReader.viewer.currentPage;
-        if (Number.isInteger(event.pageNumber) && event.pageNumber !== current) {
+        if (
+          Number.isInteger(event.pageNumber) &&
+          event.pageNumber !== current
+        ) {
           store.dispatch("pdfReader/viewer/goToPage", event.pageNumber);
         }
       } catch (e) {
@@ -69,9 +72,16 @@ export class EventBridge {
     // 同步缩放（PDF.js -> Vuex）
     this.addListener(PDF_EVENTS.SCALE_CHANGING, event => {
       try {
-        const nextScale = typeof event.scale === "number" ? event.scale : Number(event.presetValue);
+        const nextScale =
+          typeof event.scale === "number"
+            ? event.scale
+            : Number(event.presetValue);
         const current = store.state.pdfReader.viewer.scale;
-        if (typeof nextScale === "number" && !Number.isNaN(nextScale) && nextScale !== current) {
+        if (
+          typeof nextScale === "number" &&
+          !Number.isNaN(nextScale) &&
+          nextScale !== current
+        ) {
           store.dispatch("pdfReader/viewer/setScale", nextScale);
         }
       } catch (e) {

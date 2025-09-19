@@ -9,7 +9,11 @@
         :class="{ 'is-current': currentPage === page }"
         @click="onSelect(page)"
       >
-        <canvas :ref="'thumb-' + page" class="thumb-canvas" :data-page="page"></canvas>
+        <canvas
+          :ref="'thumb-' + page"
+          class="thumb-canvas"
+          :data-page="page"
+        ></canvas>
         <div class="thumb-label">第 {{ page }} 页</div>
       </div>
     </div>
@@ -18,7 +22,7 @@
 
 <script>
 export default {
-  name: 'ThumbnailPanel',
+  name: "ThumbnailPanel",
   props: {
     getTotalPages: { type: Function, required: true },
     renderThumbnail: { type: Function, required: true },
@@ -38,16 +42,16 @@ export default {
   methods: {
     onSelect(page) {
       this.goToPage(page);
-      this.$emit('selected', page);
+      this.$emit("selected", page);
     },
     // 从 $refs / DOM 获取某页的 canvas 元素（兼容 v-for refs 为数组）
     getCanvasEl(page) {
-      const r = this.$refs['thumb-' + page];
+      const r = this.$refs["thumb-" + page];
       const byRef = Array.isArray(r) ? r[0] : r;
       if (byRef instanceof HTMLCanvasElement) return byRef;
-      const byQuery = this.$el && this.$el.querySelector(
-        'canvas.thumb-canvas[data-page="' + page + '"]'
-      );
+      const byQuery =
+        this.$el &&
+        this.$el.querySelector('canvas.thumb-canvas[data-page="' + page + '"]');
       return byQuery || byRef || null;
     },
     // 等待某页 canvas 出现，最多等待 2s
@@ -74,10 +78,17 @@ export default {
           try {
             await this.renderThumbnail(p, canvas, { scale: 0.2 });
             rendered += 1;
-          } catch (e) { /* 忽略单页失败，继续后续页 */ }
+          } catch (e) {
+            /* 忽略单页失败，继续后续页 */
+          }
         }
       }
-      console.log('[Demo1] Thumbnails rendered', rendered, '/', this.totalPages);
+      console.log(
+        "[Demo1] Thumbnails rendered",
+        rendered,
+        "/",
+        this.totalPages
+      );
     },
   },
 };
@@ -105,8 +116,13 @@ export default {
   border-radius: 8px;
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
-.thumb-item:active { transform: scale(0.98); background: rgba(0,0,0,0.04); }
-.thumb-item.is-current { box-shadow: 0 0 0 2px #1989fa inset; }
+.thumb-item:active {
+  transform: scale(0.98);
+  background: rgba(0, 0, 0, 0.04);
+}
+.thumb-item.is-current {
+  box-shadow: 0 0 0 2px #1989fa inset;
+}
 .thumb-canvas {
   width: 120px;
   height: 160px;
@@ -119,4 +135,3 @@ export default {
   color: #666;
 }
 </style>
-

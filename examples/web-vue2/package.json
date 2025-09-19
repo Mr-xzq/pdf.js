@@ -16,7 +16,7 @@
     "vue": "^2.6.14",
     "vue-router": "^3.5.1",
     "vuex": "^3.6.2",
-    "pdfjs-dist": "file:../../build/dist" 
+    "pdfjs-dist": "file:../../build/dist"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

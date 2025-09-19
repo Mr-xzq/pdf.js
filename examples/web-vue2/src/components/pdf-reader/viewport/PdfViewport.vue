@@ -15,20 +15,29 @@
     </div>
 
     <!-- PDF 内容区域 -->
-    <div v-else-if="documentLoaded" class="pdf-viewer-core__content" ref="content"
-         @mousedown="onPanStart" @mousemove="onPanMove" @mouseup="onPanEnd" @mouseleave="onPanEnd"
-         @touchstart="onPanStart" @touchmove="onPanMove" @touchend="onPanEnd">
+    <div
+      v-else-if="documentLoaded"
+      class="pdf-viewer-core__content"
+      ref="content"
+      @mousedown="onPanStart"
+      @mousemove="onPanMove"
+      @mouseup="onPanEnd"
+      @mouseleave="onPanEnd"
+      @touchstart="onPanStart"
+      @touchmove="onPanMove"
+      @touchend="onPanEnd"
+    >
       <div class="pdf-viewer-core__pan" :style="panStyle()">
         <pdf-page
-        :page-number="currentPage"
-        :scale="currentScale"
-        :pdf-services="pdfServices"
-        :text-layer-enabled="true"
-        :annotations-enabled="true"
-        @page-rendered="onPageRendered"
-        @render-error="onRenderError"
-        @canvas-click="onCanvasClick"
-      />
+          :page-number="currentPage"
+          :scale="currentScale"
+          :pdf-services="pdfServices"
+          :text-layer-enabled="true"
+          :annotations-enabled="true"
+          @page-rendered="onPageRendered"
+          @render-error="onRenderError"
+          @canvas-click="onCanvasClick"
+        />
       </div>
     </div>
 
@@ -45,7 +54,13 @@ import { PdfServices, NavigationService } from "../core/pdf-services.js";
 import PdfPage from "./PdfPage.vue";
 import PdfLoadingProgress from "../ui/PdfLoadingProgress.vue";
 import { MIN_SCALE, MAX_SCALE } from "../core/scale";
-import { mapDocumentState, mapViewerState, mapDocumentActions, mapViewerActions, mapDocumentGetters } from "../store/index.js";
+import {
+  mapDocumentState,
+  mapViewerState,
+  mapDocumentActions,
+  mapViewerActions,
+  mapDocumentGetters,
+} from "../store/index.js";
 
 export default {
   name: "PdfViewport",
@@ -145,12 +160,7 @@ export default {
 
   computed: {
     // 来自 Store 的文档级 loading/进度/错误（使用 mapState 统一风格）
-    ...mapDocumentState([
-      "loading",
-      "loadProgress",
-      "loadMessage",
-      "error",
-    ]),
+    ...mapDocumentState(["loading", "loadProgress", "loadMessage", "error"]),
     // 引入文档模块中的文档实例与信息（用别名避免与 data 冲突）
     ...mapDocumentState({
       storePdfDocument: "pdfDocument",
@@ -177,8 +187,6 @@ export default {
     docError() {
       return this.error;
     },
-
-
 
     docErrorMessage() {
       const e = this.error;
@@ -219,28 +227,32 @@ export default {
   },
 
   methods: {
-
     panStyle() {
       return {
         transform: `translate(${this.panX}px, ${this.panY}px)`,
-        willChange: 'transform',
-        cursor: this.currentScale > 1 ? (this.isPanning ? 'grabbing' : 'grab') : 'default',
+        willChange: "transform",
+        cursor:
+          this.currentScale > 1
+            ? this.isPanning
+              ? "grabbing"
+              : "grab"
+            : "default",
       };
     },
 
-      ...mapDocumentActions([
-        "realLoadDocument",
-        "setLoadProgress",
-        "setDocumentError",
-      ]),
-      ...mapViewerActions({
-        goToPageAction: "goToPage",
-        nextPageAction: "nextPage",
-        prevPageAction: "prevPage",
-        setScaleAction: "setScale",
-        zoomInAction: "zoomIn",
-        zoomOutAction: "zoomOut",
-      }),
+    ...mapDocumentActions([
+      "realLoadDocument",
+      "setLoadProgress",
+      "setDocumentError",
+    ]),
+    ...mapViewerActions({
+      goToPageAction: "goToPage",
+      nextPageAction: "nextPage",
+      prevPageAction: "prevPage",
+      setScaleAction: "setScale",
+      zoomInAction: "zoomIn",
+      zoomOutAction: "zoomOut",
+    }),
 
     /**
      * 初始化服务
@@ -303,7 +315,8 @@ export default {
           this.pdfServices.attachDocument(pdfDocument, {
             info: {
               numPages: infoState.numPages || pdfDocument?.numPages || 0,
-              fingerprint: infoState.fingerprint || pdfDocument?.fingerprint || null,
+              fingerprint:
+                infoState.fingerprint || pdfDocument?.fingerprint || null,
               Title: infoState.title || "",
               Author: infoState.author || "",
             },
@@ -379,7 +392,6 @@ export default {
         info: {
           numPages: event.numPages,
           title: event.info?.Title || "",
-
 
           author: event.info?.Author || "",
           fingerprint: event.fingerprint,
@@ -476,15 +488,20 @@ export default {
           // 双击：基线 <-> 目标倍数 切换（优先使用外部 zoomTarget；否则 baseline*1.5），并以点击位置为锚点
           const baseline = this.getBaselineScale();
           const oldScale = this.currentScale || 1;
-          const targetZoom = (typeof this.zoomTarget === 'number' && this.zoomTarget > 0)
-            ? this.zoomTarget
-            : baseline * 1.5;
-          const newScale = oldScale <= baseline + 0.01
-            ? Math.min(targetZoom, MAX_SCALE)
-            : baseline;
+          const targetZoom =
+            typeof this.zoomTarget === "number" && this.zoomTarget > 0
+              ? this.zoomTarget
+              : baseline * 1.5;
+          const newScale =
+            oldScale <= baseline + 0.01
+              ? Math.min(targetZoom, MAX_SCALE)
+              : baseline;
 
           // 计算点击点在容器内的坐标
-          const container = this.$refs.content || this.$refs.viewerContainer || target?.parentElement;
+          const container =
+            this.$refs.content ||
+            this.$refs.viewerContainer ||
+            target?.parentElement;
           const rect = container?.getBoundingClientRect?.();
           if (rect) {
             const Cx = event.clientX - rect.left;
@@ -674,7 +691,6 @@ export default {
           this.setScale(computed);
         }
       } catch (e) {
-
         console.warn("fitWidthOnce 计算失败:", e);
       }
     },
@@ -703,14 +719,17 @@ export default {
       const ph = this.contentHeight || 0;
 
       // X 轴：内容居中 -> 允许范围 [-((pw-cw)/2), +((pw-cw)/2)]
-      let minX = 0, maxX = 0;
+      let minX = 0,
+        maxX = 0;
       if (pw > cw) {
         const cx = (pw - cw) / 2;
-        minX = -cx; maxX = cx;
+        minX = -cx;
+        maxX = cx;
       }
 
       // Y 轴：内容顶部对齐 -> 允许范围 [-(ph-ch), 0]
-      let minY = 0, maxY = 0;
+      let minY = 0,
+        maxY = 0;
       if (ph > ch) {
         minY = -(ph - ch);
         maxY = 0;
@@ -732,7 +751,13 @@ export default {
       // 触摸点击注释层链接时，放行原生点击（尤其是移动端）
       if (touches) {
         const tgt = e.target;
-        if (tgt && tgt.closest && tgt.closest('.annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a')) {
+        if (
+          tgt &&
+          tgt.closest &&
+          tgt.closest(
+            ".annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a"
+          )
+        ) {
           this.isPanning = false;
           this.isPinching = false;
           return;
@@ -748,7 +773,9 @@ export default {
         this.pinchStartDistance = Math.hypot(dx, dy) || 1;
         this.pinchStartScale = this.currentScale;
         // 手势中心（相对容器）
-        const rect = (this.$refs.content || this.$refs.viewerContainer).getBoundingClientRect();
+        const rect = (
+          this.$refs.content || this.$refs.viewerContainer
+        ).getBoundingClientRect();
         this.pinchCenterX = (t1.clientX + t2.clientX) / 2 - rect.left;
         this.pinchCenterY = (t1.clientY + t2.clientY) / 2 - rect.top;
         // 记录开始时的内容尺寸
@@ -765,7 +792,7 @@ export default {
 
       // 单指拖拽
       const point = touches ? touches[0] : e;
-      this.isPanning = this.currentScale > (this.getBaselineScale() + 0.001);
+      this.isPanning = this.currentScale > this.getBaselineScale() + 0.001;
       this.panStartX = point.clientX;
       this.panStartY = point.clientY;
       this.panAtStartX = this.panX;
@@ -775,7 +802,8 @@ export default {
     onPanMove(e) {
       if (!this.gesturesEnabled) return;
       const touches = e.touches ? e.touches : null;
-      if ((this.isPinching || this.isPanning) && e && e.cancelable) e.preventDefault();
+      if ((this.isPinching || this.isPanning) && e && e.cancelable)
+        e.preventDefault();
       if (this.isPinching && touches && touches.length >= 2) {
         const [t1, t2] = touches;
         const dx = t1.clientX - t2.clientX;
@@ -787,14 +815,15 @@ export default {
         nextScale = Math.min(Math.max(nextScale, MIN_SCALE), MAX_SCALE);
         if (Math.abs(nextScale - this.currentScale) > 0.001) {
           // 以手势中心为锚点保持位置：o' = o + (1 - k) * (C - o)
-          const k = (nextScale / (this.pinchStartScale || 1));
+          const k = nextScale / (this.pinchStartScale || 1);
           const Cx = this.pinchCenterX;
           const Cy = this.pinchCenterY;
           this.panX = this.panAtStartX + (1 - k) * (Cx - this.panAtStartX);
           this.panY = this.panAtStartY + (1 - k) * (Cy - this.panAtStartY);
           // 临时更新内容尺寸供边界计算
           const startW = this.pinchStartContentWidth || this.contentWidth || 0;
-          const startH = this.pinchStartContentHeight || this.contentHeight || 0;
+          const startH =
+            this.pinchStartContentHeight || this.contentHeight || 0;
           this.contentWidth = startW * k;
           this.contentHeight = startH * k;
           this.currentScale = nextScale;
@@ -817,7 +846,6 @@ export default {
       this.isPanning = false;
       this.isPinching = false;
     },
-
   },
 };
 </script>

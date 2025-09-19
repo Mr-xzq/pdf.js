@@ -258,7 +258,7 @@ export default {
             requestAnimationFrame(check);
           }
         };
-        requestAnimationFrame(check)
+        requestAnimationFrame(check);
       });
     },
 

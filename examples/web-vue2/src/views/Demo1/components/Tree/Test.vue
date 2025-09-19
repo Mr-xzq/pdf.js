@@ -24,7 +24,10 @@
         <input type="number" v-model.number="itemHeight" min="24" step="2" />
       </label>
       <label><input type="checkbox" v-model="transition" />动画</label>
-      <label><input type="number" v-model.number="transitionDuration" />动画 duration</label>
+      <label
+        ><input type="number" v-model.number="transitionDuration" />动画
+        duration</label
+      >
       <label><input type="checkbox" v-model="selectable" />可选中</label>
       <label
         ><input type="checkbox" v-model="useCustomSwitcher" />自定义开关</label

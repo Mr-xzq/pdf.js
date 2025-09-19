@@ -4,7 +4,6 @@ import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale";
 import { initializePdfJs } from "./pdf-config.js";
 import store from "@/store/index.js";
 
-
 /**
  * PDF 服务层封装
  * 提供统一的服务接口，简化组件使用
@@ -312,8 +311,14 @@ export class PageRenderService {
         await renderTask.promise;
       } catch (error) {
         // 忽略因取消导致的异常
-        if (error && (error.name === "RenderingCancelledException" || /cancel/i.test(String(error.message || "")))) {
-          throw Object.assign(new Error("render-cancelled"), { code: "RENDER_CANCELLED" });
+        if (
+          error &&
+          (error.name === "RenderingCancelledException" ||
+            /cancel/i.test(String(error.message || "")))
+        ) {
+          throw Object.assign(new Error("render-cancelled"), {
+            code: "RENDER_CANCELLED",
+          });
         }
         throw error;
       } finally {
@@ -336,7 +341,11 @@ export class PageRenderService {
       };
     } catch (error) {
       // 如果是正常的“取消渲染”场景，不输出错误日志，交由上层忽略处理
-      if (error && (error.code === "RENDER_CANCELLED" || /render-cancelled/i.test(String(error.message || "")))) {
+      if (
+        error &&
+        (error.code === "RENDER_CANCELLED" ||
+          /render-cancelled/i.test(String(error.message || "")))
+      ) {
         throw error; // 继续抛出，供上层做并发/状态判断
       }
       console.error(`页面 ${pageNumber} 渲染失败:`, error);

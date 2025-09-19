@@ -12,7 +12,10 @@
  * @param {Object} options.setup - 传给 builder.setup 的参数（例如 { pageNumber, viewport }）
  * @returns {Object} builder 实例
  */
-export function createLayer(BuilderClass, { container, pdfServices, getServices, setup }) {
+export function createLayer(
+  BuilderClass,
+  { container, pdfServices, getServices, setup }
+) {
   const builder = new BuilderClass({ container, pdfServices, getServices });
   if (setup) {
     builder.setup(setup);
@@ -53,4 +56,3 @@ export function destroyLayer(builder) {
     builder.destroy();
   }
 }
-

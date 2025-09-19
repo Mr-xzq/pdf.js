@@ -40,7 +40,12 @@
 import { PageRenderService } from "../core/pdf-services.js";
 import { TextLayerBuilder } from "../core/layers/TextLayerBuilder";
 import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder";
-import { createLayer, updateAndRenderLayer, cancelLayer, destroyLayer } from "../core/layers/lifecycle";
+import {
+  createLayer,
+  updateAndRenderLayer,
+  cancelLayer,
+  destroyLayer,
+} from "../core/layers/lifecycle";
 
 export default {
   name: "PdfPage",
@@ -102,7 +107,9 @@ export default {
   },
 
   beforeDestroy() {
-    try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
+    try {
+      this.renderService?.cancelRender(this.pageNumber);
+    } catch (_) {}
     this.destroyLayers();
     this.cleanup();
   },
@@ -134,7 +141,9 @@ export default {
         return;
       }
       // 若存在在途渲染，先取消之，避免重叠
-      try { this.renderService.cancelRender(this.pageNumber); } catch (_) {}
+      try {
+        this.renderService.cancelRender(this.pageNumber);
+      } catch (_) {}
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
 
@@ -159,7 +168,9 @@ export default {
           }
         );
         // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
-        if (token !== this.renderRequestId) { return; }
+        if (token !== this.renderRequestId) {
+          return;
+        }
 
         this.pageInfo = result;
         this.viewport = result.viewport;
@@ -179,7 +190,6 @@ export default {
           scale: this.scale,
           viewport: this.viewport,
         });
-
 
         console.log(`页面 ${this.pageNumber} 渲染完成`);
       } catch (error) {
@@ -344,7 +354,9 @@ export default {
      * 处理页码变化
      */
     async onPageNumberChange() {
-      try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
+      try {
+        this.renderService?.cancelRender(this.pageNumber);
+      } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },
@@ -353,7 +365,9 @@ export default {
      * 处理缩放变化
      */
     async onScaleChange() {
-      try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
+      try {
+        this.renderService?.cancelRender(this.pageNumber);
+      } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },
@@ -375,7 +389,7 @@ export default {
 
 <style lang="less" scoped>
 .pdf-page-container {
-/* 清理默认视觉风格，交给外部控制 */
+  /* 清理默认视觉风格，交给外部控制 */
   position: relative;
   display: inline-block;
   background: transparent;
@@ -463,4 +477,3 @@ export default {
   }
 }
 </style>
-

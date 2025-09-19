@@ -35,23 +35,23 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         // 供 AnnotationLayer 设定锚点（内部链接也会调用），返回一个 hash
         getDestinationHash(dest) {
           try {
-            if (typeof dest === 'string') {
-              return '#' + encodeURIComponent(dest);
+            if (typeof dest === "string") {
+              return "#" + encodeURIComponent(dest);
             }
             if (Array.isArray(dest)) {
-              return '#' + encodeURIComponent(JSON.stringify(dest));
+              return "#" + encodeURIComponent(JSON.stringify(dest));
             }
           } catch (_) {}
-          return '#';
+          return "#";
         },
         // 兼容接口：返回带 baseUrl 的锚点（我们不使用 baseUrl，直接回传）
         getAnchorUrl(anchor) {
-          return typeof anchor === 'string' ? anchor : '#';
+          return typeof anchor === "string" ? anchor : "#";
         },
         // 内部目的地跳转（dest 可为 name 或 explicitDest 数组）
         async goToDestination(dest) {
           try {
-            console.debug('[AnnotationLinkService] goToDestination ->', dest);
+            console.debug("[AnnotationLinkService] goToDestination ->", dest);
             if (thisPdfServices) {
               await thisPdfServices.goToDestination(dest);
             } else if (appLinkService?.goToDestination) {
@@ -65,7 +65,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         // 一些注释可能使用 hash 形式（如 #page=3 或命名目的地）
         async setHash(hash) {
           try {
-            console.debug('[AnnotationLinkService] setHash ->', hash);
+            console.debug("[AnnotationLinkService] setHash ->", hash);
             if (typeof hash === "string" && hash) {
               const m = hash.match(/page=(\d+)/i);
               if (m && m[1]) {
@@ -120,8 +120,8 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
           if (inner) {
             inner.style.width = w;
             inner.style.height = h;
-            inner.style.left = '0px';
-            inner.style.top = '0px';
+            inner.style.left = "0px";
+            inner.style.top = "0px";
           }
         } catch (_) {}
       }
