@@ -1,4 +1,4 @@
-import { initializePdfJs } from "./pdf-config.js";
+import { initializePdfJs, getPdfjsViewer } from "./pdf-config.js";
 
 /**
  * PDF 应用控制器
@@ -33,26 +33,11 @@ export class PdfApplication {
       // 初始化 PDF.js 核心库（幂等）
       await initializePdfJs();
 
-      // 然后导入 PDF.js 查看器组件, pdf_viewer.mjs 内部依赖 globalThis.pdfjsLib
-      const pdfjsViewer = await import(
-        "pdfjs-dist/legacy/web/pdf_viewer.mjs"
-      );
-
-      // 创建事件总线
-      this.eventBus = new pdfjsViewer.EventBus();
-
-      // 创建链接服务
-      this.linkService = new pdfjsViewer.PDFLinkService({
-        eventBus: this.eventBus,
-        externalLinkTarget: 2, // 新窗口打开外部链接
-        externalLinkRel: "noopener noreferrer nofollow",
-      });
-
-      // 创建搜索控制器
-      this.findController = new pdfjsViewer.PDFFindController({
-        eventBus: this.eventBus,
-        linkService: this.linkService,
-      });
+      // 使用官方 viewer 组件，统一事件与链接服务
+      const viewer = getPdfjsViewer();
+      this.eventBus = new viewer.EventBus();
+      this.linkService = new viewer.PDFLinkService({ eventBus: this.eventBus });
+      this.findController = null; // MVP 未用到，保留占位
 
       this.initialized = true;
       console.log("PDF.js 应用控制器初始化完成");

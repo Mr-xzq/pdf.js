@@ -1,117 +1,145 @@
-// AnnotationLayerBuilder：封装 Link 注释渲染与行为，优先复用 linkService
-import store from "@/store/index.js";
-
+// AnnotationLayerBuilder（官方构建器封装版）：渲染表单与链接等注释，行为与官方一致
 import { BaseLayerBuilder } from "./BaseLayerBuilder";
+import { getPdfjsViewer } from "../pdf-config.js";
 
 export class AnnotationLayerBuilder extends BaseLayerBuilder {
   constructor(ctx) {
     super(ctx);
+    this._builder = null; // pdfjsViewer.AnnotationLayerBuilder 实例
   }
 
   async render() {
     if (!this.initialized || this.cancelled) return;
 
-    // 清空
+    // 清空容器
     this.layer.innerHTML = "";
 
     try {
       const page = await this.pdfServices.application?.getPage(this.pageNumber);
       if (!page) return;
-      const annotations = await page.getAnnotations({ intent: "display" });
 
-      const services = this.getServices?.() || null;
-      const linkService = services?.linkService || null;
-      const pdfDoc = this.pdfServices.application?.pdfDocument;
+      const services = this.getServices?.() || {};
+      const appLinkService = services.linkService;
 
-      for (const annotation of annotations) {
-        if (annotation.subtype !== "Link") continue;
-
-        // 计算在视口下的坐标
-        let left = 0,
-          top = 0,
-          width = 0,
-          height = 0;
-        if (this.viewport && annotation.rect && annotation.rect.length === 4) {
-          const [x1, y1, x2, y2] = this.viewport.convertToViewportRectangle(
-            annotation.rect
-          );
-          left = Math.min(x1, x2);
-          top = Math.min(y1, y2);
-          width = Math.abs(x1 - x2);
-          height = Math.abs(y1 - y2);
-        }
-
-        const a = document.createElement("a");
-        a.className = "linkAnnotation";
-        a.setAttribute("role", "link");
-        a.style.cssText =
-          `position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${height}px;` +
-          `pointer-events:auto;background:rgba(0,0,255,0.06);border:1px solid rgba(0,0,255,0.15);`;
-
-        if (annotation.dest) {
-          a.href = "#";
-          a.addEventListener("click", async evt => {
-            evt.preventDefault();
-            try {
-              // 优先通过服务层统一解析与分发
-              if (this.pdfServices?.goToDestination) {
-                await this.pdfServices.goToDestination(annotation.dest);
+      // 适配器：将注释层中的“内部链接”跳转，统一委托给我们自己的 PdfServices.goToDestination，
+      // 以驱动 Vuex 状态与自定义视图（不依赖官方 PDFViewer 实例）。
+      const linkService = {
+        // 外部链接：直接设置 a 标签属性
+        addLinkAttributes(el, url, newWindow = true) {
+          try {
+            el.href = url;
+            el.rel = "noopener noreferrer nofollow";
+            el.target = newWindow ? "_blank" : "_self";
+          } catch (_) {}
+        },
+        // 供 AnnotationLayer 设定锚点（内部链接也会调用），返回一个 hash
+        getDestinationHash(dest) {
+          try {
+            if (typeof dest === 'string') {
+              return '#' + encodeURIComponent(dest);
+            }
+            if (Array.isArray(dest)) {
+              return '#' + encodeURIComponent(JSON.stringify(dest));
+            }
+          } catch (_) {}
+          return '#';
+        },
+        // 兼容接口：返回带 baseUrl 的锚点（我们不使用 baseUrl，直接回传）
+        getAnchorUrl(anchor) {
+          return typeof anchor === 'string' ? anchor : '#';
+        },
+        // 内部目的地跳转（dest 可为 name 或 explicitDest 数组）
+        async goToDestination(dest) {
+          try {
+            console.debug('[AnnotationLinkService] goToDestination ->', dest);
+            if (thisPdfServices) {
+              await thisPdfServices.goToDestination(dest);
+            } else if (appLinkService?.goToDestination) {
+              // 退回官方服务（不建议，可能因缺少 PDFViewer 而无效）
+              await appLinkService.goToDestination(dest);
+            }
+          } catch (e) {
+            console.warn("linkService.goToDestination 失败:", e);
+          }
+        },
+        // 一些注释可能使用 hash 形式（如 #page=3 或命名目的地）
+        async setHash(hash) {
+          try {
+            console.debug('[AnnotationLinkService] setHash ->', hash);
+            if (typeof hash === "string" && hash) {
+              const m = hash.match(/page=(\d+)/i);
+              if (m && m[1]) {
+                const n = parseInt(m[1], 10);
+                if (Number.isFinite(n) && thisPdfServices) {
+                  await thisPdfServices.goToDestination([n - 1]);
+                  return;
+                }
+              }
+              // 尝试将 hash 当作命名目的地处理
+              if (thisPdfServices) {
+                await thisPdfServices.goToDestination(hash);
                 return;
               }
-              // 回退路径：手动解析 explicitDest -> 页码
-              let explicitDest = annotation.dest;
-              if (typeof explicitDest === "string") {
-                explicitDest = await pdfDoc.getDestination(explicitDest);
-              }
-              if (Array.isArray(explicitDest)) {
-                const destRef = explicitDest[0];
-                let pageNumber = null;
-                if (destRef && typeof destRef === "object") {
-                  pageNumber = (await pdfDoc.getPageIndex(destRef)) + 1;
-                } else if (Number.isInteger(destRef)) {
-                  pageNumber = destRef + 1;
-                }
-                if (pageNumber) {
-                  try {
-                    store && store.dispatch && store.dispatch(
-                      "pdfReader/viewer/goToPage",
-                      pageNumber
-                    );
-                  } catch (e) {
-                    // 忽略：无全局 store 时静默
-                  }
-                }
-              }
-            } catch (e) {
-              console.warn("内部链接解析失败:", e);
             }
-          });
-        } else if (annotation.url) {
-          if (linkService) {
-            linkService.addLinkAttributes(
-              a,
-              annotation.url,
-              annotation.newWindow ?? true
-            );
-          } else {
-            a.href = annotation.url;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer nofollow";
+            // 最后退回官方实现
+            appLinkService?.setHash?.(hash);
+          } catch (e) {
+            console.warn("linkService.setHash 失败:", e);
           }
-        } else {
-          a.href = "#";
-        }
+        },
+      };
+      // 通过闭包捕获 PdfServices，供适配器使用
+      const thisPdfServices = this.pdfServices;
+      // 为了兼容官方 AnnotationLayerBuilder 的演示模式事件监听，这里补充 eventBus
+      linkService.eventBus = services.eventBus || null;
 
-        this.layer.appendChild(a);
-      }
+      const pdfjsViewer = getPdfjsViewer();
 
-      // 尺寸同步
+      this._builder = new pdfjsViewer.AnnotationLayerBuilder({
+        pdfPage: page,
+        linkService,
+        renderForms: true,
+        enableScripting: false,
+        onAppend: div => {
+          // div.className === 'annotationLayer'
+          this.layer.appendChild(div);
+        },
+      });
+
+      // 渲染注释层（"display" 意图）
+      await this._builder.render(this.viewport, "display");
+
+      // 尺寸同步：不仅同步容器（this.layer），也同步内部 annotationLayer div
       if (this.viewport) {
-        this.layer.style.width = `${this.viewport.width}px`;
-        this.layer.style.height = `${this.viewport.height}px`;
+        const w = `${this.viewport.width}px`;
+        const h = `${this.viewport.height}px`;
+        this.layer.style.width = w;
+        this.layer.style.height = h;
+        try {
+          const inner = this._builder?.div; // 官方 AnnotationLayerBuilder 创建的 div.annotationLayer
+          if (inner) {
+            inner.style.width = w;
+            inner.style.height = h;
+            inner.style.left = '0px';
+            inner.style.top = '0px';
+          }
+        } catch (_) {}
       }
     } catch (e) {
       console.warn("AnnotationLayerBuilder 渲染失败（忽略）:", e);
     }
+  }
+
+  cancel() {
+    super.cancel();
+    try {
+      this._builder?.cancel?.();
+    } catch (_) {}
+  }
+
+  destroy() {
+    this.cancel();
+    this._builder = null;
+    super.destroy();
   }
 }

@@ -17,7 +17,7 @@
     <!-- PDF 内容区域 -->
     <div v-else-if="documentLoaded" class="pdf-viewer-core__content" ref="content"
          @mousedown="onPanStart" @mousemove="onPanMove" @mouseup="onPanEnd" @mouseleave="onPanEnd"
-         @touchstart.prevent="onPanStart" @touchmove.prevent="onPanMove" @touchend="onPanEnd">
+         @touchstart="onPanStart" @touchmove="onPanMove" @touchend="onPanEnd">
       <div class="pdf-viewer-core__pan" :style="panStyle()">
         <pdf-page
         :page-number="currentPage"
@@ -728,6 +728,17 @@ export default {
     onPanStart(e) {
       if (!this.gesturesEnabled) return;
       const touches = e.touches ? e.touches : null;
+
+      // 触摸点击注释层链接时，放行原生点击（尤其是移动端）
+      if (touches) {
+        const tgt = e.target;
+        if (tgt && tgt.closest && tgt.closest('.annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a')) {
+          this.isPanning = false;
+          this.isPinching = false;
+          return;
+        }
+      }
+
       if (touches && touches.length >= 2) {
         // 开始捏合
         this.isPinching = true;
@@ -748,6 +759,7 @@ export default {
         this.panStartY = this.pinchCenterY;
         this.panAtStartX = this.panX;
         this.panAtStartY = this.panY;
+        if (e && e.cancelable) e.preventDefault();
         return;
       }
 
@@ -758,10 +770,12 @@ export default {
       this.panStartY = point.clientY;
       this.panAtStartX = this.panX;
       this.panAtStartY = this.panY;
+      if (this.isPanning && e && e.cancelable) e.preventDefault();
     },
     onPanMove(e) {
       if (!this.gesturesEnabled) return;
       const touches = e.touches ? e.touches : null;
+      if ((this.isPinching || this.isPanning) && e && e.cancelable) e.preventDefault();
       if (this.isPinching && touches && touches.length >= 2) {
         const [t1, t2] = touches;
         const dx = t1.clientX - t2.clientX;

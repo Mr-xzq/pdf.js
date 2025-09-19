@@ -103,7 +103,6 @@ export class PdfServices {
     if (!this.application || !this.application.isDocumentLoaded) {
       throw new Error("文档未加载");
     }
-
     return await this.application.getOutline();
   }
 
@@ -213,12 +212,44 @@ export class PageRenderService {
     this.pdfServices = pdfServices;
     this.renderCache = {};
     this.cacheKeys = []; // 维护键的顺序
+
+    // 跟踪进行中的渲染任务（按页码）
+    this._renderTasks = Object.create(null);
+  }
+
+  /**
+   * 取消指定页的渲染
+   */
+  cancelRender(pageNumber) {
+    const task = this._renderTasks?.[pageNumber];
+    if (task) {
+      try {
+        task.cancel();
+      } catch (_) {}
+      delete this._renderTasks[pageNumber];
+    }
+  }
+
+  /**
+   * 取消所有渲染任务
+   */
+  cancelAll() {
+    if (!this._renderTasks) return;
+    for (const key of Object.keys(this._renderTasks)) {
+      try {
+        this._renderTasks[key]?.cancel?.();
+      } catch (_) {}
+      delete this._renderTasks[key];
+    }
   }
 
   /**
    * 渲染页面到 Canvas
    */
   async renderPageToCanvas(pageNumber, canvas, options = {}) {
+    // 开始前取消同页在途渲染，避免重叠
+    this.cancelRender(pageNumber);
+
     try {
       const page = await this.pdfServices.getPage(pageNumber);
 
@@ -273,9 +304,24 @@ export class PageRenderService {
         context.scale(outputScale.sx, outputScale.sy);
       }
 
-      // 执行渲染
+      // 执行渲染并登记任务
       const renderTask = page.render(renderContext);
-      await renderTask.promise;
+      this._renderTasks[pageNumber] = renderTask;
+
+      try {
+        await renderTask.promise;
+      } catch (error) {
+        // 忽略因取消导致的异常
+        if (error && (error.name === "RenderingCancelledException" || /cancel/i.test(String(error.message || "")))) {
+          throw Object.assign(new Error("render-cancelled"), { code: "RENDER_CANCELLED" });
+        }
+        throw error;
+      } finally {
+        // 完成或取消后清理登记
+        if (this._renderTasks[pageNumber] === renderTask) {
+          delete this._renderTasks[pageNumber];
+        }
+      }
 
       // 恢复context状态
       if (outputScale.scaled) {
@@ -289,6 +335,10 @@ export class PageRenderService {
         outputScale,
       };
     } catch (error) {
+      // 如果是正常的“取消渲染”场景，不输出错误日志，交由上层忽略处理
+      if (error && (error.code === "RENDER_CANCELLED" || /render-cancelled/i.test(String(error.message || "")))) {
+        throw error; // 继续抛出，供上层做并发/状态判断
+      }
       console.error(`页面 ${pageNumber} 渲染失败:`, error);
       throw error;
     }

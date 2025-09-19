@@ -6,6 +6,7 @@
         :data="treeData"
         :props="treeProps"
         :default-expand-all="true"
+        :active-key="activeKey"
         @select="onTreeSelect"
       />
     </div>
@@ -27,6 +28,7 @@ export default {
       loading: false,
       outline: [],
       treeData: [],
+      activeKey: null,
       treeProps: { key: 'key', label: 'title', children: 'items' },
     };
   },
@@ -36,13 +38,19 @@ export default {
       const data = await this.getOutline();
       this.outline = Array.isArray(data) ? data : [];
       this.treeData = this.buildTreeData(this.outline);
+      console.log('[Demo1] OutlinePanel loaded, nodes =', this.treeData.length);
     } finally {
       this.loading = false;
     }
   },
   methods: {
-    onTreeSelect(node) {
-      if (node && node.dest) this.navigateToDestination(node.dest);
+    async onTreeSelect(node) {
+      console.log('[Demo1] OutlinePanel.select', node && { key: node.key, title: node.title, hasDest: !!(node && node.dest) });
+      if (node) this.activeKey = node.key;
+      if (node && node.dest) {
+        await this.navigateToDestination(node.dest);
+        this.$emit('selected', node);
+      }
     },
     buildTreeData(list, parentKey = '') {
       const out = [];

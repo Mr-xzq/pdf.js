@@ -213,6 +213,9 @@ export default {
   &--active {
     background: rgba(0, 0, 0, 0.06);
   }
+  &:active {
+    background: rgba(0, 0, 0, 0.04);
+  }
 }
 
 .tree__toggle {

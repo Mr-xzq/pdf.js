@@ -35,22 +35,6 @@ const routes = [
     component: () => import("@/views/index.vue"),
   },
   {
-    path: "/stage1-test",
-    component: () => import("@/views/Stage1Test.vue"),
-  },
-  {
-    path: "/stage2-test",
-    component: () => import("@/views/Stage2Test.vue"),
-  },
-  {
-    path: "/stage3-test",
-    component: () => import("@/views/Stage3Test.vue"),
-  },
-  {
-    path: "/stage4-test",
-    component: () => import("@/views/Stage4Test.vue"),
-  },
-  {
     path: "/simple-reader-demo",
     component: () => import("@/views/SimpleReaderDemo.vue"),
   },

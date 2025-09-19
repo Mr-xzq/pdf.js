@@ -1,7 +1,6 @@
 import { initializePdfJs, READER_CONFIG } from "./pdf-config.js";
 
 /**
- * Headless PDF Loader
  * 纯服务，不依赖 Vue 组件；负责真实加载与进度回调
  *
  * 参数：

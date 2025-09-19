@@ -10,7 +10,6 @@
       </div>
     </div>
     <div class="content-area">
-      <!-- PDF 阅读器，占满容器，隐藏其内置UI，由外层页面控制 -->
       <pdf-reader
         ref="pdfReader"
         :src="pdfSrc"
@@ -18,7 +17,6 @@
         :initial-scale="1"
         :text-layer-mode="1"
         :zoom-target="zoomTarget"
-        :show-controls="false"
         :auto-play-enabled="autoPlay"
         :auto-play-interval-ms="autoPlayIntervalMs"
         @document-loaded="onPdfLoaded"
@@ -33,39 +31,90 @@
         :src="thumbnailIconUrl"
         @click="handleClickThumbnail"
       ></van-image>
-      <van-image class="outline-tool-item" :src="outlineIconUrl" @click="handleClickOutline"></van-image>
-      <van-image class="page-flip-tool-item" :src="pageFlipIconUrl" @click="togglePageNav"></van-image>
       <van-image
+        class="outline-tool-item"
+        :src="outlineIconUrl"
+        @click="handleClickOutline"
+      ></van-image>
+      <van-image
+        class="page-flip-tool-item"
+        :src="pageFlipIconUrl"
+        @click="togglePageNav"
+      ></van-image>
+      <!-- <van-image
         class="page-flip-audio-tool-item"
         :src="pageFlipAudioIconUrl"
-      ></van-image>
+      ></van-image> -->
       <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
-      <van-image v-if="lastScaleBeforeZoom == null" class="zoom-in-tool-item" :src="zoomInIconUrl" @click="handleZoomIn"></van-image>
-      <van-image v-else class="zoom-out-tool-item" :src="zoomOutIconUrl" @click="handleResetZoom"></van-image>
+      <van-image
+        v-if="lastScaleBeforeZoom == null"
+        class="zoom-in-tool-item"
+        :src="zoomInIconUrl"
+        @click="handleZoomIn"
+      ></van-image>
+      <van-image
+        v-else
+        class="zoom-out-tool-item"
+        :src="zoomOutIconUrl"
+        @click="handleResetZoom"
+      ></van-image>
       <!-- 自动播放/暂停 -->
-      <van-image class="auto-play-tool-item" :src="autoPlay ? pauseIconUrl : autoPlayIconUrl" @click="handleToggleAutoPlay"></van-image>
+      <van-image
+        class="auto-play-tool-item"
+        :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
+        @click="handleToggleAutoPlay"
+      ></van-image>
     </div>
     <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
-      <button @click="goFirstPage">首页</button>
-      <button @click="goPrevPage">上一页</button>
-      <input v-model.number="gotoPageInput" @keyup.enter="goToPageByInput" />
-      <span class="page-count">{{ currentPage }}/{{ totalPages }}</span>
-      <button @click="goNextPage">下一页</button>
-      <button @click="goLastPage">尾页</button>
+      <div class="nav-row">
+        <van-button size="small" type="default" plain @click="goFirstPage">首页</van-button>
+        <van-button size="small" type="default" plain @click="goPrevPage">上一页</van-button>
+        <van-field
+          class="page-input"
+          v-model.number="gotoPageInput"
+          type="number"
+          input-align="center"
+          clearable
+          @keyup.enter.native="goToPageByInput"
+        />
+        <span class="page-count">{{ sliderValue }}/{{ totalPages }}</span>
+        <van-button size="small" type="default" plain @click="goNextPage">下一页</van-button>
+        <van-button size="small" type="default" plain @click="goLastPage">尾页</van-button>
+      </div>
+      <div class="slider-wrap">
+        <van-slider
+          v-model="sliderValue"
+          :min="1"
+          :max="Math.max(totalPages, 1)"
+          :step="1"
+          :lazy-change="true"
+          @change="onSliderChange"
+        />
+      </div>
     </div>
 
-
-    <drawer :is-show.sync="isShowPopup">
+    <drawer
+      :is-show.sync="isShowOutlineDrawer"
+      title="目录"
+      @close="onOutlineDrawerClose"
+    >
       <outline-panel
-        v-if="activeDrawer === 'outline'"
         :get-outline="getOutline"
         :navigate-to-destination="navigateToDestination"
+        @selected="closeOutlineDrawer"
       />
+    </drawer>
+    <drawer
+      :is-show.sync="isShowThumbnailDrawer"
+      title="缩略图"
+      @close="onThumbnailDrawerClose"
+    >
       <thumbnail-panel
-        v-else-if="activeDrawer === 'thumbnail'"
         :get-total-pages="getTotalPages"
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
+        :current-page="currentPage"
+        @selected="closeThumbnailDrawer"
       />
     </drawer>
   </div>
@@ -73,18 +122,18 @@
 
 <script>
 // 组件
-import Drawer from "./components/Drawer/Drawer.vue";
 import PdfReader from "@/components/pdf-reader/index.vue";
+import Drawer from "./components/Drawer/index.vue";
 import OutlinePanel from "./components/OutlinePanel/index.vue";
 import ThumbnailPanel from "./components/ThumbnailPanel/index.vue";
 
-
+// 图标
 import fullscreenIconUrl from "@/assets/images/demo1/fullscreen-2x.png";
 import searchIconUrl from "@/assets/images/demo1/search-2x.png";
 import thumbnailIconUrl from "@/assets/images/demo1/thumbnail-2x.png";
 import outlineIconUrl from "@/assets/images/demo1/outline-2x.png";
 import pageFlipIconUrl from "@/assets/images/demo1/page-flip-2x.png";
-import pageFlipAudioIconUrl from "@/assets/images/demo1/page-flip-audio-2x.png";
+// import pageFlipAudioIconUrl from "@/assets/images/demo1/page-flip-audio-2x.png";
 import zoomInIconUrl from "@/assets/images/demo1/zoom-in-2x.png";
 import zoomOutIconUrl from "@/assets/images/demo1/zoom-out-2x.png";
 import autoPlayIconUrl from "@/assets/images/demo1/auto-play-2x.png";
@@ -111,7 +160,7 @@ export default {
       // 翻页
       pageFlipIconUrl,
       // 翻页声音
-      pageFlipAudioIconUrl,
+      // pageFlipAudioIconUrl,
       // 放大
       zoomInIconUrl,
       // 缩小
@@ -120,35 +169,50 @@ export default {
       autoPlayIconUrl,
       // 暂停
       pauseIconUrl,
-      isShowPopup: false,
-      pdfSrc: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+      isShowOutlineDrawer: false,
+      isShowThumbnailDrawer: false,
+      pdfSrc: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
       // 自动播放相关（由 PdfReader 内部驱动）
       autoPlay: false,
       autoPlayIntervalMs: 1500,
       // Drawer/导航相关
-      activeDrawer: null,
+
       isShowPageNav: false,
       gotoPageInput: 1,
       // 页信息
       currentPage: 1,
+      sliderValue: 1,
       totalPages: 0,
       // 缩放信息（单一目标倍数）
       currentScale: 1,
       zoomTarget: 1.5,
       lastScaleBeforeZoom: null,
-
-
     };
   },
   methods: {
+    // Drawer 关闭（按面板分别关闭）
+    closeOutlineDrawer() {
+      this.isShowOutlineDrawer = false;
+    },
+    closeThumbnailDrawer() {
+      this.isShowThumbnailDrawer = false;
+    },
+    onOutlineDrawerClose() {
+      console.log("[Demo1] outline drawer closed");
+      this.isShowOutlineDrawer = false;
+    },
+    onThumbnailDrawerClose() {
+      console.log("[Demo1] thumbnail drawer closed");
+      this.isShowThumbnailDrawer = false;
+    },
     handleClickThumbnail() {
-      this.activeDrawer = 'thumbnail';
-      this.isShowPopup = true;
+      console.log("[Demo1] open drawer: thumbnail");
+      this.isShowThumbnailDrawer = true;
     },
 
     handleClickOutline() {
-      this.activeDrawer = 'outline';
-      this.isShowPopup = true;
+      console.log("[Demo1] open drawer: outline");
+      this.isShowOutlineDrawer = true;
     },
 
     // 底部翻页导航：开关
@@ -159,20 +223,32 @@ export default {
     // 翻页能力（通过 PdfReader 暴露的方法）
     goPrevPage() {
       const r = this.$refs.pdfReader;
-      if (r && typeof r.prevPage === 'function' && (r.canGoPrev ?? true)) r.prevPage();
+      if (r && typeof r.prevPage === "function" && (r.canGoPrev ?? true))
+        r.prevPage();
     },
     goNextPage() {
       const r = this.$refs.pdfReader;
-      if (r && typeof r.nextPage === 'function' && (r.canGoNext ?? true)) r.nextPage();
+      if (r && typeof r.nextPage === "function" && (r.canGoNext ?? true))
+        r.nextPage();
     },
-    goFirstPage() { this.goToPage(1); },
-    goLastPage() { const t = this.getTotalPages?.(); if (t && t > 0) this.goToPage(t); },
+    goFirstPage() {
+      this.goToPage(1);
+    },
+    goLastPage() {
+      const t = this.getTotalPages?.();
+      if (t && t > 0) this.goToPage(t);
+    },
     goToPageByInput() {
       const n = Number(this.gotoPageInput);
       const t = this.getTotalPages?.() || 0;
       if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
     },
-
+    // 进度条拖动：仅在拖动结束时触发（依赖 Slider 的 lazy-change）
+    onSliderChange(val) {
+      const n = Number(val);
+      const t = this.getTotalPages?.() || 0;
+      if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
+    },
 
     // 下一页（单击“翻页”按钮）
     handleNextPage() {
@@ -195,8 +271,14 @@ export default {
     handleResetZoom() {
       const reader = this.$refs.pdfReader;
       if (reader && typeof reader.setScale === "function") {
-        const fallback = (typeof reader.getBaselineScale === 'function') ? reader.getBaselineScale() : 1;
-        const target = (typeof this.lastScaleBeforeZoom === 'number') ? this.lastScaleBeforeZoom : fallback;
+        const fallback =
+          typeof reader.getBaselineScale === "function"
+            ? reader.getBaselineScale()
+            : 1;
+        const target =
+          typeof this.lastScaleBeforeZoom === "number"
+            ? this.lastScaleBeforeZoom
+            : fallback;
         reader.setScale(target);
         // 恢复后清除记录
         this.lastScaleBeforeZoom = null;
@@ -238,13 +320,15 @@ export default {
     onPdfLoaded() {
       this.totalPages = this.getTotalPages?.() || 0;
       this.gotoPageInput = this.currentPage;
+      this.sliderValue = this.currentPage;
       // 同步 PdfReader 的当前缩放到本地，用于阈值切换显示缩放按钮
       const r = this.$refs.pdfReader;
       if (r) {
-        if (typeof r.currentScale === 'number') this.currentScale = r.currentScale;
-        if (!this._unwatchReaderScale && typeof r.$watch === 'function') {
-          this._unwatchReaderScale = r.$watch('currentScale', (s) => {
-            if (typeof s === 'number') this.currentScale = s;
+        if (typeof r.currentScale === "number")
+          this.currentScale = r.currentScale;
+        if (!this._unwatchReaderScale && typeof r.$watch === "function") {
+          this._unwatchReaderScale = r.$watch("currentScale", s => {
+            if (typeof s === "number") this.currentScale = s;
           });
         }
       }
@@ -256,11 +340,12 @@ export default {
       if (e && e.pageNumber) {
         this.currentPage = e.pageNumber;
         this.gotoPageInput = e.pageNumber;
+        this.sliderValue = e.pageNumber;
       }
     },
     onPdfScaleChanged(e) {
-      const s = (typeof e === 'number') ? e : (e && e.scale);
-      if (typeof s === 'number') this.currentScale = s;
+      const s = typeof e === "number" ? e : e && e.scale;
+      if (typeof s === "number") this.currentScale = s;
     },
   },
 };
@@ -322,35 +407,53 @@ export default {
     height: 100%;
   }
 
-
   .page-nav {
     position: absolute;
-    left: 0; right: 0;
+    left: 0;
+    right: 0;
     bottom: @bottom-toolbar-height;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    height: 3.2rem;
-    padding: 0 1rem;
-    background: #fff;
-    box-shadow: 0 -0.29rem 0.29rem rgba(0,0,0,0.05);
+    padding: 0.8rem 1rem 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 -0.29rem 0.29rem rgba(0, 0, 0, 0.05);
     border-radius: 0.43rem 0.43rem 0 0;
     // 初始收起：下滑隐藏，避免遮挡与点击穿透
     transform: translateY(100%);
     opacity: 0;
-    pointer-events: none;
     z-index: 9;
-    transition: transform .24s ease, opacity .24s ease;
+    transition: transform 0.24s ease, opacity 0.24s ease;
     &.is-open {
       transform: translateY(0);
       opacity: 1;
-      pointer-events: auto;
       z-index: 11;
     }
-    input { width: 4rem; height: 2rem; border: 1px solid #eee; border-radius: 6px; padding: 0 .5rem; }
-    button { height: 2rem; padding: 0 .6rem; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
-    .page-count { min-width: 3rem; text-align: center; color: #666; }
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .slider-wrap {
+      width: 100%;
+      padding: 0 0.6rem;
+      margin-top: 10px;
+    }
+    .page-input {
+      width: 5.6rem;
+      /deep/ .van-field__control {
+        text-align: center;
+      }
+    }
+    .page-count {
+      min-width: 3.6rem;
+      text-align: center;
+      color: #666;
+    }
   }
 
   .bottom-toolbar {

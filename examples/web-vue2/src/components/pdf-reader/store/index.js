@@ -1,18 +1,15 @@
 import { createNamespacedHelpers } from "vuex";
 import documentModule from "./modules/document.js";
 import viewerModule from "./modules/viewer.js";
-import sidebarModule from "./modules/sidebar.js";
 
 /**
- * PDF 阅读器 Vuex 模块 - 包含侧边栏状态管理
- * 管理文档、查看器和侧边栏的全局状态
+ * PDF 阅读器 Vuex 模块 - 最小化：仅保留文档与查看器状态
  */
 export const pdfReaderModule = {
   namespaced: true,
   modules: {
     document: documentModule,
     viewer: viewerModule,
-    sidebar: sidebarModule,
   },
 };
 
@@ -24,7 +21,6 @@ export function createPdfReaderHelpers(moduleName = "pdfReader") {
   // 模块辅助函数
   const documentHelpers = createNamespacedHelpers(`${moduleName}/document`);
   const viewerHelpers = createNamespacedHelpers(`${moduleName}/viewer`);
-  const sidebarHelpers = createNamespacedHelpers(`${moduleName}/sidebar`);
 
   return {
     // 文档相关
@@ -41,14 +37,6 @@ export function createPdfReaderHelpers(moduleName = "pdfReader") {
       mapGetters: viewerHelpers.mapGetters,
       mapMutations: viewerHelpers.mapMutations,
       mapActions: viewerHelpers.mapActions,
-    },
-
-    // 侧边栏相关
-    sidebar: {
-      mapState: sidebarHelpers.mapState,
-      mapGetters: sidebarHelpers.mapGetters,
-      mapMutations: sidebarHelpers.mapMutations,
-      mapActions: sidebarHelpers.mapActions,
     },
   };
 }
@@ -74,13 +62,6 @@ export const {
   mapActions: mapViewerActions,
 } = defaultHelpers.viewer;
 
-// 导出侧边栏相关辅助函数
-export const {
-  mapState: mapSidebarState,
-  mapGetters: mapSidebarGetters,
-  mapMutations: mapSidebarMutations,
-  mapActions: mapSidebarActions,
-} = defaultHelpers.sidebar;
 
 /**
  * 默认导出 - 简化版

@@ -33,7 +33,6 @@ const state = {
   // 文档源
   src: "",
 
-
   // 加载控制
   loadToken: 0,
   abortController: null,
@@ -99,7 +98,6 @@ const mutations = {
     state.src = src;
   },
 
-
   // 重置状态
   RESET_DOCUMENT(state) {
     state.pdfDocument = null;
@@ -120,7 +118,9 @@ const mutations = {
     // 取消控制
     state.loadToken = 0;
     if (state.abortController) {
-      try { state.abortController.abort(); } catch (_) {}
+      try {
+        state.abortController.abort();
+      } catch (_) {}
     }
     state.abortController = null;
   },
@@ -164,7 +164,9 @@ const actions = {
     try {
       // 取消上一轮
       if (state.abortController) {
-        try { state.abortController.abort(); } catch (_) {}
+        try {
+          state.abortController.abort();
+        } catch (_) {}
       }
       const currentToken = (state.loadToken || 0) + 1;
       state.loadToken = currentToken;
@@ -176,9 +178,7 @@ const actions = {
       commit("SET_SRC", src);
 
       // 动态导入 headless loader，避免循环依赖
-      const { loadPdfDocument } = await import(
-        "../../core/headless-pdf-loader.js"
-      );
+      const { loadPdfDocument } = await import("../../core/pdf-loader.js");
 
       let lastProgress = 0;
       const { pdfDocument, info, metadata } = await loadPdfDocument({
@@ -200,7 +200,9 @@ const actions = {
 
       // 若已被新任务取代，直接丢弃
       if (state.loadToken !== currentToken) {
-        try { pdfDocument?.destroy?.(); } catch (_) {}
+        try {
+          pdfDocument?.destroy?.();
+        } catch (_) {}
         return null;
       }
 

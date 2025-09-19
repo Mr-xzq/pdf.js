@@ -1,33 +1,36 @@
-// TextLayerBuilder（简版）：当前阶段以占位文本层为主，后续替换为逐 item 定位
+// TextLayerBuilder（官方构建器封装版）：提供文本选中/搜索基础能力
 import { BaseLayerBuilder } from "./BaseLayerBuilder";
+import { getPdfjsViewer } from "../pdf-config.js";
 
 export class TextLayerBuilder extends BaseLayerBuilder {
   constructor(ctx) {
     super(ctx);
+    this._builder = null; // pdfjsViewer.TextLayerBuilder 实例
   }
 
   async render() {
     if (!this.initialized || this.cancelled) return;
 
-    // 清空
+    // 清空容器
     this.layer.innerHTML = "";
 
     try {
-      // 获取文本内容（简版：拼接为单段文本）
-      const pageText = await this.pdfServices.application
-        ?.getPage(this.pageNumber)
-        .then(page => page.getTextContent())
-        .then(tc => tc.items.map(it => it.str).join(" "));
+      const page = await this.pdfServices.application?.getPage(this.pageNumber);
+      if (!page) return;
 
-      const div = document.createElement("div");
-      div.textContent = pageText || "";
-      div.style.cssText = `
-        position: absolute;
-        left: 0; top: 0; right: 0; bottom: 0;
-        overflow: hidden; opacity: 0.2; line-height: 1.0;
-        white-space: pre-wrap; pointer-events: none;`;
+      const pdfjsViewer = getPdfjsViewer();
 
-      this.layer.appendChild(div);
+      // 创建官方 TextLayerBuilder，并把其内部 div 挂载到我们的容器下
+      this._builder = new pdfjsViewer.TextLayerBuilder({
+        pdfPage: page,
+        onAppend: div => {
+          // div.className === 'textLayer'
+          this.layer.appendChild(div);
+        },
+      });
+
+      // 渲染文本层（使用当前 viewport）
+      await this._builder.render(this.viewport);
 
       // 尺寸同步
       if (this.viewport) {
@@ -35,8 +38,20 @@ export class TextLayerBuilder extends BaseLayerBuilder {
         this.layer.style.height = `${this.viewport.height}px`;
       }
     } catch (e) {
-      // 降级：忽略文本层失败
       console.warn("TextLayerBuilder 渲染失败（忽略）:", e);
     }
+  }
+
+  cancel() {
+    super.cancel();
+    try {
+      this._builder?.cancel();
+    } catch (_) {}
+  }
+
+  destroy() {
+    this.cancel();
+    this._builder = null;
+    super.destroy();
   }
 }

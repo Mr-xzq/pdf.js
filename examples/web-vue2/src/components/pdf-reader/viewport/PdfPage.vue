@@ -91,6 +91,8 @@ export default {
         text: null,
         annotation: null,
       },
+      // 渲染请求并发保护：仅接受最后一次请求的结果
+      renderRequestId: 0,
     };
   },
 
@@ -100,6 +102,7 @@ export default {
   },
 
   beforeDestroy() {
+    try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
     this.destroyLayers();
     this.cleanup();
   },
@@ -130,16 +133,15 @@ export default {
       if (!this.pdfServices || !this.renderService) {
         return;
       }
-      // 记录开始渲染时希望使用的缩放值，用于检测渲染期间是否发生变化
-      const desiredScale = this.scale;
-      if (this.rendering) {
-        // 若正在渲染，则跳过本次请求。渲染完成后会根据 desiredScale 与当前 scale 的差异决定是否立即补一次渲染。
-        return;
-      }
+      // 若存在在途渲染，先取消之，避免重叠
+      try { this.renderService.cancelRender(this.pageNumber); } catch (_) {}
+      // 同步取消 Layer 渲染，防止重叠
+      this.cancelLayers?.();
+
+      // 并发保护：为本次渲染生成 token，仅接受最后一次结果
+      const token = ++this.renderRequestId;
 
       try {
-        // 取消上一次渲染中的 Layer 任务，防止快速切换时重叠
-        this.cancelLayers?.();
         this.rendering = true;
         this.rendered = false;
 
@@ -156,6 +158,8 @@ export default {
             scale: this.scale,
           }
         );
+        // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
+        if (token !== this.renderRequestId) { return; }
 
         this.pageInfo = result;
         this.viewport = result.viewport;
@@ -176,15 +180,17 @@ export default {
           viewport: this.viewport,
         });
 
-        // 如果在渲染过程中外部缩放值已发生变化，则在当前渲染完成后立刻按最新缩放补一次渲染
-        if (this.scale !== desiredScale) {
-          await this.$nextTick();
-          this.rendering = false; // 显式确保状态正确
-          return this.renderPage();
-        }
 
         console.log(`页面 ${this.pageNumber} 渲染完成`);
       } catch (error) {
+        // 忽略因取消导致的异常
+        if (error && error.code === "RENDER_CANCELLED") {
+          return;
+        }
+        // 若已有更新的渲染请求，不处理旧结果
+        if (token !== this.renderRequestId) {
+          return;
+        }
         this.rendering = false;
         // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
         this.$nextTick(() => this.syncContainerSize());
@@ -338,6 +344,8 @@ export default {
      * 处理页码变化
      */
     async onPageNumberChange() {
+      try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
+      this.cancelLayers?.();
       await this.renderPage();
     },
 
@@ -345,6 +353,8 @@ export default {
      * 处理缩放变化
      */
     async onScaleChange() {
+      try { this.renderService?.cancelRender(this.pageNumber); } catch (_) {}
+      this.cancelLayers?.();
       await this.renderPage();
     },
 
@@ -396,6 +406,7 @@ export default {
     overflow: hidden;
     opacity: 0.2;
     line-height: 1;
+    z-index: 1;
 
     // 优化文本渲染
     text-rendering: optimizeLegibility;
@@ -411,6 +422,7 @@ export default {
     right: 0;
     bottom: 0;
     pointer-events: auto;
+    z-index: 2; // 明确置于文本层之上，保证点击
   }
 
   &__loading {
