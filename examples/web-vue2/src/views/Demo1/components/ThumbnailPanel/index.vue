@@ -33,16 +33,48 @@ export default {
     return {
       totalPages: 0,
       thumbsRendered: false,
+      visible: false,
+      pendingPage: null,
     };
   },
   async mounted() {
     this.totalPages = await this.getTotalPages();
-    this.ensureRenderThumbnails();
+    await this.ensureRenderThumbnails();
+    this.trySyncCurrent();
+  },
+  watch: {
+    currentPage(n) {
+      // 弹层不可见时，缓存待同步页；可见时立即滚动对齐
+      if (!this.visible) {
+        this.pendingPage = n;
+      } else {
+        this.$nextTick(() => this.scrollCurrentIntoView());
+      }
+    },
   },
   methods: {
     onSelect(page) {
       this.goToPage(page);
       this.$emit("selected", page);
+    },
+    onParentOpened() {
+      this.visible = true;
+      this.$nextTick(async () => {
+        await this.ensureRenderThumbnails();
+        const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
+        if (target != null) await this.scrollToPage(target, { center: true });
+        this.pendingPage = null;
+      });
+    },
+    onParentClosed() {
+      this.visible = false;
+    },
+    trySyncCurrent() {
+      if (this.visible && this.thumbsRendered) {
+        this.$nextTick(() => this.scrollCurrentIntoView());
+      } else {
+        this.pendingPage = this.currentPage;
+      }
     },
     // 从 $refs / DOM 获取某页的 canvas 元素（兼容 v-for refs 为数组）
     getCanvasEl(page) {
@@ -89,6 +121,19 @@ export default {
         "/",
         this.totalPages
       );
+    },
+    async scrollToPage(page, { center = true } = {}) {
+      const canvas = await this.waitForCanvas(page, 500);
+      if (!canvas) return;
+      const item = canvas.closest('.thumb-item') || canvas;
+      if (typeof item.scrollIntoView === 'function') {
+        item.scrollIntoView({ block: center ? 'center' : 'nearest', inline: 'nearest', behavior: "smooth" });
+      }
+    },
+    scrollCurrentIntoView() {
+      if (typeof this.currentPage === 'number') {
+        this.scrollToPage(this.currentPage, { center: true });
+      }
     },
   },
 };

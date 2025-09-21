@@ -200,6 +200,36 @@ export class PdfServices {
       throw error;
     }
   }
+
+  /**
+   * 解析 PDF 目录目的地为页码（不进行跳转）
+   * @param {string|Array} dest
+   * @returns {Promise<number|null>} 解析成功返回 1-based 页码，否则返回 null
+   */
+  async resolveDestinationToPage(dest) {
+    const app = this.application;
+    try {
+      if (!app || !app.pdfDocument) {
+        throw new Error("PDF 文档未加载");
+      }
+      let explicitDest = dest;
+      if (typeof explicitDest === "string") {
+        explicitDest = await app.pdfDocument.getDestination(explicitDest);
+      }
+      if (!Array.isArray(explicitDest)) return null;
+      const destRef = explicitDest[0];
+      if (destRef && typeof destRef === "object") {
+        // 使用 getPageIndex 解析引用对应的页码
+        return (await app.pdfDocument.getPageIndex(destRef)) + 1;
+      }
+      if (Number.isInteger(destRef)) return destRef + 1;
+      return null;
+    } catch (e) {
+      console.warn("resolveDestinationToPage 失败:", e);
+      return null;
+    }
+  }
+
 }
 
 /**

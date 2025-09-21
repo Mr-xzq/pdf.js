@@ -6,6 +6,8 @@
     style="height: 100%; width: 100%"
     :closeable="false"
     :close-on-click-overlay="true"
+    @opened="$emit('opened')"
+    @closed="$emit('closed')"
   >
     <div class="drawer">
       <div v-if="showHeader" class="drawer__header">

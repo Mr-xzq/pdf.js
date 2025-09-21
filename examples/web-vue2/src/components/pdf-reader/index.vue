@@ -305,8 +305,25 @@ export default {
         console.warn("navigateToDestination 失败:", e);
       }
     },
+    async resolveDestToPageNumber(dest) {
+      try {
+        const core = this.$refs.viewerCore;
+        const services = core && core.pdfServices;
+        if (
+          !services ||
+          typeof services.resolveDestinationToPage !== "function"
+        ) {
+          throw new Error(
+            "pdfServices 不可用或不支持 resolveDestinationToPage"
+          );
+        }
+        return await services.resolveDestinationToPage(dest);
+      } catch (e) {
+        console.warn("resolveDestToPageNumber 失败:", e);
+        return null;
+      }
+    },
 
-    // ===== 自动播放（由 props 控制启停） =====
     startAutoPlay() {
       if (this.autoPlaying || !this.isDocumentLoaded) return;
       this.autoPlaying = true;

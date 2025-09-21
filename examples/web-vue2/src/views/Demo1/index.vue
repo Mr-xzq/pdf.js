@@ -105,10 +105,14 @@
       :is-show.sync="isShowOutlineDrawer"
       title="目录"
       @close="onOutlineDrawerClose"
+      @opened="onOutlineOpened"
     >
       <outline-panel
+        ref="outlinePanel"
         :get-outline="getOutline"
         :navigate-to-destination="navigateToDestination"
+        :current-page="currentPage"
+        :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
       />
     </drawer>
@@ -116,8 +120,10 @@
       :is-show.sync="isShowThumbnailDrawer"
       title="缩略图"
       @close="onThumbnailDrawerClose"
+      @opened="onThumbnailOpened"
     >
       <thumbnail-panel
+        ref="thumbPanel"
         :get-total-pages="getTotalPages"
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
@@ -208,10 +214,15 @@ export default {
     onOutlineDrawerClose() {
       console.log("[Demo1] outline drawer closed");
       this.isShowOutlineDrawer = false;
+      const op = this.$refs.outlinePanel;
+      if (op && typeof op.onParentClosed === "function") op.onParentClosed();
     },
     onThumbnailDrawerClose() {
       console.log("[Demo1] thumbnail drawer closed");
       this.isShowThumbnailDrawer = false;
+      // 通知子组件更新可见状态（第二次及以后不会触发 mounted）
+      const tp = this.$refs.thumbPanel;
+      if (tp && typeof tp.onParentClosed === "function") tp.onParentClosed();
     },
     handleClickThumbnail() {
       console.log("[Demo1] open drawer: thumbnail");
@@ -221,6 +232,16 @@ export default {
     handleClickOutline() {
       console.log("[Demo1] open drawer: outline");
       this.isShowOutlineDrawer = true;
+    },
+
+    // Drawer 打开：作为“可见且挂载完成”的稳定时机
+    onThumbnailOpened() {
+      const tp = this.$refs.thumbPanel;
+      if (tp && typeof tp.onParentOpened === "function") tp.onParentOpened();
+    },
+    onOutlineOpened() {
+      const op = this.$refs.outlinePanel;
+      if (op && typeof op.onParentOpened === "function") op.onParentOpened();
     },
 
     // 底部翻页导航：开关
@@ -323,6 +344,12 @@ export default {
         ? r.navigateToDestination(dest)
         : Promise.resolve();
     },
+    resolveDestToPageNumber(dest) {
+      const r = this.$refs.pdfReader;
+      return r && typeof r.resolveDestToPageNumber === "function"
+        ? r.resolveDestToPageNumber(dest)
+        : Promise.resolve(null);
+    },
 
     // 以下事件用于和外层 UI 同步
     onPdfLoaded() {
@@ -416,7 +443,7 @@ export default {
   }
 
   .page-nav {
-    position: absolute;
+    position: fixed;
     left: 0;
     right: 0;
     bottom: @bottom-toolbar-height;
