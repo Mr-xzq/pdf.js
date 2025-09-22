@@ -18,6 +18,7 @@
       :item-height="itemHeight"
       :use-transition="useTransition"
       :props="props"
+      :label-class-name="labelClassName"
       @toggle="onToggle"
       @select="onSelect"
     >
@@ -26,16 +27,10 @@
         ><slot name="switcher" v-bind="slotProps"
       /></template>
 
-      <!-- label slot: default to mapped label field -->
-      <template #label="slotProps"
-        ><slot name="label" v-bind="slotProps">{{
-          getLabel(slotProps.node)
-        }}</slot></template
-      >
-      <!-- suffix slot: custom tail area (e.g., action buttons) -->
-      <template #suffix="slotProps"
-        ><slot name="suffix" v-bind="slotProps"
-      /></template>
+      <!-- 自定义 label -->
+      <template v-if="$scopedSlots.label" #label="slotProps"
+        ><slot name="label" v-bind="slotProps"></slot
+      ></template>
     </tree-node>
     <!-- empty slot -->
     <div v-if="!data || !data.length"><slot name="empty">无数据</slot></div>

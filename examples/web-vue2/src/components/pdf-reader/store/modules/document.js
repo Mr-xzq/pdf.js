@@ -192,7 +192,7 @@ const actions = {
             lastProgress = percentage;
             commit("SET_LOAD_PROGRESS", {
               progress: percentage,
-              message: `正在加载... ${percentage}%`,
+              message: "",
             });
           }
         },

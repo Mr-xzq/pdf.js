@@ -1,5 +1,6 @@
 export default {
   props: {
+    labelClassName: String,
     // 每一层的缩进像素
     indent: { type: Number, default: 16 },
     // 单个节点行高（影响滚动/过渡计算）

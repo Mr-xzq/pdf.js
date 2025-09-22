@@ -28,11 +28,6 @@
       :style="annotationLayerStyle"
     ></div>
 
-    <!-- 页面加载状态 -->
-    <div v-if="rendering" class="pdf-page-container__loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">正在渲染页面...</div>
-    </div>
   </div>
 </template>
 
@@ -132,7 +127,6 @@ export default {
     initializeRenderService() {
       this.renderService = new PageRenderService(this.pdfServices);
     },
-
     /**
      * 渲染页面
      */
@@ -153,6 +147,8 @@ export default {
       try {
         this.rendering = true;
         this.rendered = false;
+        // 渲染开始前隐藏画布，避免看到空白底色
+        this.canvasStyle = { display: "block", opacity: 0 };
 
         const canvas = this.$refs.pageCanvas;
         if (!canvas) {
@@ -184,6 +180,8 @@ export default {
 
         this.rendering = false;
         this.rendered = true;
+        // 首帧渲染完成后淡入画布
+        this.canvasStyle = { display: "block", opacity: 1, transition: "opacity .15s ease" };
 
         this.$emit("page-rendered", {
           pageNumber: this.pageNumber,
@@ -399,6 +397,7 @@ export default {
   &__canvas {
     display: block;
     border: none;
+    background-color: transparent !important; // 避免默认白底
 
     // 移除 object-fit，让Canvas保持原始尺寸
     // object-fit: contain; // 这可能导致意外的缩放
@@ -439,42 +438,6 @@ export default {
     z-index: 2; // 明确置于文本层之上，保证点击
   }
 
-  &__loading {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.9);
-
-    .loading-spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #1890ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 12px;
-    }
-
-    .loading-text {
-      font-size: 14px;
-      color: #666;
-    }
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 </style>
 

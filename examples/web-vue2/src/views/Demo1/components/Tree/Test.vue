@@ -71,12 +71,6 @@
           />
         </template>
         >
-        <template #suffix="{ node }">
-          <span v-if="node.meta && node.meta.count" class="badge">{{
-            node.meta.count
-          }}</span>
-          <span v-else-if="node.tips" class="badge">{{ node.tips }}</span>
-        </template>
       </Tree>
     </div>
   </div>

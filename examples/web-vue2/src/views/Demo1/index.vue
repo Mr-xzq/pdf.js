@@ -2,11 +2,11 @@
   <div class="demo-1">
     <div class="top-toolbar">
       <div class="right-operate-tool">
-        <van-image class="search-tool-item" :src="searchIconUrl"></van-image>
+        <!-- <van-image class="search-tool-item" :src="searchIconUrl"></van-image>
         <van-image
           class="fullscreen-tool-item"
           :src="fullscreenIconUrl"
-        ></van-image>
+        ></van-image> -->
       </div>
     </div>
     <div class="content-area">

@@ -1,21 +1,30 @@
 <template>
   <div class="outline-panel">
-    <div v-if="loading" class="loading">加载目录中...</div>
-    <div v-else>
-      <Tree
-        ref="tree"
-        :data="treeData"
-        :props="treeProps"
-        :active-key="activeKey"
-        :expanded-keys.sync="expandedKeys"
-        @select="onTreeSelect"
-      />
-    </div>
+    <Tree
+      ref="tree"
+      :data="treeData"
+      :props="treeProps"
+      :active-key="activeKey"
+      :expanded-keys.sync="expandedKeys"
+      label-class-name="custom-label-content"
+      @select="onTreeSelect"
+    >
+      <template #switcher="{ expanded }">
+        <van-image
+          class="toggle-tool-item"
+          :src="expanded ? collapseIconUrl : expandIconUrl"
+        ></van-image>
+      </template>
+    </Tree>
   </div>
 </template>
 
 <script>
 import Tree from "../Tree/index.vue";
+
+// 图标
+import expandIconUrl from "@/assets/images/demo1/expand-2x.png";
+import collapseIconUrl from "@/assets/images/demo1/collapse-2x.png";
 
 export default {
   name: "OutlinePanel",
@@ -30,7 +39,8 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      expandIconUrl,
+      collapseIconUrl,
       outline: [],
       treeData: [],
       activeKey: null,
@@ -46,7 +56,7 @@ export default {
     };
   },
   async mounted() {
-    this.loading = true;
+    this.showLoadingToast();
     try {
       const data = await this.getOutline();
       this.outline = Array.isArray(data) ? data : [];
@@ -59,7 +69,7 @@ export default {
         this.activeKey = initKey;
       }
     } finally {
-      this.loading = false;
+      this.clearLoadingToast();
     }
   },
   watch: {
@@ -93,6 +103,20 @@ export default {
     },
   },
   methods: {
+    showLoadingToast() {
+      const t = this.$toast;
+      if (t && typeof t.loading === "function") {
+        t.loading({
+          message: "加载中",
+          duration: 0,
+          forbidClick: true,
+        });
+      }
+    },
+    clearLoadingToast() {
+      const t = this.$toast;
+      if (t && typeof t.clear === "function") t.clear();
+    },
     async onTreeSelect(node) {
       console.log(
         "[Demo1] OutlinePanel.select",
@@ -111,14 +135,20 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        await this.ensurePageMapOnce();
-        const k =
-          this.pendingActiveKey != null
-            ? this.pendingActiveKey
-            : this.activeKey;
-        if (k != null) {
-          await this.activateAndScroll(k);
-          this.pendingActiveKey = null;
+        let needToast = !this.pageMapReady;
+        if (needToast) this.showLoadingToast();
+        try {
+          await this.ensurePageMapOnce();
+          const k =
+            this.pendingActiveKey != null
+              ? this.pendingActiveKey
+              : this.activeKey;
+          if (k != null) {
+            await this.activateAndScroll(k);
+            this.pendingActiveKey = null;
+          }
+        } finally {
+          if (needToast) this.clearLoadingToast();
         }
       });
     },
@@ -207,12 +237,20 @@ export default {
 };
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .outline-panel {
   height: 100%;
 }
-.loading {
-  color: #999;
-  padding: 12px;
+.toggle-tool-item {
+  width: 1.36rem;
+  height: 1.36rem;
+}
+
+/deep/ .custom-label-content {
+  font-size: 1rem;
+  color: #000000;
+  letter-spacing: 0;
+  line-height: 2rem;
+  font-weight: 400;
 }
 </style>

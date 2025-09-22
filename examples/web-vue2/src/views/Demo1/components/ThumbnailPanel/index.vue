@@ -1,20 +1,25 @@
 <template>
   <div class="thumbnail-panel">
-    <div v-if="!totalPages" class="loading">加载缩略图中...</div>
-    <div v-else class="thumb-list">
+    <div v-if="totalPages" class="thumb-list" :style="gridStyle">
       <div
         v-for="page in totalPages"
         :key="page"
         class="thumb-item"
         :class="{ 'is-current': currentPage === page }"
+        :data-page="page"
         @click="onSelect(page)"
       >
-        <canvas
-          :ref="'thumb-' + page"
-          class="thumb-canvas"
-          :data-page="page"
-        ></canvas>
-        <div class="thumb-label">第 {{ page }} 页</div>
+        <div class="thumb-media">
+          <van-image
+            v-if="thumbSrcs[page]"
+            class="thumb-img"
+            :src="thumbSrcs[page]"
+            fit="contain"
+            width="100%"
+          />
+          <div v-else class="thumb-ph"></div>
+        </div>
+        <div class="thumb-label">{{ page }}</div>
       </div>
     </div>
   </div>
@@ -28,6 +33,8 @@ export default {
     renderThumbnail: { type: Function, required: true },
     goToPage: { type: Function, required: true },
     currentPage: { type: Number, default: 1 },
+    // 指定缩略图列数；<=0 或未传则自适应
+    columns: { type: Number, default: 3 },
   },
   data() {
     return {
@@ -35,16 +42,21 @@ export default {
       thumbsRendered: false,
       visible: false,
       pendingPage: null,
+      thumbSrcs: {},
     };
   },
   async mounted() {
-    this.totalPages = await this.getTotalPages();
-    await this.ensureRenderThumbnails();
-    this.trySyncCurrent();
+    this.showLoadingToast();
+    try {
+      this.totalPages = await this.getTotalPages();
+      await this.ensureRenderThumbnails();
+      this.trySyncCurrent();
+    } finally {
+      this.clearLoadingToast();
+    }
   },
   watch: {
     currentPage(n) {
-      // 弹层不可见时，缓存待同步页；可见时立即滚动对齐
       if (!this.visible) {
         this.pendingPage = n;
       } else {
@@ -52,7 +64,46 @@ export default {
       }
     },
   },
+  computed: {
+    // 网格列数样式：传入 columns > 0 时生效
+    gridStyle() {
+      if (this.columns > 0) {
+        return { gridTemplateColumns: `repeat(${this.columns}, 1fr)` };
+      }
+      return null;
+    },
+  },
   methods: {
+    // 计算第一个缩略图的 CSS 宽度（与列数/容器宽度相关）
+    getCssThumbWidth() {
+      const list = this.$el && this.$el.querySelector(".thumb-list");
+      if (!list) return 0;
+      const item = list.querySelector(".thumb-item");
+      const w = item ? item.clientWidth : 0;
+      return w || 0;
+    },
+    // 按列宽动态换算 scale；以 120px 对应 0.2 作为基准
+    getScaleFromWidth(cssWidth) {
+      const baseCss = 120;
+      const baseScale = 0.2;
+      if (!cssWidth) return baseScale;
+      return (cssWidth / baseCss) * baseScale;
+    },
+
+    showLoadingToast() {
+      const t = this.$toast;
+      if (t && typeof t.loading === "function") {
+        t.loading({
+          message: "加载中",
+          duration: 0,
+          forbidClick: true,
+        });
+      }
+    },
+    clearLoadingToast() {
+      const t = this.$toast;
+      if (t && typeof t.clear === "function") t.clear();
+    },
     onSelect(page) {
       this.goToPage(page);
       this.$emit("selected", page);
@@ -60,11 +111,17 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        await this.ensureRenderThumbnails();
-        const target =
-          this.pendingPage != null ? this.pendingPage : this.currentPage;
-        if (target != null) await this.scrollToPage(target);
-        this.pendingPage = null;
+        let needToast = !this.thumbsRendered;
+        if (needToast) this.showLoadingToast();
+        try {
+          await this.ensureRenderThumbnails();
+          const target =
+            this.pendingPage != null ? this.pendingPage : this.currentPage;
+          if (target != null) await this.scrollToPage(target);
+          this.pendingPage = null;
+        } finally {
+          if (needToast) this.clearLoadingToast();
+        }
       });
     },
     onParentClosed() {
@@ -77,44 +134,23 @@ export default {
         this.pendingPage = this.currentPage;
       }
     },
-    // 从 $refs / DOM 获取某页的 canvas 元素（兼容 v-for refs 为数组）
-    getCanvasEl(page) {
-      const r = this.$refs["thumb-" + page];
-      const byRef = Array.isArray(r) ? r[0] : r;
-      if (byRef instanceof HTMLCanvasElement) return byRef;
-      const byQuery =
-        this.$el &&
-        this.$el.querySelector('canvas.thumb-canvas[data-page="' + page + '"]');
-      return byQuery || byRef || null;
-    },
-    // 等待某页 canvas 出现，最多等待 2s
-    waitForCanvas(page, maxMs = 2000) {
-      const start = Date.now();
-      return new Promise(resolve => {
-        const check = () => {
-          const el = this.getCanvasEl(page);
-          if (el) return resolve(el);
-          if (Date.now() - start > maxMs) return resolve(null);
-          this.$nextTick(() => requestAnimationFrame(check));
-        };
-        check();
-      });
-    },
     async ensureRenderThumbnails() {
       if (this.thumbsRendered || !this.totalPages) return;
       this.thumbsRendered = true;
       await this.$nextTick();
+      const cssWidth = this.getCssThumbWidth() || 120;
+      const scale = this.getScaleFromWidth(cssWidth);
       let rendered = 0;
       for (let p = 1; p <= this.totalPages; p += 1) {
-        const canvas = await this.waitForCanvas(p, 2000);
-        if (canvas instanceof HTMLCanvasElement) {
-          try {
-            await this.renderThumbnail(p, canvas, { scale: 0.2 });
-            rendered += 1;
-          } catch (e) {
-            /* 忽略单页失败，继续后续页 */
-          }
-        }
+        try {
+          const tmp = document.createElement("canvas");
+          await this.renderThumbnail(p, tmp, { scale });
+          const url = tmp.toDataURL("image/png");
+          this.$set(this.thumbSrcs, p, url);
+          tmp.width = 0;
+          tmp.height = 0;
+          rendered += 1;
+        } catch (_) {}
       }
       console.log(
         "[Demo1] Thumbnails rendered",
@@ -124,11 +160,11 @@ export default {
       );
     },
     async scrollToPage(page) {
-      const canvas = await this.waitForCanvas(page, 500);
-      if (!canvas) return;
-      const item = canvas.closest(".thumb-item") || canvas;
-      if (typeof item?.scrollIntoView === "function") {
-        item?.scrollIntoView({ behavior: "smooth" });
+      const item =
+        this.$el &&
+        this.$el.querySelector('.thumb-item[data-page="' + page + '"]');
+      if (item && typeof item.scrollIntoView === "function") {
+        item.scrollIntoView({ behavior: "smooth" });
       }
     },
     scrollCurrentIntoView() {
@@ -140,47 +176,64 @@ export default {
 };
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .thumbnail-panel {
   height: 100%;
 }
-.loading {
-  color: #999;
-  padding: 12px;
-}
+
 .thumb-list {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
   padding: 8px 12px;
-}
-.thumb-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  border-radius: 8px;
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease,
-    background 120ms ease;
-}
-.thumb-item:active {
-  transform: scale(0.98);
-  background: rgba(0, 0, 0, 0.04);
-}
-.thumb-item.is-current {
-  box-shadow: 0 0 0 2px #1989fa inset;
-}
-.thumb-canvas {
-  width: 120px;
-  height: 160px;
-  background: #f7f7f7;
-  border-radius: 4px;
-}
-.thumb-label {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #666;
+  width: 100%;
+
+  .thumb-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 8px;
+    min-width: 0;
+    padding: 3px;
+    transition: all 200ms ease;
+
+    &:active {
+      transform: scale(0.98);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    &.is-current {
+      box-shadow: 0 0 0 2px #1989fa inset;
+    }
+
+    .thumb-media {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+
+      .thumb-img,
+      .thumb-ph {
+        display: block;
+        width: 100%;
+        background: #f7f7f7;
+        border-radius: 4px;
+      }
+
+      .thumb-img {
+        height: auto;
+      }
+
+      .thumb-ph {
+        height: 100%;
+      }
+    }
+
+    .thumb-label {
+      margin: 2px 0;
+      font-size: 12px;
+      color: #666;
+    }
+  }
 }
 </style>

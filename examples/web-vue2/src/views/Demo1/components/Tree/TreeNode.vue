@@ -94,14 +94,15 @@ export default {
     const contentSectionVnode = (
       <div class="tree__content" onClick={this.select}>
         {this.$scopedSlots.label ? (
-          this.$scopedSlots.label({ node: this.node })
+          this.$scopedSlots.label({
+            node: this.node,
+            label: this.getLabel(this.node),
+          })
         ) : (
-          <div class="tree__label" attrs={{ title: this.getLabel(this.node) }}>
+          <div class={["tree__label", this.labelClassName]}>
             {this.getLabel(this.node)}
           </div>
         )}
-        {this.$scopedSlots.suffix &&
-          this.$scopedSlots.suffix({ node: this.node })}
       </div>
     );
 

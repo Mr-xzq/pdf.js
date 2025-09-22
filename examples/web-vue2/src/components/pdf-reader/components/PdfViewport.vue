@@ -1,11 +1,7 @@
 <template>
   <div class="pdf-viewer-core" ref="viewerContainer">
-    <!-- 加载进度（来源：Store，可被插槽覆盖） -->
-    <template v-if="docLoading && !documentLoaded">
-      <slot name="loading" :progress="docProgress" :message="docMessage">
-        <pdf-loading-progress :progress="docProgress" :message="docMessage" />
-      </slot>
-    </template>
+    <!-- 加载进度改为使用 Vant Toast 显示，这里不再渲染占位内容，以避免“空白界面上叠一个loading” -->
+    <template v-if="false"></template>
 
     <!-- 错误显示（可被插槽覆盖） -->
     <template v-else-if="docError">
@@ -46,12 +42,14 @@
       </div>
     </div>
 
-    <!-- 空状态（可被插槽覆盖） -->
-    <template v-else>
+    <!-- 空状态：仅在“无 src 且不在加载中”时显示；加载过程不显示 empty 占位 -->
+    <template v-else-if="!src && !docLoading">
       <slot name="empty">
         <pdf-empty-state />
       </slot>
     </template>
+    <!-- 其他情况（如正在加载、有 src 正在初始化/加载）不渲染任何占位，以免与 Toast 冲突 -->
+    <template v-else></template>
   </div>
 </template>
 
@@ -164,7 +162,7 @@ export default {
       return this.loadProgress || 0;
     },
     docMessage() {
-      return this.loadMessage || "正在加载...";
+      return this.loadMessage || "加载中";
     },
     docError() {
       return this.error;
@@ -206,6 +204,13 @@ export default {
       },
       immediate: false,
     },
+    docLoading(n) {
+      if (n) {
+        this.showToastLoading("加载中");
+      } else {
+        this.clearToastLoading();
+      }
+    },
   },
 
   methods: {
@@ -222,7 +227,20 @@ export default {
       zoomInAction: "zoomIn",
       zoomOutAction: "zoomOut",
     }),
-
+    showToastLoading(message) {
+      const t = this.$toast;
+      if (t && typeof t.loading === "function") {
+        t.loading({
+          message: message || "加载中",
+          duration: 0,
+          forbidClick: true,
+        });
+      }
+    },
+    clearToastLoading() {
+      const t = this.$toast;
+      if (t && typeof t.clear === "function") t.clear();
+    },
     /**
      * 初始化服务
      */
@@ -385,7 +403,7 @@ export default {
       if (this.$store && this.setLoadProgress) {
         this.setLoadProgress({
           progress: event.percentage,
-          message: `正在加载... ${event.percentage}%`,
+          message: "",
         });
       }
 
@@ -621,4 +639,3 @@ export default {
   }
 }
 </style>
-

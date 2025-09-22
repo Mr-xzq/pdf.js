@@ -69,7 +69,6 @@ export interface TreeNode {
 ### 3.4 Slots
 - `icon` 自定义前缀图标，参数：`{ node, expanded, level }`
 - `label` 自定义主文本渲染，参数：`{ node, matched?: boolean }`
-- `suffix` 右侧附加内容（计数/状态等），参数：`{ node }`
 - `empty` 空态
 
 ## 4. 交互与动效（移动端优化）
@@ -215,7 +214,6 @@ export default {
   onToggle={(node, expanded)=> this.onToggle(node, expanded)}
   scopedSlots={{
     label: ({ node }) => <span>{node.label}</span>,
-    suffix: ({ node }) => <span class="badge">{node.meta?.count}</span>,
   }}
 />
 ```
@@ -264,7 +262,7 @@ export default {
 - 我们的 Tree（examples/.../Tree）：
   - 轻量无 Store 架构，数据直接来自 props（`data`）；展开态用受控的 `expandedKeys.sync` + 本地 `expandedMap` 管理。
   - 递归节点用 JSX 渲染（TreeNode.vue），展开/折叠用高度过渡，提供定位 API：`expandAll/collapseAll/expandToKey/scrollToKey`。
-  - 插槽：`switcher`/`label`/`suffix`/`empty`，移动端体验友好（行高、动效、可自定义开关）。
+  - 插槽：`switcher`/`label`/`empty`，移动端体验友好（行高、动效、可自定义开关）。
 - Element-UI Tree（lib/element-ui/packages/tree）：
   - 完整的 Store + Node 模型（TreeStore、Node、util），集中管理：选中、展开、过滤、懒加载、拖拽、键盘可达性等。
   - 功能丰富：checkbox 三态、`checkStrictly`、`defaultCheckedKeys`、`filterNodeMethod`、`lazy load`、拖拽排序（`allowDrag/allowDrop`）、`accordion`、键盘导航、ARIA。
@@ -388,7 +386,7 @@ methods:{
   - 展开/折叠（含轻量动画，可关闭）；受控 expandedKeys 同步
   - 行点击选中高亮（activeKey 受控），可关闭 selectable
   - 定位相关方法：expandToKey / scrollToKey
-  - 基础插槽：switcher / label / suffix / empty
+  - 基础插槽：switcher / label / empty
   - 轻量样式变量与 44px 触控热区，单/多行省略策略
 - 优选能力（Should-haves）
   - 可选的轻量 filter(value) + filterNodeMethod(value, node)
