@@ -6,7 +6,6 @@
         ref="tree"
         :data="treeData"
         :props="treeProps"
-        :default-expand-all="true"
         :active-key="activeKey"
         :expanded-keys.sync="expandedKeys"
         @select="onTreeSelect"
@@ -24,9 +23,9 @@ export default {
   props: {
     getOutline: { type: Function, required: true },
     navigateToDestination: { type: Function, required: true },
-    // 新增：用于根据 dest 解析页码（由 PdfReader 提供）
+    // 用于根据 dest 解析页码（由 PdfReader 提供）
     resolveDestToPageNumber: { type: Function, required: true },
-    // 新增：外部传入当前页，实现与目录的双向绑定
+    // 外部传入当前页，实现与目录的双向绑定
     currentPage: { type: Number, default: 1 },
   },
   data() {
@@ -57,7 +56,6 @@ export default {
       // 初始化时尝试根据 currentPage 高亮
       let initKey = this.pickKeyForPageSafe(this.currentPage);
       if (initKey) {
-        initKey = await this.normalizeKeyForDom(initKey);
         this.activeKey = initKey;
       }
     } finally {
@@ -72,7 +70,7 @@ export default {
         this.pendingActiveKey = n;
       } else {
         this.$nextTick(async () => {
-          await this.activateAndScroll(n, "center");
+          await this.activateAndScroll(n);
         });
       }
     },
@@ -90,7 +88,7 @@ export default {
         // 可见时直接通过 Tree 的 activate 完成展开+高亮+滚动
         this.activeKey = key;
         await this.$nextTick();
-        await this.activateAndScroll(key, "center");
+        await this.activateAndScroll(key);
       }
     },
   },
@@ -119,7 +117,7 @@ export default {
             ? this.pendingActiveKey
             : this.activeKey;
         if (k != null) {
-          await this.activateAndScroll(k, "center");
+          await this.activateAndScroll(k);
           this.pendingActiveKey = null;
         }
       });
@@ -157,7 +155,7 @@ export default {
       this.pageToKeyMap = map;
       this.pageMapReady = true;
     },
-    // 安全：page→key（支持“就近前驱”回退）
+    // 安全：page --> key（支持“就近前驱”回退）
     pickKeyForPageSafe(pageNumber) {
       if (!this.pageMapReady) return null;
       const map = this.pageToKeyMap || {};
@@ -184,56 +182,14 @@ export default {
       const nearest = Math.max.apply(Math, pages);
       return this.pageToKeyMap[nearest] || null;
     },
-    // 等待树节点 DOM 出现（通过 data-key）
-    waitForNodeReady(key, maxMs = 2000) {
-      const start = Date.now();
-      return new Promise(resolve => {
-        const check = () => {
-          const root = this.$el;
-          const el = root && root.querySelector('[data-key="' + key + '"]');
-          if (el) return resolve(el);
-          if (Date.now() - start > maxMs) return resolve(null);
-          this.$nextTick(() => requestAnimationFrame(check));
-        };
-        check();
-      });
-    },
-    async activateAndScroll(key, align = "center") {
+
+    async activateAndScroll(key) {
       const tree = this.$refs.tree;
-      const useKey = await this.normalizeKeyForDom(key);
-      if (tree && typeof tree.activate === "function") {
-        await tree.activate(useKey, { scroll: align });
-        return;
-      }
-      // 兜底：无 Tree 方法时走旧的 DOM 定位
-      await this.waitForNodeReady(useKey, 1200);
-      const root = this.$el;
-      const el = root && root.querySelector('[data-key="' + useKey + '"]');
-      if (el && typeof el.scrollIntoView === "function") {
-        try {
-          el.scrollIntoView({
-            block: align,
-            inline: "nearest",
-            behavior: "smooth",
-          });
-        } catch (_) {
-          el.scrollIntoView(true);
-        }
+      if (typeof tree?.activate === "function") {
+        await tree?.activate(key, { scroll: true });
       }
     },
-    async normalizeKeyForDom(key) {
-      // 若 key 对应的 DOM 不存在，则回退到其最近存在的祖先 key
-      const root = this.$el;
-      const exists = k =>
-        !!(root && root.querySelector('[data-key="' + k + '"]'));
-      if (exists(key)) return key;
-      const tree = this.$refs.tree;
-      if (tree && typeof tree.getAncestorKeys === "function") {
-        const chain = [...(tree.getAncestorKeys(key) || []), key].reverse();
-        for (const k of chain) if (exists(k)) return k;
-      }
-      return key;
-    },
+
     buildTreeData(list, parentKey = "") {
       const out = [];
       (list || []).forEach((item, idx) => {

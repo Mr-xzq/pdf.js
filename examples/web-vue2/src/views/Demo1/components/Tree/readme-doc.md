@@ -30,25 +30,32 @@ export interface TreeNode {
 - `data: TreeNode[]` 必填，树数据源
 - `expandedKeys: string[]` 受控展开集合（配合 `.sync`）
 - `defaultExpandAll: boolean` 是否默认全部展开（仅初始）
+- `accordion: boolean` 互斥展开（仅保留一条展开路径），默认 `false`
 - `indent: number` 缩进像素，默认 `16`
 - `itemHeight: number` 行高/触控热区，默认 `44`（px）
 - `selectable: boolean` 是否允许点击选中高亮，默认 `true`
 - `activeKey: string | null` 当前选中节点（受控，可选）
 - `transition: boolean` 是否开启展开/折叠动画，默认 `true`
 - `duration: number` 展开/折叠动画时长，默认 `160`（ms）
-- `easing: string` 动画缓动，默认 `cubic-bezier(0.2, 0, 0, 1)`
-- `props`: { key, label, children, disabled, isLeaf } 字段映射（已支持；默认同名）
+
+- `props`: { key, label, children, isLeaf } 字段映射（默认同名，可选）
 
 - `ellipsis: 'single' | 'multi' | 'none'` 文本截断策略，默认 `single`
 - `maxLines: number` 多行截断行数（当 `ellipsis='multi'` 时生效），默认 `2`
 - `showGuideLine: boolean` 是否显示层级引导线（轻量视觉辅助），默认 `false`
+
+
+### 3.1.1 Props 分层（建议）
+- 核心：data、expandedKeys.sync、activeKey.sync、defaultExpandAll、props（key/label/children/isLeaf）
+- 进阶：indent、itemHeight、transition、duration、accordion、ellipsis/maxLines（样式相关）
+
 
 备注：Vue 2 推荐使用 `:expanded-keys.sync` 与 `:active-key.sync` 形式实现受控。
 
 ### 3.2 Events
 - `@toggle(node: TreeNode, expanded: boolean, ctx: { expandedKeys: string[] })`
 - `@select(node: TreeNode, ctx: { activeKey: string | null })`
-- `@ready(ctx: { methods })` 组件挂载后回调（可从中获取实例方法）
+
 
 
 > 行为说明：激活与定位合一——当通过点击触发 `@select` 或外部设置 `activeKey` 时，组件会自动“仅展开该节点的所有祖先”，但不会展开该节点的子级；高亮始终作用于当前激活节点。
@@ -56,7 +63,7 @@ export interface TreeNode {
 ### 3.3 Methods（通过 `ref` 暴露）
 - `expandAll()` / `collapseAll()`
 - `expandToKey(key: string)` 展开到目标节点（逐级展开）
-- `scrollToKey(key: string, align: 'start'|'center'|'end' = 'center')` 滚动定位
+- `scrollToKey(key: string)` 滚动定位（平滑滚动）
 
 
 ### 3.4 Slots
@@ -193,7 +200,7 @@ export default {
     onToggle(node, expanded) { /* 上报埋点等 */ },
     goTo(key) {
       this.$refs.treeRef.expandToKey(key);
-      this.$refs.treeRef.scrollToKey(key, 'center');
+      this.$refs.treeRef.scrollToKey(key);
 
     },
   },
@@ -214,7 +221,7 @@ export default {
 ```
 
 ## 8. 定位与高亮策略
-- `scrollToKey(key, align)`：滚动至目标行，`align` 默认 `center`
+- `scrollToKey(key)`：滚动至目标行
 
 - 视觉建议：
 
@@ -451,7 +458,7 @@ export function createTreeAdapter({ propsMap, on }){
   - 补充 ARIA 语义（role/aria-expanded）；可选开启键盘导航（默认关闭）
   - 引入轻量 filter(value) + filterNodeMethod（不改数据，仅控制可见/展开）
 - 阶段 2（按需）
-  - props 字段映射（props: { key/label/children/disabled/isLeaf }）（已完成）
+  - props 字段映射（props: { key/label/children/isLeaf }）（已完成）
   - 懒加载最小实现：lazy + load(node, resolve) + node.loading 显示
 - 阶段 3（可选）
   - 轻量 checkbox（三态、父子可选联动，默认关闭）

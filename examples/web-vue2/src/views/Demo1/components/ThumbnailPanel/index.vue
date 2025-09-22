@@ -61,8 +61,9 @@ export default {
       this.visible = true;
       this.$nextTick(async () => {
         await this.ensureRenderThumbnails();
-        const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
-        if (target != null) await this.scrollToPage(target, { center: true });
+        const target =
+          this.pendingPage != null ? this.pendingPage : this.currentPage;
+        if (target != null) await this.scrollToPage(target);
         this.pendingPage = null;
       });
     },
@@ -122,17 +123,17 @@ export default {
         this.totalPages
       );
     },
-    async scrollToPage(page, { center = true } = {}) {
+    async scrollToPage(page) {
       const canvas = await this.waitForCanvas(page, 500);
       if (!canvas) return;
-      const item = canvas.closest('.thumb-item') || canvas;
-      if (typeof item.scrollIntoView === 'function') {
-        item.scrollIntoView({ block: center ? 'center' : 'nearest', inline: 'nearest', behavior: "smooth" });
+      const item = canvas.closest(".thumb-item") || canvas;
+      if (typeof item?.scrollIntoView === "function") {
+        item?.scrollIntoView({ behavior: "smooth" });
       }
     },
     scrollCurrentIntoView() {
-      if (typeof this.currentPage === 'number') {
-        this.scrollToPage(this.currentPage, { center: true });
+      if (typeof this.currentPage === "number") {
+        this.scrollToPage(this.currentPage);
       }
     },
   },
@@ -159,7 +160,10 @@ export default {
   align-items: center;
   cursor: pointer;
   border-radius: 8px;
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
 }
 .thumb-item:active {
   transform: scale(0.98);

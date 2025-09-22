@@ -29,6 +29,8 @@
         duration</label
       >
       <label><input type="checkbox" v-model="selectable" />可选中</label>
+      <label><input type="checkbox" v-model="accordion" />互斥展开</label>
+
       <label
         ><input type="checkbox" v-model="useCustomSwitcher" />自定义开关</label
       >
@@ -57,7 +59,8 @@
         :active-key.sync="active"
         :indent="indent"
         :item-height="itemHeight"
-        :transition="transition"
+        :use-transition="transition"
+        :accordion="accordion"
         :duration="transitionDuration || 0"
         :selectable="selectable"
       >
@@ -91,9 +94,9 @@ export default {
       transition: true,
       transitionDuration: 300,
       selectable: true,
+      accordion: false,
       useCustomSwitcher: true,
       useMapped: false,
-
       nodes: [
         {
           key: "1",
@@ -138,7 +141,15 @@ export default {
                 { key: "4-1-4", label: "子 4-1-4" },
               ],
             },
-            { key: "4-2", label: "子 4-2" },
+            {
+              key: "4-2",
+              label: "子 4-2",
+              children: [
+                { key: "4-2-2", label: "子 4-2-2" },
+                { key: "4-2-3", label: "子 4-2-3" },
+                { key: "4-2-4", label: "子 4-2-4" },
+              ],
+            },
             { key: "4-3", label: "子 4-3" },
             { key: "4-4", label: "子 4-4" },
             { key: "4-5", label: "子 4-5" },
@@ -219,7 +230,7 @@ export default {
       const k = (this.gotoValue || "").trim();
       if (!k) return;
       // 统一“定位 + 激活”：仅展开祖先，设置 active，并可选滚动
-      this.$refs.tree.activate(k, { scroll: "center" });
+      this.$refs.tree.activate(k, { scroll: true });
     },
   },
 };

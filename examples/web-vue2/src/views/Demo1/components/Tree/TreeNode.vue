@@ -1,34 +1,29 @@
 <script>
+import commonMixin from "./commonMixin";
+
+/*
+    TreeNode（递归节点）职责说明：
+    - 仅负责单个节点的渲染与交互；不直接管理展开集合
+    - 展开状态来自父组件传入的 expandedMap；自身只维护派生状态 expanded
+    - 通过 @toggle / @select 向父组件上报交互事件（父负责更新 expandedKeys/activeKey）
+    - 使用过渡钩子实现“高度动画”；动画时长/缓动来自样式变量（--tree-duration/--tree-ease）
+    - 字段映射 props：{ key, label, children, isLeaf }，避免绑定具体数据结构
+  */
 export default {
   name: "TreeNode",
+  mixins: [commonMixin],
   props: {
     node: { type: Object, required: true },
     level: { type: Number, default: 1 },
     expandedMap: { type: Object, required: true },
     activeKey: [String, Number],
-    indent: { type: Number, default: 16 },
-    itemHeight: { type: Number, default: 44 },
-    useTransition: { type: Boolean, default: true },
-    duration: { type: Number, default: 250 },
-    easing: { type: String, default: "cubic-bezier(0.2,0,0,1)" },
-    // 字段映射
-    props: {
-      type: Object,
-      default: () => ({
-        key: "key",
-        label: "label",
-        children: "children",
-        disabled: "disabled",
-        isLeaf: "isLeaf",
-      }),
-    },
   },
   data() {
     return { expanded: false };
   },
   computed: {
     isLeaf() {
-      return this.getIsLeaf(this.node);
+      return this.isLeafNode(this.node);
     },
     isActive() {
       return this.activeKey === this.getKey(this.node);
@@ -38,32 +33,11 @@ export default {
     expandedMap: {
       immediate: true,
       handler() {
-        this.expanded = !!(
-          this.expandedMap && this.expandedMap[this.getKey(this.node)]
-        );
+        this.expanded = !!this?.expandedMap[this.getKey(this.node)];
       },
     },
   },
   methods: {
-    // mapping helpers
-    getKey(n) {
-      const kf = (this.props && this.props.key) || "key";
-      return n && n[kf];
-    },
-    getChildren(n) {
-      const cf = (this.props && this.props.children) || "children";
-      return (n && n[cf]) || [];
-    },
-    getLabel(n) {
-      const lf = (this.props && this.props.label) || "label";
-      return n ? n[lf] : undefined;
-    },
-    getIsLeaf(n) {
-      const lf = (this.props && this.props.isLeaf) || "isLeaf";
-      const ch = this.getChildren(n);
-      return !!(n && (n[lf] || !ch || ch.length === 0));
-    },
-
     toggle(e) {
       e && e.stopPropagation();
       if (this.isLeaf) return;
@@ -74,7 +48,7 @@ export default {
       this.$emit("select", this.node);
     },
     onEnter(el) {
-      console.log("onEnter");
+      // console.log("onEnter");
       // 手动改 height 触发 transiton height 过渡动画
       el.style.height = "0px";
       const h = el.scrollHeight + "px";
@@ -86,7 +60,7 @@ export default {
       el.style.height = "";
     },
     onLeave(el) {
-      console.log("onLeave");
+      // console.log("onLeave");
       // 手动改 height 触发 transiton height 过渡动画
       el.style.height = el.scrollHeight + "px";
       requestAnimationFrame(() => {
