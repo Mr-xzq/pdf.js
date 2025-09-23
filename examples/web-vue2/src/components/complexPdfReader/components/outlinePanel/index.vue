@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import Tree from "../Tree/index.vue";
+import Tree from "../tree/index.vue";
 
 // 图标
 import expandIconUrl from "@/assets/images/demo1/expand-2x.png";

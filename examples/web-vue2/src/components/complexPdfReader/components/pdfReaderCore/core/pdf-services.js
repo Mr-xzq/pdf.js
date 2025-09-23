@@ -1,6 +1,6 @@
 import { getPdfApplication } from "./pdf-application.js";
 import { EventBridge } from "./pdf-events.js";
-import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale";
+import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale.js";
 import { initializePdfJs } from "./pdf-config.js";
 import store from "@/store/index.js";
 

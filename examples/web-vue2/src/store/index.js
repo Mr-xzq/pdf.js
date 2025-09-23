@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { pdfReaderModule } from "../components/pdf-reader/store/index.js";
+import { pdfReaderModule } from "../components/complexPdfReader/components/pdfReaderCore/store/index.js";
 
 Vue.use(Vuex);
 

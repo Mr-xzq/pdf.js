@@ -39,12 +39,13 @@ const routes = [
     component: () => import("@/views/SimpleReaderDemo.vue"),
   },
   {
-    path: "/demo1",
-    component: () => import("@/views/Demo1/index.vue"),
+    path: "/complex-pdf-reader",
+    component: () => import("@/components/complexPdfReader/index.vue"),
   },
   {
     path: "/tree-test",
-    component: () => import("@/views/Demo1/components/Tree/Test.vue"),
+    component: () =>
+      import("@/components/complexPdfReader/components/tree/Test.vue"),
   },
 ];
 

@@ -1,14 +1,14 @@
 <template>
   <div class="demo-1">
-    <div class="top-toolbar">
+    <!-- <div class="top-toolbar">
       <div class="right-operate-tool">
-        <!-- <van-image class="search-tool-item" :src="searchIconUrl"></van-image>
+        <van-image class="search-tool-item" :src="searchIconUrl"></van-image>
         <van-image
           class="fullscreen-tool-item"
           :src="fullscreenIconUrl"
-        ></van-image> -->
+        ></van-image>
       </div>
-    </div>
+    </div> -->
     <div class="content-area">
       <pdf-reader
         ref="pdfReader"
@@ -136,14 +136,14 @@
 
 <script>
 // 组件
-import PdfReader from "@/components/pdf-reader/index.vue";
-import Drawer from "./components/Drawer/index.vue";
-import OutlinePanel from "./components/OutlinePanel/index.vue";
-import ThumbnailPanel from "./components/ThumbnailPanel/index.vue";
+import PdfReader from "./components/pdfReaderCore/index.vue";
+import Drawer from "./components/drawer/index.vue";
+import OutlinePanel from "./components/outlinePanel/index.vue";
+import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
 
 // 图标
-import fullscreenIconUrl from "@/assets/images/demo1/fullscreen-2x.png";
-import searchIconUrl from "@/assets/images/demo1/search-2x.png";
+// import fullscreenIconUrl from "@/assets/images/demo1/fullscreen-2x.png";
+// import searchIconUrl from "@/assets/images/demo1/search-2x.png";
 import thumbnailIconUrl from "@/assets/images/demo1/thumbnail-2x.png";
 import outlineIconUrl from "@/assets/images/demo1/outline-2x.png";
 import pageFlipIconUrl from "@/assets/images/demo1/page-flip-2x.png";
@@ -164,9 +164,9 @@ export default {
   data() {
     return {
       // 全屏
-      fullscreenIconUrl,
+      // fullscreenIconUrl,
       // 搜索
-      searchIconUrl,
+      // searchIconUrl,
       // 缩略图
       thumbnailIconUrl,
       // 目录
@@ -459,7 +459,9 @@ export default {
     transform: translateY(100%);
     opacity: 0;
     z-index: 9;
-    transition: transform 0.24s ease, opacity 0.24s ease;
+    transition:
+      transform 0.24s ease,
+      opacity 0.24s ease;
     &.is-open {
       transform: translateY(0);
       opacity: 1;

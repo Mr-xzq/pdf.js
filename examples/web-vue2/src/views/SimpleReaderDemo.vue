@@ -30,7 +30,7 @@
 </template>
 
 <script>
-import SimplePdfReader from "@/components/simple-pdf-reader/SimplePdfReader.vue";
+import SimplePdfReader from "@/components/simplePdfReader/SimplePdfReader.vue";
 
 export default {
   name: "SimpleReaderDemo",
