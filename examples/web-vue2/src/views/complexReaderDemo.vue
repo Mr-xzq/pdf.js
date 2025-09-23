@@ -68,7 +68,11 @@ export default {
     onLoadingStart(e) {
       const t = this.$toast;
       if (t && typeof t.loading === "function") {
-        t.loading({ message: e?.message || "加载中", duration: 0, forbidClick: true });
+        t.loading({
+          message: e?.message || "加载中",
+          duration: 0,
+          forbidClick: true,
+        });
       }
     },
     onLoadingStop() {

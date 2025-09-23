@@ -71,7 +71,6 @@ import {
 } from "../store/index.js";
 
 export default {
-
   name: "PdfViewport",
 
   components: {
@@ -208,7 +207,10 @@ export default {
     },
     docLoading(n) {
       if (n) {
-        this.$emit("loading-start", { source: "core", message: this.docMessage });
+        this.$emit("loading-start", {
+          source: "core",
+          message: this.docMessage,
+        });
       } else {
         this.$emit("loading-stop", { source: "core" });
       }
@@ -425,7 +427,8 @@ export default {
     onPageRendered(event) {
       const vp = event && event.viewport;
       if (vp) {
-        this.$refs.gesture && this.$refs.gesture.setContentSize(vp.width, vp.height);
+        this.$refs.gesture &&
+          this.$refs.gesture.setContentSize(vp.width, vp.height);
       }
       this.$nextTick(() => {
         this.$refs.gesture && this.$refs.gesture.updateContainerSize();

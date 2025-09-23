@@ -18,7 +18,6 @@ const state = {
   scale: 1.0,
   minScale: 0.1,
   maxScale: 10.0,
-
 };
 
 const mutations = {
@@ -35,12 +34,6 @@ const mutations = {
       state.scale = scale;
     }
   },
-
-
-
-
-
-
 
   // 重置查看器状态（精简版）
   RESET_VIEWER(state) {
@@ -86,7 +79,6 @@ const actions = {
     return state.currentPage;
   },
 
-
   /**
    * 设置缩放
    */
@@ -114,9 +106,6 @@ const actions = {
     return dispatch("setScale", round2(next));
   },
 
-
-
-
   /**
    * 重置查看器
    */
@@ -126,10 +115,6 @@ const actions = {
 };
 
 const getters = {
-
-
-
-
   // 导航状态
   navigationState: (state, _getters, _rootState, rootGetters) => {
     const totalPages = rootGetters["pdfReader/document/totalPages"];
@@ -153,8 +138,6 @@ const getters = {
     minScale: state.minScale,
     maxScale: state.maxScale,
   }),
-
-
 };
 
 export default {

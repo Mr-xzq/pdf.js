@@ -27,7 +27,6 @@
       class="pdf-page-container__annotation-layer"
       :style="annotationLayerStyle"
     ></div>
-
   </div>
 </template>
 
@@ -181,7 +180,11 @@ export default {
         this.rendering = false;
         this.rendered = true;
         // 首帧渲染完成后淡入画布
-        this.canvasStyle = { display: "block", opacity: 1, transition: "opacity .15s ease" };
+        this.canvasStyle = {
+          display: "block",
+          opacity: 1,
+          transition: "opacity .15s ease",
+        };
 
         this.$emit("page-rendered", {
           pageNumber: this.pageNumber,
@@ -437,7 +440,5 @@ export default {
     pointer-events: auto;
     z-index: var(--z-annot); // 明确置于文本层之上，保证点击
   }
-
 }
 </style>
-

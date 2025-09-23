@@ -14,4 +14,3 @@ export { BaseLayerBuilder } from "./layers/BaseLayerBuilder.js";
 export { TextLayerBuilder } from "./layers/TextLayerBuilder.js";
 export { AnnotationLayerBuilder } from "./layers/AnnotationLayerBuilder.js";
 export * from "./layers/lifecycle.js";
-

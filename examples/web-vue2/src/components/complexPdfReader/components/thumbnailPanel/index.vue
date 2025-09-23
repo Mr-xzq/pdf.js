@@ -90,7 +90,6 @@ export default {
       return (cssWidth / baseCss) * baseScale;
     },
 
-
     onSelect(page) {
       this.goToPage(page);
       this.$emit("selected", page);

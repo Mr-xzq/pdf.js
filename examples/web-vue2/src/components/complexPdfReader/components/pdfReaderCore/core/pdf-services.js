@@ -229,7 +229,6 @@ export class PdfServices {
       return null;
     }
   }
-
 }
 
 /**

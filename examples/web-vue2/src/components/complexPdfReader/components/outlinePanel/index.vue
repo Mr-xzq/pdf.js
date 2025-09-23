@@ -103,7 +103,6 @@ export default {
     },
   },
   methods: {
-
     async onTreeSelect(node) {
       console.log(
         "[Demo1] OutlinePanel.select",

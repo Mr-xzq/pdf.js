@@ -36,7 +36,10 @@ const mutations = {
     if (document) {
       state.documentInfo.numPages = document.numPages || 0;
       // pdf.js 推荐使用 `fingerprints[0]`；旧版本可能有 `fingerprint`
-      state.documentInfo.fingerprint = (document.fingerprints && document.fingerprints[0]) || document.fingerprint || null;
+      state.documentInfo.fingerprint =
+        (document.fingerprints && document.fingerprints[0]) ||
+        document.fingerprint ||
+        null;
     }
   },
 
@@ -52,7 +55,6 @@ const mutations = {
   SET_METADATA(state, metadata) {
     state.metadata = metadata;
   },
-
 
   // 设置加载状态
   SET_LOADING(state, loading) {
@@ -79,7 +81,6 @@ const mutations = {
     state.error = null;
   },
 
-
   // 重置状态
   RESET_DOCUMENT(state) {
     state.pdfDocument = null;
@@ -104,7 +105,6 @@ const mutations = {
 };
 
 const actions = {
-
   /**
    * 设置文档加载完成
    */
@@ -229,8 +229,6 @@ const actions = {
     commit("SET_ERROR", { error, type });
     commit("SET_LOADING", false);
   },
-
-
 
   /**
    * 设置密码状态
