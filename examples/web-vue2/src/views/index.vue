@@ -11,18 +11,15 @@
       <van-cell-group inset title="PDF.js 迁移测试">
         <van-cell center>
           <template #title>
-            <div class="cell-title">
-              <span>demo1</span>
-              <van-tag plain type="success">demo1</van-tag>
-            </div>
+            <div class="cell-title">complexReaderDemo</div>
           </template>
           <template #right-icon>
             <van-button
               type="primary"
               size="small"
               icon="description"
-              @click="goToDemo1"
-              >demo1</van-button
+              @click="goToComplexReaderDemo"
+              >complexReaderDemo</van-button
             >
           </template>
         </van-cell>
@@ -34,9 +31,9 @@
 <script>
 export default {
   methods: {
-    goToDemo1() {
+    goToComplexReaderDemo() {
       this.$router.push({
-        path: "/demo1",
+        path: "/complex-pdf-reader-demo",
       });
     },
   },
@@ -55,7 +52,7 @@ export default {
   .cell-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    margin-right: 8px;
   }
 }
 </style>

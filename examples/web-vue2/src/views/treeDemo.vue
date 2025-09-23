@@ -77,7 +77,8 @@
 </template>
 
 <script>
-import Tree from "./index.vue";
+import Tree from "@/components/complexPdfReader/components/tree/index.vue";
+
 export default {
   name: "TreeTest",
   components: { Tree },

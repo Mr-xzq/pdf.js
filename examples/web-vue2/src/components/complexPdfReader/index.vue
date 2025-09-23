@@ -1,5 +1,5 @@
 <template>
-  <div class="demo-1">
+  <div class="complex-pdf-reader">
     <!-- <div class="top-toolbar">
       <div class="right-operate-tool">
         <van-image class="search-tool-item" :src="searchIconUrl"></van-image>
@@ -10,12 +10,12 @@
       </div>
     </div> -->
     <div class="content-area">
-      <pdf-reader
+      <pdf-reader-core
         ref="pdfReader"
-        :src="pdfSrc"
-        :initial-page="1"
-        :initial-scale="1"
-        :text-layer-mode="1"
+        :src="src"
+        :initial-page="initialPage"
+        :initial-scale="initialScale"
+        :text-layer-mode="textLayerMode"
         :zoom-target="zoomTarget"
         :auto-play-enabled="autoPlay"
         :auto-play-interval-ms="autoPlayIntervalMs"
@@ -23,6 +23,8 @@
         @document-error="onPdfError"
         @page-changed="onPdfPageChanged"
         @scale-changed="onPdfScaleChanged"
+        @loading-start="onLoadingStart"
+        @loading-stop="onLoadingStop"
       />
     </div>
     <div class="bottom-toolbar">
@@ -47,7 +49,7 @@
       ></van-image> -->
       <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
       <van-image
-        v-if="lastScaleBeforeZoom == null"
+        v-if="!lastScaleBeforeZoom"
         class="zoom-in-tool-item"
         :src="zoomInIconUrl"
         @click="handleZoomIn"
@@ -67,38 +69,56 @@
     </div>
     <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
       <div class="nav-row">
-        <van-button size="small" type="default" plain @click="goFirstPage"
-          >首页</van-button
-        >
-        <van-button size="small" type="default" plain @click="goPrevPage"
-          >上一页</van-button
-        >
+        <van-image
+          class="nav-row-item first-page"
+          :src="firstPageIconUrl"
+          @click="goFirstPage"
+        ></van-image>
+
+        <van-image
+          class="nav-row-item"
+          :src="previousPageIconUrl"
+          @click="goPrevPage"
+        ></van-image>
+
         <van-field
+          ref="pageInput"
           class="page-input"
-          v-model.number="gotoPageInput"
-          type="number"
+          :value="
+            isEditingPageInput ? String(gotoPageInput || '') : pageFieldDisplay
+          "
+          :readonly="!isEditingPageInput"
+          :type="isEditingPageInput ? 'digit' : 'text'"
           input-align="center"
-          clearable
-          @keyup.enter.native="goToPageByInput"
+          @click="handlePageFieldClick"
+          @input="onPageFieldInput"
+          @blur="cancelEditPage"
+          @keyup.enter.native="finishEditPage"
         />
-        <span class="page-count">{{ sliderValue }}/{{ totalPages }}</span>
-        <van-button size="small" type="default" plain @click="goNextPage"
-          >下一页</van-button
-        >
-        <van-button size="small" type="default" plain @click="goLastPage"
-          >尾页</van-button
-        >
+
+        <van-image
+          class="nav-row-item"
+          :src="nextPageIconUrl"
+          @click="goNextPage"
+        ></van-image>
+
+        <van-image
+          class="nav-row-item last-page"
+          :src="lastPageIconUrl"
+          @click="goLastPage"
+        ></van-image>
       </div>
-      <div class="slider-wrap">
-        <van-slider
-          v-model="sliderValue"
-          :min="1"
-          :max="Math.max(totalPages, 1)"
-          :step="1"
-          :lazy-change="true"
-          @change="onSliderChange"
-        />
-      </div>
+
+      <van-slider
+        class="slider-wrap"
+        v-model="sliderValue"
+        :min="1"
+        :max="Math.max(totalPages, 1)"
+        :step="1"
+        :lazy-change="true"
+        @drag-start="onSliderDragStart"
+        @change="onSliderChange"
+      />
     </div>
 
     <drawer
@@ -114,6 +134,8 @@
         :current-page="currentPage"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
+        @loading-start="onLoadingStart"
+        @loading-stop="onLoadingStop"
       />
     </drawer>
     <drawer
@@ -129,6 +151,8 @@
         :go-to-page="goToPage"
         :current-page="currentPage"
         @selected="closeThumbnailDrawer"
+        @loading-start="onLoadingStart"
+        @loading-stop="onLoadingStop"
       />
     </drawer>
   </div>
@@ -136,30 +160,71 @@
 
 <script>
 // 组件
-import PdfReader from "./components/pdfReaderCore/index.vue";
+import PdfReaderCore from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/drawer/index.vue";
 import OutlinePanel from "./components/outlinePanel/index.vue";
 import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
 
 // 图标
-// import fullscreenIconUrl from "@/assets/images/demo1/fullscreen-2x.png";
-// import searchIconUrl from "@/assets/images/demo1/search-2x.png";
-import thumbnailIconUrl from "@/assets/images/demo1/thumbnail-2x.png";
-import outlineIconUrl from "@/assets/images/demo1/outline-2x.png";
-import pageFlipIconUrl from "@/assets/images/demo1/page-flip-2x.png";
-// import pageFlipAudioIconUrl from "@/assets/images/demo1/page-flip-audio-2x.png";
-import zoomInIconUrl from "@/assets/images/demo1/zoom-in-2x.png";
-import zoomOutIconUrl from "@/assets/images/demo1/zoom-out-2x.png";
-import autoPlayIconUrl from "@/assets/images/demo1/auto-play-2x.png";
-import pauseIconUrl from "@/assets/images/demo1/pause-2x.png";
+// import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";
+// import searchIconUrl from "@/assets/images/complexPdfReader/search-2x.png";
+import thumbnailIconUrl from "@/assets/images/complexPdfReader/thumbnail-2x.png";
+import outlineIconUrl from "@/assets/images/complexPdfReader/outline-2x.png";
+import pageFlipIconUrl from "@/assets/images/complexPdfReader/page-flip-2x.png";
+import firstPageIconUrl from "@/assets/images/complexPdfReader/firstPage-2x.png";
+import lastPageIconUrl from "@/assets/images/complexPdfReader/lastPage-2x.png";
+import previousPageIconUrl from "@/assets/images/complexPdfReader/previousPage-2x.png";
+import nextPageIconUrl from "@/assets/images/complexPdfReader/nextPage-2x.png";
+
+// import pageFlipAudioIconUrl from "@/assets/images/complexPdfReader/page-flip-audio-2x.png";
+import zoomInIconUrl from "@/assets/images/complexPdfReader/zoom-in-2x.png";
+import zoomOutIconUrl from "@/assets/images/complexPdfReader/zoom-out-2x.png";
+import autoPlayIconUrl from "@/assets/images/complexPdfReader/auto-play-2x.png";
+import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
 
 export default {
-  name: "Demo1",
+  name: "ComplexPdfReader",
   components: {
     Drawer,
-    PdfReader,
+    PdfReaderCore,
     OutlinePanel,
     ThumbnailPanel,
+  },
+  props: {
+    // 文档地址（对外暴露，默认指向示例文件）
+    src: {
+      type: String,
+      default: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
+    },
+    // 初始页
+    initialPage: {
+      type: Number,
+      default: 1,
+    },
+    // 初始缩放
+    initialScale: {
+      type: Number,
+      default: 1,
+    },
+    // 文本层模式（0=禁用，1=启用）
+    textLayerMode: {
+      type: Number,
+      default: 1,
+    },
+    // 双击放大目标倍数
+    zoomTarget: {
+      type: Number,
+      default: 1.5,
+    },
+    // 自动播放（外部可控，内部也可切换）
+    autoPlayEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    autoPlayIntervalMs: {
+      type: Number,
+      default: 1500,
+    },
   },
   data() {
     return {
@@ -173,6 +238,10 @@ export default {
       outlineIconUrl,
       // 翻页
       pageFlipIconUrl,
+      firstPageIconUrl,
+      lastPageIconUrl,
+      previousPageIconUrl,
+      nextPageIconUrl,
       // 翻页声音
       // pageFlipAudioIconUrl,
       // 放大
@@ -185,12 +254,10 @@ export default {
       pauseIconUrl,
       isShowOutlineDrawer: false,
       isShowThumbnailDrawer: false,
-      pdfSrc: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
+      isEditingPageInput: false,
       // 自动播放相关（由 PdfReader 内部驱动）
-      autoPlay: false,
-      autoPlayIntervalMs: 1500,
+      autoPlay: this.autoPlayEnabled,
       // Drawer/导航相关
-
       isShowPageNav: false,
       gotoPageInput: 1,
       // 页信息
@@ -199,9 +266,19 @@ export default {
       totalPages: 0,
       // 缩放信息（单一目标倍数）
       currentScale: 1,
-      zoomTarget: 1.5,
       lastScaleBeforeZoom: null,
     };
+  },
+  watch: {
+    // 外部通过 prop 变更时，同步到本地 data
+    autoPlayEnabled(val) {
+      this.autoPlay = !!val;
+    },
+  },
+  computed: {
+    pageFieldDisplay() {
+      return `${this.sliderValue}/${this.totalPages}`;
+    },
   },
   methods: {
     // Drawer 关闭（按面板分别关闭）
@@ -265,7 +342,7 @@ export default {
     },
     goLastPage() {
       const t = this.getTotalPages?.();
-      if (t && t > 0) this.goToPage(t);
+      if (Number.isFinite(t) && t && t > 0) this.goToPage(t);
     },
     goToPageByInput() {
       const n = Number(this.gotoPageInput);
@@ -277,6 +354,19 @@ export default {
       const n = Number(val);
       const t = this.getTotalPages?.() || 0;
       if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
+    },
+
+    // 与滑条交互开始：若处于编辑态则退出（避免不触发 blur 的情况）
+    onSliderDragStart() {
+      if (this.isEditingPageInput) {
+        const ref = this.$refs.pageInput;
+        if (ref && typeof ref.blur === "function") {
+          try {
+            ref.blur();
+          } catch (e) {}
+        }
+        this.isEditingPageInput = false;
+      }
     },
 
     // 下一页（单击“翻页”按钮）
@@ -296,7 +386,7 @@ export default {
         reader.setScale(this.zoomTarget);
       }
     },
-    // 缩小：恢复到最近一次“放大前”的倍数（B 方案），若没有记录则退回基线倍数
+    // 缩小：恢复到最近一次“放大前”的倍数，若没有记录则退回基线倍数
     handleResetZoom() {
       const reader = this.$refs.pdfReader;
       if (reader && typeof reader.setScale === "function") {
@@ -314,9 +404,10 @@ export default {
       }
     },
 
-    // 自动播放：交由 PdfReader 内部实现，这里仅切换 props
+    // 自动播放：交由 PdfReader 内部实现，这里仅切换 props，并向外同步（.sync）
     handleToggleAutoPlay() {
       this.autoPlay = !this.autoPlay;
+      this.$emit("update:autoPlayEnabled", this.autoPlay);
     },
 
     // Drawer -> PdfReader 的方法转发（Plan A）
@@ -330,6 +421,35 @@ export default {
         ? r.renderThumbnail(pageNumber, canvasEl, options)
         : Promise.resolve();
     },
+
+    // 页码输入：编辑/回显切换
+    startEditPage() {
+      this.gotoPageInput = this.sliderValue;
+      this.isEditingPageInput = true;
+      this.$nextTick(() => {
+        const pageInputRef = this.$refs.pageInput;
+        if (typeof pageInputRef?.focus === "function") pageInputRef?.focus();
+      });
+    },
+    finishEditPage() {
+      this.isEditingPageInput = false;
+      this.goToPageByInput();
+    },
+    cancelEditPage() {
+      // 仅退出编辑态，不进行跳转
+      this.isEditingPageInput = false;
+    },
+    handlePageFieldClick() {
+      if (!this.isEditingPageInput) {
+        this.startEditPage();
+      }
+    },
+    onPageFieldInput(val) {
+      if (this.isEditingPageInput) {
+        this.gotoPageInput = Number(val);
+      }
+    },
+
     goToPage(n) {
       const r = this.$refs.pdfReader;
       if (r && typeof r.goToPage === "function") r.goToPage(n);
@@ -351,8 +471,8 @@ export default {
         : Promise.resolve(null);
     },
 
-    // 以下事件用于和外层 UI 同步
-    onPdfLoaded() {
+    // 以下事件用于和外层 UI 同步，并向外转发事件
+    onPdfLoaded(e) {
       this.totalPages = this.getTotalPages?.() || 0;
       this.gotoPageInput = this.currentPage;
       this.sliderValue = this.currentPage;
@@ -367,9 +487,11 @@ export default {
           });
         }
       }
+      this.$emit("document-loaded", e);
     },
     onPdfError(e) {
       console.error("PDF 加载失败", e);
+      this.$emit("document-error", e);
     },
     onPdfPageChanged(e) {
       if (e && e.pageNumber) {
@@ -377,27 +499,36 @@ export default {
         this.gotoPageInput = e.pageNumber;
         this.sliderValue = e.pageNumber;
       }
+      this.$emit("page-changed", e);
     },
+    onLoadingStart(e) {
+      this.$emit("loading-start", e);
+    },
+    onLoadingStop(e) {
+      this.$emit("loading-stop", e);
+    },
+
     onPdfScaleChanged(e) {
       const s = typeof e === "number" ? e : e && e.scale;
       if (typeof s === "number") this.currentScale = s;
+      this.$emit("scale-changed", e);
     },
   },
 };
 </script>
 
 <style lang="less" scoped>
-.demo-1 {
+.complex-pdf-reader {
   @top-toolbar-height: 2.73rem;
   @bottom-toolbar-height: 4.14rem;
 
   position: relative;
 
-  height: 100vh;
+  height: 100%;
   padding-top: @top-toolbar-height;
   padding-bottom: @bottom-toolbar-height;
 
-  background-image: url("@/assets/images/demo1/full-background-2x.jpg");
+  background-image: url("@/assets/images/complexPdfReader/full-background-2x.jpg");
   background-repeat: no-repeat;
   background-size: 100% 100%;
 
@@ -453,7 +584,7 @@ export default {
     gap: 8px;
     padding: 0.8rem 1rem 1rem;
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 -0.29rem 0.29rem rgba(0, 0, 0, 0.05);
+    //box-shadow: 0 -0.29rem 0.29rem rgba(0, 0, 0, 0.05);
     border-radius: 0.43rem 0.43rem 0 0;
     // 初始收起：下滑隐藏，避免遮挡与点击穿透
     transform: translateY(100%);
@@ -471,25 +602,41 @@ export default {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 2rem;
       width: 100%;
       flex-wrap: wrap;
+
+      .nav-row-item {
+        width: 0.7rem;
+        height: 1.3rem;
+
+        &.first-page,
+        &.last-page {
+          width: 0.9rem;
+          height: 1.2rem;
+        }
+      }
     }
+
     .slider-wrap {
       width: 100%;
       padding: 0 0.6rem;
       margin-top: 10px;
     }
+
     .page-input {
-      width: 5.6rem;
-      /deep/ .van-field__control {
-        text-align: center;
-      }
-    }
-    .page-count {
-      min-width: 3.6rem;
-      text-align: center;
-      color: #666;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      width: 12rem;
+      height: 2rem;
+      border: 0.07rem solid rgba(241, 234, 250, 1);
+      border-radius: 3.21rem;
+
+      font-size: 0.86rem;
+      color: #000000;
+      letter-spacing: 0;
+      font-weight: 400;
     }
   }
 
@@ -507,8 +654,8 @@ export default {
 
     opacity: 0.7;
     background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
-    box-shadow: 0 -0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
-    border-radius: 0.43rem 0.43rem 0 0;
+    //box-shadow: 0 -0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
+    //border-radius: 0.43rem 0.43rem 0 0;
     z-index: 10;
 
     .thumbnail-tool-item {

@@ -46,13 +46,13 @@ export default {
     };
   },
   async mounted() {
-    this.showLoadingToast();
+    this.$emit("loading-start", { source: "thumbnail" });
     try {
       this.totalPages = await this.getTotalPages();
       await this.ensureRenderThumbnails();
       this.trySyncCurrent();
     } finally {
-      this.clearLoadingToast();
+      this.$emit("loading-stop", { source: "thumbnail" });
     }
   },
   watch: {
@@ -90,20 +90,7 @@ export default {
       return (cssWidth / baseCss) * baseScale;
     },
 
-    showLoadingToast() {
-      const t = this.$toast;
-      if (t && typeof t.loading === "function") {
-        t.loading({
-          message: "加载中",
-          duration: 0,
-          forbidClick: true,
-        });
-      }
-    },
-    clearLoadingToast() {
-      const t = this.$toast;
-      if (t && typeof t.clear === "function") t.clear();
-    },
+
     onSelect(page) {
       this.goToPage(page);
       this.$emit("selected", page);
@@ -111,8 +98,8 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        let needToast = !this.thumbsRendered;
-        if (needToast) this.showLoadingToast();
+        const needLoad = !this.thumbsRendered;
+        if (needLoad) this.$emit("loading-start", { source: "thumbnail" });
         try {
           await this.ensureRenderThumbnails();
           const target =
@@ -120,7 +107,7 @@ export default {
           if (target != null) await this.scrollToPage(target);
           this.pendingPage = null;
         } finally {
-          if (needToast) this.clearLoadingToast();
+          if (needLoad) this.$emit("loading-stop", { source: "thumbnail" });
         }
       });
     },

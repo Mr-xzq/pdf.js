@@ -23,8 +23,8 @@
 import Tree from "../tree/index.vue";
 
 // 图标
-import expandIconUrl from "@/assets/images/demo1/expand-2x.png";
-import collapseIconUrl from "@/assets/images/demo1/collapse-2x.png";
+import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
+import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
 export default {
   name: "OutlinePanel",
@@ -56,7 +56,7 @@ export default {
     };
   },
   async mounted() {
-    this.showLoadingToast();
+    this.$emit("loading-start", { source: "outline" });
     try {
       const data = await this.getOutline();
       this.outline = Array.isArray(data) ? data : [];
@@ -69,7 +69,7 @@ export default {
         this.activeKey = initKey;
       }
     } finally {
-      this.clearLoadingToast();
+      this.$emit("loading-stop", { source: "outline" });
     }
   },
   watch: {
@@ -103,20 +103,7 @@ export default {
     },
   },
   methods: {
-    showLoadingToast() {
-      const t = this.$toast;
-      if (t && typeof t.loading === "function") {
-        t.loading({
-          message: "加载中",
-          duration: 0,
-          forbidClick: true,
-        });
-      }
-    },
-    clearLoadingToast() {
-      const t = this.$toast;
-      if (t && typeof t.clear === "function") t.clear();
-    },
+
     async onTreeSelect(node) {
       console.log(
         "[Demo1] OutlinePanel.select",
@@ -135,8 +122,8 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        let needToast = !this.pageMapReady;
-        if (needToast) this.showLoadingToast();
+        const needLoad = !this.pageMapReady;
+        if (needLoad) this.$emit("loading-start", { source: "outline" });
         try {
           await this.ensurePageMapOnce();
           const k =
@@ -148,7 +135,7 @@ export default {
             this.pendingActiveKey = null;
           }
         } finally {
-          if (needToast) this.clearLoadingToast();
+          if (needLoad) this.$emit("loading-stop", { source: "outline" });
         }
       });
     },

@@ -206,9 +206,9 @@ export default {
     },
     docLoading(n) {
       if (n) {
-        this.showToastLoading("加载中");
+        this.$emit("loading-start", { source: "core", message: this.docMessage });
       } else {
-        this.clearToastLoading();
+        this.$emit("loading-stop", { source: "core" });
       }
     },
   },
@@ -227,20 +227,7 @@ export default {
       zoomInAction: "zoomIn",
       zoomOutAction: "zoomOut",
     }),
-    showToastLoading(message) {
-      const t = this.$toast;
-      if (t && typeof t.loading === "function") {
-        t.loading({
-          message: message || "加载中",
-          duration: 0,
-          forbidClick: true,
-        });
-      }
-    },
-    clearToastLoading() {
-      const t = this.$toast;
-      if (t && typeof t.clear === "function") t.clear();
-    },
+
     /**
      * 初始化服务
      */

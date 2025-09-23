@@ -12,6 +12,8 @@
     @page-changed="onPageChanged"
     @scale-changed="onScaleChanged"
     @page-rendered="onPageRendered"
+    @loading-start="onLoadingStart"
+    @loading-stop="onLoadingStop"
     ref="viewerCore"
   />
 </template>
@@ -186,6 +188,13 @@ export default {
 
     onLoadProgress(event) {
       this.$emit("load-progress", event);
+    },
+
+    onLoadingStart(event) {
+      this.$emit("loading-start", event);
+    },
+    onLoadingStop(event) {
+      this.$emit("loading-stop", event);
     },
 
     onPageChanged(event) {
