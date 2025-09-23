@@ -20,15 +20,16 @@
       v-else-if="documentLoaded"
       class="pdf-viewer-core__content"
       ref="content"
-      @mousedown="onPanStart"
-      @mousemove="onPanMove"
-      @mouseup="onPanEnd"
-      @mouseleave="onPanEnd"
-      @touchstart="onPanStart"
-      @touchmove="onPanMove"
-      @touchend="onPanEnd"
     >
-      <div class="pdf-viewer-core__pan" :style="panStyle">
+      <gesture-container
+        ref="gesture"
+        :scale.sync="currentScale"
+        :gestures-enabled="gesturesEnabled"
+        :zoom-target="zoomTarget"
+        @update:scale="setScale"
+        @request-prev-page="prevPage"
+        @request-next-page="nextPage"
+      >
         <pdf-page
           :page-number="currentPage"
           :scale="currentScale"
@@ -39,7 +40,7 @@
           @render-error="onRenderError"
           @canvas-click="onCanvasClick"
         />
-      </div>
+      </gesture-container>
     </div>
 
     <!-- 空状态：仅在“无 src 且不在加载中”时显示；加载过程不显示 empty 占位 -->
@@ -59,7 +60,7 @@ import PdfPage from "./PdfPage.vue";
 import PdfLoadingProgress from "./PdfLoadingProgress.vue";
 import PdfErrorDisplay from "./PdfErrorDisplay.vue";
 import PdfEmptyState from "./PdfEmptyState.vue";
-import gestureMixin from "./mixins/gesture.js";
+import GestureContainer from "./GestureContainer.vue";
 
 import {
   mapDocumentState,
@@ -70,7 +71,7 @@ import {
 } from "../store/index.js";
 
 export default {
-  mixins: [gestureMixin],
+
   name: "PdfViewport",
 
   components: {
@@ -78,6 +79,7 @@ export default {
     PdfLoadingProgress,
     PdfErrorDisplay,
     PdfEmptyState,
+    GestureContainer,
   },
 
   props: {
@@ -274,10 +276,9 @@ export default {
       }
 
       try {
-        // 本地 UI 状态尽量从 Store 读取，这里不再手动置本地 loading/进度
         this.documentLoaded = false;
 
-        // 统一由 Store 执行真实加载，并在完成后由组件接管文档
+        // 统一由 Store 执行真实加载，并在完成后由组件接管
         await this.realLoadDocument({ src: this.src });
 
         // 从 Store 取出文档并附加给 Services（使用映射的 computed）
@@ -290,9 +291,10 @@ export default {
             info: {
               numPages: infoState.numPages || pdfDocument?.numPages || 0,
               fingerprint:
-                infoState.fingerprint || pdfDocument?.fingerprint || null,
-              Title: infoState.title || "",
-              Author: infoState.author || "",
+                infoState.fingerprint ||
+                (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+                pdfDocument?.fingerprint ||
+                null,
             },
             metadata,
           });
@@ -303,12 +305,18 @@ export default {
           document: pdfDocument,
           // 兼容旧结构：顶层也提供 numPages/fingerprint
           numPages: infoState.numPages || pdfDocument?.numPages || 0,
-          fingerprint: infoState.fingerprint || pdfDocument?.fingerprint,
+          fingerprint:
+            infoState.fingerprint ||
+            (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+            pdfDocument?.fingerprint ||
+            null,
           info: {
             numPages: infoState.numPages || pdfDocument?.numPages || 0,
-            title: infoState.title || "",
-            author: infoState.author || "",
-            fingerprint: infoState.fingerprint || pdfDocument?.fingerprint,
+            fingerprint:
+              infoState.fingerprint ||
+              (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+              pdfDocument?.fingerprint ||
+              null,
           },
         };
         this.onDocumentLoaded(loadedEvent);
@@ -365,9 +373,6 @@ export default {
         document: event.document,
         info: {
           numPages: event.numPages,
-          title: event.info?.Title || "",
-
-          author: event.info?.Author || "",
           fingerprint: event.fingerprint,
         },
       });
@@ -418,15 +423,13 @@ export default {
      * 处理页面渲染完成
      */
     onPageRendered(event) {
-      // 更新内容尺寸并约束平移边界
       const vp = event && event.viewport;
       if (vp) {
-        this.contentWidth = vp.width;
-        this.contentHeight = vp.height;
+        this.$refs.gesture && this.$refs.gesture.setContentSize(vp.width, vp.height);
       }
       this.$nextTick(() => {
-        this.updateContainerSize();
-        this.clampPan();
+        this.$refs.gesture && this.$refs.gesture.updateContainerSize();
+        this.$refs.gesture && this.$refs.gesture.clampPan();
       });
       this.$emit("page-rendered", event);
     },
@@ -437,6 +440,15 @@ export default {
     onRenderError(event) {
       console.error("页面渲染错误:", event);
       this.$emit("render-error", event);
+    },
+
+    /**
+     * 转发 PdfPage 的 canvas 点击事件给手势容器
+     */
+    onCanvasClick(payload) {
+      if (this.$refs.gesture && this.$refs.gesture.onCanvasClick) {
+        this.$refs.gesture.onCanvasClick(payload);
+      }
     },
 
     // 公共方法
@@ -591,7 +603,7 @@ export default {
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.currentScale) > 0.005) {
-          this.initialFitScale = computed;
+          this.$refs.gesture && this.$refs.gesture.setInitialFitScale(computed);
           this.setScale(computed);
         }
       } catch (e) {

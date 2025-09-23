@@ -1,6 +1,5 @@
 <template>
   <div class="pdf-empty">
-    <div class="icon">📄</div>
     <div class="message">请选择 PDF 文件</div>
   </div>
 </template>
@@ -20,12 +19,6 @@ export default {
   justify-content: center;
   padding: 32px;
   text-align: center;
-
-  .icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
 
   .message {
     font-size: 16px;

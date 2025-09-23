@@ -112,13 +112,20 @@
       <van-slider
         class="slider-wrap"
         v-model="sliderValue"
+        active-color="#CBCBCB"
+        inactive-color="#F9F5FF"
+        bar-height="0.29rem"
         :min="1"
         :max="Math.max(totalPages, 1)"
         :step="1"
         :lazy-change="true"
         @drag-start="onSliderDragStart"
         @change="onSliderChange"
-      />
+      >
+        <template #button>
+          <div class="custom-slide-button"></div>
+        </template>
+      </van-slider>
     </div>
 
     <drawer
@@ -522,6 +529,14 @@ export default {
   @top-toolbar-height: 2.73rem;
   @bottom-toolbar-height: 4.14rem;
 
+  /* z-index */
+  --z-canvas: 0;
+  --z-text: 1;
+  --z-annot: 2;
+  --z-toolbar: 10;
+  --z-page-nav: 9;
+  --z-page-nav-open: 11;
+
   position: relative;
 
   height: 100%;
@@ -574,7 +589,7 @@ export default {
   }
 
   .page-nav {
-    position: fixed;
+    position: absolute;
     left: 0;
     right: 0;
     bottom: @bottom-toolbar-height;
@@ -582,27 +597,24 @@ export default {
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 0.8rem 1rem 1rem;
-    background: rgba(255, 255, 255, 0.95);
+    padding: 0.8rem 2.39rem;
+    background: #fff;
     //box-shadow: 0 -0.29rem 0.29rem rgba(0, 0, 0, 0.05);
     border-radius: 0.43rem 0.43rem 0 0;
     // 初始收起：下滑隐藏，避免遮挡与点击穿透
     transform: translateY(100%);
     opacity: 0;
-    z-index: 9;
-    transition:
-      transform 0.24s ease,
-      opacity 0.24s ease;
+    z-index: var(--z-page-nav);
+    transition: all 240ms ease;
     &.is-open {
       transform: translateY(0);
       opacity: 1;
-      z-index: 11;
+      z-index: var(--z-page-nav-open);
     }
     .nav-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 2rem;
+      justify-content: space-between;
       width: 100%;
       flex-wrap: wrap;
 
@@ -619,9 +631,19 @@ export default {
     }
 
     .slider-wrap {
-      width: 100%;
-      padding: 0 0.6rem;
-      margin-top: 10px;
+      margin: 10px 0;
+
+      &.van-slider {
+        background: #cbcbcb;
+      }
+
+      .custom-slide-button {
+        width: 1.43rem;
+        height: 1.43rem;
+        background: #e5d7f6;
+        border-radius: 50%;
+        border: 3px solid #7e38d2;
+      }
     }
 
     .page-input {
@@ -656,7 +678,7 @@ export default {
     background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
     //box-shadow: 0 -0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
     //border-radius: 0.43rem 0.43rem 0 0;
-    z-index: 10;
+    z-index: var(--z-toolbar);
 
     .thumbnail-tool-item {
       width: 1.7rem;

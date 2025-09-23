@@ -11,15 +11,10 @@ const state = {
   documentInfo: {
     numPages: 0,
     fingerprint: null,
-    title: "",
-    author: "",
   },
 
   // 文档元数据
   metadata: null,
-
-  // 文档大纲
-  outline: null,
 
   // 加载状态
   loading: false,
@@ -28,10 +23,6 @@ const state = {
 
   // 错误状态
   error: null,
-  errorType: null, // 'load', 'render', 'password', 'network'
-
-  // 文档源
-  src: "",
 
   // 加载控制
   loadToken: 0,
@@ -43,8 +34,9 @@ const mutations = {
   SET_DOCUMENT(state, document) {
     state.pdfDocument = document;
     if (document) {
-      state.documentInfo.numPages = document.numPages;
-      state.documentInfo.fingerprint = document.fingerprint;
+      state.documentInfo.numPages = document.numPages || 0;
+      // pdf.js 推荐使用 `fingerprints[0]`；旧版本可能有 `fingerprint`
+      state.documentInfo.fingerprint = (document.fingerprints && document.fingerprints[0]) || document.fingerprint || null;
     }
   },
 
@@ -61,10 +53,6 @@ const mutations = {
     state.metadata = metadata;
   },
 
-  // 设置文档大纲
-  SET_OUTLINE(state, outline) {
-    state.outline = outline;
-  },
 
   // 设置加载状态
   SET_LOADING(state, loading) {
@@ -81,22 +69,16 @@ const mutations = {
     state.loadMessage = message || "";
   },
 
-  // 设置错误
-  SET_ERROR(state, { error, type }) {
+  // 设置错误（精简：不再区分 errorType）
+  SET_ERROR(state, { error }) {
     state.error = error;
-    state.errorType = type || "unknown";
   },
 
   // 清除错误
   CLEAR_ERROR(state) {
     state.error = null;
-    state.errorType = null;
   },
 
-  // 设置文档源
-  SET_SRC(state, src) {
-    state.src = src;
-  },
 
   // 重置状态
   RESET_DOCUMENT(state) {
@@ -104,17 +86,12 @@ const mutations = {
     state.documentInfo = {
       numPages: 0,
       fingerprint: null,
-      title: "",
-      author: "",
     };
     state.metadata = null;
-    state.outline = null;
     state.loading = false;
     state.loadProgress = 0;
     state.loadMessage = "";
     state.error = null;
-    state.errorType = null;
-    state.src = "";
     // 取消控制
     state.loadToken = 0;
     if (state.abortController) {
@@ -127,22 +104,21 @@ const mutations = {
 };
 
 const actions = {
-  /**
-   * 加载文档（开始）- 仅置状态
-   */
-  async loadDocument({ commit }, { src }) {
-    commit("SET_LOADING", true);
-    commit("CLEAR_ERROR");
-    commit("SET_SRC", src);
-    return { success: true };
-  },
 
   /**
    * 设置文档加载完成
    */
   setDocumentLoaded({ commit, dispatch }, { document, info }) {
     commit("SET_DOCUMENT", document);
-    commit("SET_DOCUMENT_INFO", info);
+    //  
+    commit("SET_DOCUMENT_INFO", {
+      numPages: document?.numPages || info?.numPages || 0,
+      fingerprint:
+        info?.fingerprint ||
+        (document?.fingerprints && document.fingerprints[0]) ||
+        document?.fingerprint ||
+        null,
+    });
     commit("SET_LOADING", false);
     commit("CLEAR_ERROR");
 
@@ -175,7 +151,6 @@ const actions = {
       // 置状态（便于直接调用 realLoadDocument）
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
-      commit("SET_SRC", src);
 
       // 动态导入 headless loader，避免循环依赖
       const { loadPdfDocument } = await import("../../core/pdf-loader.js");
@@ -210,9 +185,11 @@ const actions = {
       commit("SET_DOCUMENT", pdfDocument);
       commit("SET_DOCUMENT_INFO", {
         numPages: pdfDocument?.numPages || 0,
-        fingerprint: pdfDocument?.fingerprint || null,
-        title: info?.Title || "",
-        author: info?.Author || "",
+        // 优先使用 fingerprints[0]，回退 fingerprint
+        fingerprint:
+          (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+          pdfDocument?.fingerprint ||
+          null,
       });
       // 元数据（可选）
       if (metadata) {
@@ -253,51 +230,7 @@ const actions = {
     commit("SET_LOADING", false);
   },
 
-  /**
-   * 获取文档大纲
-   */
-  async fetchOutline({ commit, state }) {
-    if (!state.pdfDocument) {
-      throw new Error("文档未加载");
-    }
 
-    try {
-      const outline = await state.pdfDocument.getOutline();
-      commit("SET_OUTLINE", outline);
-      return outline;
-    } catch (error) {
-      console.error("获取文档大纲失败:", error);
-      commit("SET_OUTLINE", null);
-      return null;
-    }
-  },
-
-  /**
-   * 获取文档元数据
-   */
-  async fetchMetadata({ commit, state }) {
-    if (!state.pdfDocument) {
-      throw new Error("文档未加载");
-    }
-
-    try {
-      const metadata = await state.pdfDocument.getMetadata();
-      commit("SET_METADATA", metadata.metadata);
-
-      // 更新文档信息（MVP版本：只保留核心信息）
-      if (metadata.info) {
-        commit("SET_DOCUMENT_INFO", {
-          title: metadata.info.Title || "",
-          author: metadata.info.Author || "",
-        });
-      }
-
-      return metadata;
-    } catch (error) {
-      console.error("获取文档元数据失败:", error);
-      return null;
-    }
-  },
 
   /**
    * 设置密码状态
@@ -315,45 +248,8 @@ const getters = {
   // 文档是否已加载
   isDocumentLoaded: state => !!state.pdfDocument,
 
-  // 文档是否正在加载
-  isLoading: state => state.loading,
-
-  // 是否有错误
-  hasError: state => !!state.error,
-
-  // 总页数
+  // 总页数（供 viewer 导航计算）
   totalPages: state => state.documentInfo.numPages,
-
-  // 文档标题
-  documentTitle: state => state.documentInfo.title || "未命名文档",
-
-  // 文档作者
-  documentAuthor: state => state.documentInfo.author,
-
-  // 是否有大纲（由 outline 推导）
-  hasOutline: state => Array.isArray(state.outline) && state.outline.length > 0,
-
-  // 加载进度信息
-  loadProgressInfo: state => ({
-    progress: state.loadProgress,
-    message: state.loadMessage,
-    loading: state.loading,
-  }),
-
-  // 错误信息
-  errorInfo: state => ({
-    error: state.error,
-    type: state.errorType,
-    hasError: !!state.error,
-  }),
-
-  // 文档基本信息
-  basicInfo: state => ({
-    numPages: state.documentInfo.numPages,
-    title: state.documentInfo.title,
-    author: state.documentInfo.author,
-    fingerprint: state.documentInfo.fingerprint,
-  }),
 
   // 文档元数据
   metadata: state => state.metadata,

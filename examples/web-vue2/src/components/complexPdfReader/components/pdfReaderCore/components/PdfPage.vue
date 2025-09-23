@@ -419,7 +419,7 @@ export default {
     overflow: hidden;
     opacity: 0.2;
     line-height: 1;
-    z-index: 1;
+    z-index: var(--z-text);
 
     // 优化文本渲染
     text-rendering: optimizeLegibility;
@@ -435,7 +435,7 @@ export default {
     right: 0;
     bottom: 0;
     pointer-events: auto;
-    z-index: 2; // 明确置于文本层之上，保证点击
+    z-index: var(--z-annot); // 明确置于文本层之上，保证点击
   }
 
 }

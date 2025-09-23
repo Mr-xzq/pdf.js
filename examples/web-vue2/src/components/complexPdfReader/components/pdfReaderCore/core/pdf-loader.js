@@ -60,8 +60,9 @@ export async function loadPdfDocument({
     let metadata = null;
     try {
       const meta = await pdfDocument.getMetadata();
+      // 现在直接返回完整的 meta 对象，包含 { info, metadata, contentDispositionFilename, contentLength }
       info = meta.info || null;
-      metadata = meta.metadata || null;
+      metadata = meta || null;
     } catch (_) {}
 
     return { pdfDocument, info, metadata };

@@ -1,6 +1,5 @@
 <template>
   <div class="pdf-error">
-    <div class="icon">⚠️</div>
     <div class="message">{{ message }}</div>
     <button class="retry" @click="$emit('retry')">重试</button>
   </div>
@@ -24,11 +23,6 @@ export default {
   justify-content: center;
   padding: 32px;
   text-align: center;
-
-  .icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-  }
 
   .message {
     font-size: 16px;

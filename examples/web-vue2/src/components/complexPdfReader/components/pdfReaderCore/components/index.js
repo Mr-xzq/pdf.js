@@ -6,3 +6,4 @@ export { default as PdfLoadingProgress } from './PdfLoadingProgress.vue';
 export { default as PdfErrorDisplay } from './PdfErrorDisplay.vue';
 export { default as PdfEmptyState } from './PdfEmptyState.vue';
 
+export { default as GestureContainer } from './GestureContainer.vue';

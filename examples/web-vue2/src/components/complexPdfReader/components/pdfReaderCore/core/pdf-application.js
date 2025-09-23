@@ -9,7 +9,6 @@ export class PdfApplication {
     this.pdfDocument = null;
     this.eventBus = null;
     this.linkService = null;
-    this.findController = null;
     this.options = { ...options };
 
     // 缓存从 headless 加载得到的文档信息，避免重复读取 metadata
@@ -30,14 +29,13 @@ export class PdfApplication {
     }
 
     try {
-      // 初始化 PDF.js 核心库（幂等）
+      // 初始化 PDF.js 核心库
       await initializePdfJs();
 
       // 使用官方 viewer 组件，统一事件与链接服务
       const viewer = getPdfjsViewer();
       this.eventBus = new viewer.EventBus();
       this.linkService = new viewer.PDFLinkService({ eventBus: this.eventBus });
-      this.findController = null; // MVP 未用到，保留占位
 
       this.initialized = true;
       console.log("PDF.js 应用控制器初始化完成");
@@ -56,7 +54,6 @@ export class PdfApplication {
     return {
       eventBus: this.eventBus,
       linkService: this.linkService,
-      findController: this.findController,
     };
   }
 
@@ -72,7 +69,11 @@ export class PdfApplication {
     if (this.lastInfo || this.lastMetadata) {
       return {
         numPages: this.pdfDocument.numPages,
-        fingerprint: this.pdfDocument.fingerprint,
+        // 优先使用 fingerprints[0]，回退 fingerprint
+        fingerprint:
+          (this.pdfDocument.fingerprints && this.pdfDocument.fingerprints[0]) ||
+          this.pdfDocument.fingerprint ||
+          null,
         info: this.lastInfo,
         metadata: this.lastMetadata,
       };
@@ -82,7 +83,11 @@ export class PdfApplication {
       const metadataResult = await this.pdfDocument.getMetadata();
       return {
         numPages: this.pdfDocument.numPages,
-        fingerprint: this.pdfDocument.fingerprint,
+        // 优先 fingerprints[0]
+        fingerprint:
+          (this.pdfDocument.fingerprints && this.pdfDocument.fingerprints[0]) ||
+          this.pdfDocument.fingerprint ||
+          null,
         info: metadataResult.info,
         metadata: metadataResult.metadata,
       };
@@ -90,7 +95,10 @@ export class PdfApplication {
       console.error("获取文档信息失败:", error);
       return {
         numPages: this.pdfDocument.numPages,
-        fingerprint: this.pdfDocument.fingerprint,
+        fingerprint:
+          (this.pdfDocument.fingerprints && this.pdfDocument.fingerprints[0]) ||
+          this.pdfDocument.fingerprint ||
+          null,
         info: null,
         metadata: null,
       };
@@ -135,10 +143,6 @@ export class PdfApplication {
     if (this.pdfDocument) {
       this.pdfDocument.destroy();
       this.pdfDocument = null;
-    }
-
-    if (this.findController) {
-      this.findController = null;
     }
 
     if (this.linkService) {

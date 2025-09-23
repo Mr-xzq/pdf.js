@@ -22,7 +22,6 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
       const appLinkService = services.linkService;
 
       // 适配器：将注释层中的“内部链接”跳转，统一委托给我们自己的 PdfServices.goToDestination，
-      // 以驱动 Vuex 状态与自定义视图（不依赖官方 PDFViewer 实例）。
       const linkService = {
         // 外部链接：直接设置 a 标签属性
         addLinkAttributes(el, url, newWindow = true) {
