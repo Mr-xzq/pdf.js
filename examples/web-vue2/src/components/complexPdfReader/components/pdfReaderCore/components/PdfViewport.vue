@@ -55,9 +55,8 @@
 </template>
 
 <script>
-import { PdfServices, ControlsService } from "../core";
+import { PdfServices } from "../core";
 import PdfPage from "./PdfPage.vue";
-import PdfLoadingProgress from "./PdfLoadingProgress.vue";
 import PdfErrorDisplay from "./PdfErrorDisplay.vue";
 import PdfEmptyState from "./PdfEmptyState.vue";
 import GestureContainer from "./GestureContainer.vue";
@@ -75,7 +74,6 @@ export default {
 
   components: {
     PdfPage,
-    PdfLoadingProgress,
     PdfErrorDisplay,
     PdfEmptyState,
     GestureContainer,
@@ -94,14 +92,6 @@ export default {
       type: Number,
       default: 1.0,
     },
-    maxCanvasPixels: {
-      type: Number,
-      default: 0,
-    },
-    textLayerMode: {
-      type: Number,
-      default: 1,
-    },
     // 手势开关（默认启用）
     gesturesEnabled: { type: Boolean, default: true },
     // 双击放大目标（优先使用外部传入；未传则使用 baseline*1.5）
@@ -112,7 +102,6 @@ export default {
     return {
       // 服务实例
       pdfServices: null,
-      controlsService: null,
 
       // 状态（文档级由 Store 管理）
       documentLoaded: false,
@@ -240,15 +229,11 @@ export default {
         // 创建 PDF 服务
         this.pdfServices = new PdfServices(this, {
           isMobile: true,
-          maxCanvasPixels: this.maxCanvasPixels,
-          textLayerMode: this.textLayerMode,
         });
 
         // 预初始化（幂等）：确保 application/eventBridge 等就绪
         await this.pdfServices.initialize();
 
-        // 创建控制服务
-        this.controlsService = new ControlsService(this.pdfServices);
 
         console.log("PDF 查看器核心服务初始化完成");
       } catch (error) {
@@ -344,7 +329,6 @@ export default {
         this.pdfServices = null;
       }
 
-      this.controlsService = null;
     },
 
     /**
@@ -463,9 +447,6 @@ export default {
       if (this.$store && this.goToPageAction) {
         return this.goToPageAction(pageNumber);
       }
-      if (this.controlsService) {
-        return this.controlsService.goToPage(pageNumber);
-      }
     },
 
     /**
@@ -502,9 +483,6 @@ export default {
       if (this.$store && this.nextPageAction) {
         return this.nextPageAction();
       }
-      if (this.controlsService) {
-        return this.controlsService.nextPage();
-      }
     },
 
     /**
@@ -514,17 +492,11 @@ export default {
       if (this.$store && this.prevPageAction) {
         return this.prevPageAction();
       }
-      if (this.controlsService) {
-        return this.controlsService.prevPage();
-      }
     },
 
     setScale(scale) {
       if (this.$store && this.setScaleAction) {
         return this.setScaleAction(scale);
-      }
-      if (this.controlsService) {
-        return this.controlsService.setScale(scale);
       }
     },
 
@@ -532,8 +504,8 @@ export default {
      * 放大
      */
     zoomIn() {
-      if (this.controlsService) {
-        return this.controlsService.zoomIn();
+      if (this.$store && this.zoomInAction) {
+        return this.zoomInAction();
       }
     },
 
@@ -541,8 +513,8 @@ export default {
      * 缩小
      */
     zoomOut() {
-      if (this.controlsService) {
-        return this.controlsService.zoomOut();
+      if (this.$store && this.zoomOutAction) {
+        return this.zoomOutAction();
       }
     },
 

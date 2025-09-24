@@ -3,8 +3,6 @@
     :src="src"
     :initial-page="initialPage"
     :initial-scale="initialScale"
-    :max-canvas-pixels="maxCanvasPixels"
-    :text-layer-mode="textLayerMode"
     :zoom-target="zoomTarget"
     @document-loaded="onDocumentLoaded"
     @document-error="onDocumentError"
@@ -49,14 +47,6 @@ export default {
     initialScale: {
       type: Number,
       default: 1.0,
-    },
-    maxCanvasPixels: {
-      type: Number,
-      default: 0,
-    },
-    textLayerMode: {
-      type: Number,
-      default: 1,
     },
 
     // 外层通过 props 控制自动播放

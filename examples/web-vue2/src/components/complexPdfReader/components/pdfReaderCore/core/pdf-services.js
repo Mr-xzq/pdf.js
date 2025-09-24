@@ -1,6 +1,4 @@
 import { getPdfApplication } from "./pdf-application.js";
-import { EventBridge } from "./pdf-events.js";
-import { DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE } from "./scale.js";
 import { initializePdfJs } from "./pdf-config.js";
 import store from "@/store/index.js";
 
@@ -16,7 +14,6 @@ export class PdfServices {
 
     // 核心服务
     this.application = null;
-    this.eventBridge = null;
 
     // 服务状态
     this.initialized = false;
@@ -39,10 +36,6 @@ export class PdfServices {
 
       // 初始化应用
       const services = await this.application.initialize();
-
-      // 创建事件桥接器（仅依赖 EventBus，全局 store 同步）
-      this.eventBridge = new EventBridge(services.eventBus);
-      this.eventBridge.register();
 
       this.initialized = true;
       console.log("PDF 服务层初始化完成");
@@ -120,11 +113,6 @@ export class PdfServices {
    * 销毁服务
    */
   destroy() {
-    if (this.eventBridge) {
-      this.eventBridge.destroy();
-      this.eventBridge = null;
-    }
-
     // 注意：不销毁 application，因为它是单例
     this.application = null;
     this.initialized = false;
@@ -238,8 +226,6 @@ export class PdfServices {
 export class PageRenderService {
   constructor(pdfServices) {
     this.pdfServices = pdfServices;
-    this.renderCache = {};
-    this.cacheKeys = []; // 维护键的顺序
 
     // 跟踪进行中的渲染任务（按页码）
     this._renderTasks = Object.create(null);
@@ -411,160 +397,5 @@ export class PageRenderService {
     }
   }
 
-  /**
-   * 清理渲染缓存
-   */
-  clearCache() {
-    this.renderCache = {};
-    this.cacheKeys = [];
-  }
-
-  /**
-   * 设置缓存
-   */
-  setCache(key, value) {
-    if (!this.renderCache[key]) {
-      this.cacheKeys.push(key);
-    }
-    this.renderCache[key] = value;
-  }
-
-  /**
-   * 获取缓存
-   */
-  getCache(key) {
-    return this.renderCache[key];
-  }
-
-  /**
-   * 检查缓存是否存在
-   */
-  hasCache(key) {
-    return key in this.renderCache;
-  }
-
-  /**
-   * 删除缓存
-   */
-  deleteCache(key) {
-    if (this.renderCache[key]) {
-      delete this.renderCache[key];
-      const index = this.cacheKeys.indexOf(key);
-      if (index > -1) {
-        this.cacheKeys.splice(index, 1);
-      }
-    }
-  }
 }
 
-/**
- * 导航服务
- * 处理页面导航相关功能
- */
-export class ControlsService {
-  constructor(pdfServices) {
-    this.pdfServices = pdfServices;
-    // 不再维护本地镜像状态，统一以 Vuex 为权威数据源
-  }
-
-  /**
-   * 跳转到指定页面
-   */
-  goToPage(pageNumber) {
-    const state = this.pdfServices.documentState;
-    if (!state.loaded) {
-      throw new Error("文档未加载");
-    }
-
-    if (pageNumber < 1 || pageNumber > state.totalPages) {
-      throw new Error(`页码超出范围: ${pageNumber}`);
-    }
-
-    // 统一走 Vuex，同步页面状态（不直接调用组件实例）
-    if (store && typeof store.dispatch === "function") {
-      try {
-        store.dispatch("pdfReader/viewer/goToPage", pageNumber);
-      } catch (e) {
-        console.warn("goToPage -> Vuex 同步失败:", e);
-      }
-    }
-
-    return pageNumber;
-  }
-
-  /**
-   * 下一页
-   */
-  nextPage() {
-    const state = this.pdfServices.documentState;
-    const current = store?.state?.pdfReader?.viewer?.currentPage || 1;
-    if (current < state.totalPages) {
-      return this.goToPage(current + 1);
-    }
-    return current;
-  }
-
-  /**
-   * 上一页
-   */
-  prevPage() {
-    const current = store?.state?.pdfReader?.viewer?.currentPage || 1;
-    if (current > 1) {
-      return this.goToPage(current - 1);
-    }
-    return current;
-  }
-
-  /**
-   * 设置缩放
-   */
-  setScale(scale) {
-    if (scale <= 0 || scale > MAX_SCALE) {
-      throw new Error(`缩放比例超出范围: ${scale}`);
-    }
-
-    // 同步 Vuex 的数值缩放（不再调用组件实例）
-    try {
-      if (store && typeof store.dispatch === "function") {
-        store.dispatch("pdfReader/viewer/setScale", scale);
-      }
-    } catch (e) {
-      // 忽略：无全局 store 时静默
-    }
-
-    return scale;
-  }
-
-  /**
-   * 放大
-   */
-  zoomIn() {
-    const current = store?.state?.pdfReader?.viewer?.scale || 1.0;
-    const newScale = Math.min(current * DEFAULT_SCALE_DELTA, MAX_SCALE);
-    return this.setScale(newScale);
-  }
-
-  /**
-   * 缩小
-   */
-  zoomOut() {
-    const current = store?.state?.pdfReader?.viewer?.scale || 1.0;
-    const newScale = Math.max(current / DEFAULT_SCALE_DELTA, MIN_SCALE);
-    return this.setScale(newScale);
-  }
-
-  /**
-   * 获取当前状态
-   */
-  get state() {
-    const totalPages = this.pdfServices.documentState.totalPages;
-    const currentPage = store?.state?.pdfReader?.viewer?.currentPage || 1;
-    const currentScale = store?.state?.pdfReader?.viewer?.scale || 1.0;
-    return {
-      currentPage,
-      currentScale,
-      canGoNext: currentPage < totalPages,
-      canGoPrev: currentPage > 1,
-    };
-  }
-}

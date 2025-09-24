@@ -153,10 +153,10 @@ const actions = {
       commit("CLEAR_ERROR");
 
       // 动态导入 headless loader，避免循环依赖
-      const { loadPdfDocument } = await import("../../core/pdf-loader.js");
+      const { loadPdfDocument } = await import("../../core/pdf-config.js");
 
       let lastProgress = 0;
-      const { pdfDocument, info, metadata } = await loadPdfDocument({
+      const { pdfDocument } = await loadPdfDocument({
         src,
         signal: state.abortController.signal,
         onProgress: ({ percentage }) => {
@@ -172,6 +172,15 @@ const actions = {
           }
         },
       });
+
+      // 元信息读取上移到调用方
+      let info = null;
+      let metadata = null;
+      try {
+        const meta = await pdfDocument.getMetadata();
+        info = meta.info || null;
+        metadata = meta || null;
+      } catch (_) {}
 
       // 若已被新任务取代，直接丢弃
       if (state.loadToken !== currentToken) {
@@ -205,7 +214,7 @@ const actions = {
         dispatch("pdfReader/viewer/goToPage", 1, { root: true });
       }
 
-      return { pdfDocument, info, metadata };
+      return { pdfDocument };
     } catch (error) {
       // 忽略因取消导致的错误
       if (error?.name === "AbortError") return null;

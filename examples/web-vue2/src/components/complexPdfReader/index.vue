@@ -15,7 +15,6 @@
         :src="src"
         :initial-page="initialPage"
         :initial-scale="initialScale"
-        :text-layer-mode="textLayerMode"
         :zoom-target="zoomTarget"
         :auto-play-enabled="autoPlay"
         :auto-play-interval-ms="autoPlayIntervalMs"
@@ -210,11 +209,6 @@ export default {
     },
     // 初始缩放
     initialScale: {
-      type: Number,
-      default: 1,
-    },
-    // 文本层模式（0=禁用，1=启用）
-    textLayerMode: {
       type: Number,
       default: 1,
     },

@@ -8,7 +8,7 @@ import {
   MIN_SCALE,
   MAX_SCALE,
   round2,
-} from "../../core/scale";
+} from "../../core/pdf-config.js";
 
 const state = {
   // 当前页面

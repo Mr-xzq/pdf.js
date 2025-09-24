@@ -339,10 +339,6 @@ export default {
      * 清理资源
      */
     cleanup() {
-      if (this.renderService) {
-        this.renderService.clearCache();
-      }
-
       // 清理 Canvas
       const canvas = this.$refs.pageCanvas;
       if (canvas) {

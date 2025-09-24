@@ -182,8 +182,9 @@ export default {
     cursor: pointer;
     border-radius: 8px;
     min-width: 0;
-    padding: 3px;
     transition: all 200ms ease;
+    // 外部圆角, 内部没有圆角, 隐藏内部溢出
+    overflow: hidden;
 
     &:active {
       transform: scale(0.98);
@@ -191,7 +192,7 @@ export default {
     }
 
     &.is-current {
-      box-shadow: 0 0 0 2px #1989fa inset;
+      border: 2px solid #7e38d2;
     }
 
     .thumb-media {

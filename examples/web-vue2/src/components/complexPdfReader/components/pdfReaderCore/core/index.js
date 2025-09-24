@@ -4,10 +4,8 @@
 
 export * from "./pdf-services.js";
 export * from "./pdf-application.js";
-export * from "./pdf-events.js";
-export * from "./scale.js";
-export * from "./pdf-config.js"; // 含样式副作用
-export * from "./pdf-loader.js";
+export { DEFAULT_SCALE, DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE, clampScale, round2 } from "./pdf-config.js";
+export { loadPdfDocument } from "./pdf-config.js";
 
 // layers 下的导出（按需使用 Builder 与生命周期工具）
 export { BaseLayerBuilder } from "./layers/BaseLayerBuilder.js";
