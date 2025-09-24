@@ -40,6 +40,9 @@ export default {
       panMoved: false,
       panThreshold: 6,
 
+      // 记录是否曾阻止默认行为，用于决定是否需要合成点击
+      _synthClickNeeded: false,
+
       contentWidth: 0,
       contentHeight: 0,
       containerWidth: 0,
@@ -178,57 +181,68 @@ export default {
         )
       );
       this.panMoved = false;
+      this._synthClickNeeded = false;
 
       if (touches && touches.length >= 2) {
         // 多指操作时，不处理（已移除捏合缩放）
         return;
       }
 
-      // 单指拖拽
+      // 单指：初始不进入“拖拽”状态，等待达到阈值后再决定
       const point = touches ? touches[0] : e;
-      this.isPanning = this.currentScale > this.getBaselineScale() + 0.001;
+      this.isPanning = false;
       this.panStartX = point.clientX;
       this.panStartY = point.clientY;
       this.panAtStartX = this.panX;
       this.panAtStartY = this.panY;
-      if (this.isPanning && e && e.cancelable) e.preventDefault();
+      // 注意：此处不调用 preventDefault，避免阻断注释链接的原生按压/高亮
     },
 
     onPanMove(e) {
       if (!this.gesturesEnabled) return;
       const touches = e.touches ? e.touches : null;
-      if (this.isPanning && e && e.cancelable) e.preventDefault();
 
-      if (!this.isPanning) return;
       const point = touches ? touches[0] : e;
       const dx = point.clientX - this.panStartX;
       const dy = point.clientY - this.panStartY;
       const moved = Math.hypot(dx, dy) > (this.panThreshold || 6);
-      if (moved && !this.panMoved) {
+
+      // 当放大且移动超过阈值时，才进入拖拽模式并阻止默认事件
+      if (!this.isPanning && this.currentScale > this.getBaselineScale() + 0.001 && moved) {
+        this.isPanning = true;
+        if (e && e.cancelable) {
+          e.preventDefault();
+          this._synthClickNeeded = true; // 原生点击可能不会触发，稍后合成
+        }
         this.panMoved = true;
         this._disableAnnotationInteractivity();
       }
+
+      if (!this.isPanning) return;
+
       this.panX = this.panAtStartX + dx;
       this.panY = this.panAtStartY + dy;
       this.clampPan();
     },
 
-    onPanEnd(e) {
-      const wasPanning = this.isPanning;
+    onPanEnd() {
       this.isPanning = false;
       this._enableAnnotationInteractivity();
 
       try {
-        // 若触发点为注释链接且未发生有效位移，则当作点击
+        // 若触发点为注释链接且未发生有效位移
         if (this.maybeLinkTap && !this.panMoved && this.maybeTapTarget) {
-          // 避免合成点击影响默认行为，仅在必要时触发
-          this.maybeTapTarget.click && this.maybeTapTarget.click();
+          if (this._synthClickNeeded) {
+            // 在拖拽中曾阻止默认行为，补发一次点击
+            this.maybeTapTarget.click && this.maybeTapTarget.click();
+          } // 否则交由浏览器的原生点击/高亮处理
         }
       } catch (_) {}
 
       this.maybeLinkTap = false;
       this.maybeTapTarget = null;
       this.panMoved = false;
+      this._synthClickNeeded = false;
     },
   },
 };
