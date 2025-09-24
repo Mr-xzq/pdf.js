@@ -34,6 +34,12 @@ export default {
       panAtStartX: 0,
       panAtStartY: 0,
       isPanning: false,
+      // 注释点击识别与拖拽判定
+      maybeLinkTap: false,
+      maybeTapTarget: null,
+      panMoved: false,
+      panThreshold: 6,
+
       contentWidth: 0,
       contentHeight: 0,
       containerWidth: 0,
@@ -118,6 +124,23 @@ export default {
       if (this.panY < minY) this.panY = minY;
       if (this.panY > maxY) this.panY = maxY;
     },
+
+    // 注释层交互在拖拽中禁用，防止链接拦截拖拽
+    _disableAnnotationInteractivity() {
+      const root = this.$refs.container;
+      if (!root) return;
+      root.querySelectorAll(".annotationLayer").forEach(el => {
+        el.classList.add("disabled");
+      });
+    },
+    _enableAnnotationInteractivity() {
+      const root = this.$refs.container;
+      if (!root) return;
+      root.querySelectorAll(".annotationLayer.disabled").forEach(el => {
+        el.classList.remove("disabled");
+      });
+    },
+
     // 基线缩放（优先取首次适配的宽度比例）
     getBaselineScale() {
       return this.initialFitScale || 1.0;
@@ -145,21 +168,16 @@ export default {
       if (!this.gesturesEnabled) return;
       const touches = e.touches ? e.touches : null;
 
-      // 放行注释层链接点击
-      if (touches) {
-        const tgt = e.target;
-        if (
-          tgt &&
-          tgt.closest &&
-          tgt.closest(
-            ".annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a"
-          )
-        ) {
-          this.isPanning = false;
-          this.isPinching = false;
-          return;
-        }
-      }
+      // 记录起始目标；若起点在注释链接上，延后到 touchend 决定是否触发点击
+      this.maybeTapTarget = e.target || null;
+      this.maybeLinkTap = !!(
+        this.maybeTapTarget &&
+        this.maybeTapTarget.closest &&
+        this.maybeTapTarget.closest(
+          ".annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a"
+        )
+      );
+      this.panMoved = false;
 
       if (touches && touches.length >= 2) {
         // 多指操作时，不处理（已移除捏合缩放）
@@ -185,13 +203,32 @@ export default {
       const point = touches ? touches[0] : e;
       const dx = point.clientX - this.panStartX;
       const dy = point.clientY - this.panStartY;
+      const moved = Math.hypot(dx, dy) > (this.panThreshold || 6);
+      if (moved && !this.panMoved) {
+        this.panMoved = true;
+        this._disableAnnotationInteractivity();
+      }
       this.panX = this.panAtStartX + dx;
       this.panY = this.panAtStartY + dy;
       this.clampPan();
     },
 
-    onPanEnd() {
+    onPanEnd(e) {
+      const wasPanning = this.isPanning;
       this.isPanning = false;
+      this._enableAnnotationInteractivity();
+
+      try {
+        // 若触发点为注释链接且未发生有效位移，则当作点击
+        if (this.maybeLinkTap && !this.panMoved && this.maybeTapTarget) {
+          // 避免合成点击影响默认行为，仅在必要时触发
+          this.maybeTapTarget.click && this.maybeTapTarget.click();
+        }
+      } catch (_) {}
+
+      this.maybeLinkTap = false;
+      this.maybeTapTarget = null;
+      this.panMoved = false;
     },
   },
 };
@@ -213,5 +250,10 @@ export default {
 
 .gesture-container__pan {
   will-change: transform;
+}
+
+// 拖拽期间禁用注释层交互，避免链接阻塞平移
+:deep(.annotationLayer.disabled) {
+  pointer-events: none !important;
 }
 </style>

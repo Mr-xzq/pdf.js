@@ -110,7 +110,6 @@ const actions = {
    */
   setDocumentLoaded({ commit, dispatch }, { document, info }) {
     commit("SET_DOCUMENT", document);
-    //  
     commit("SET_DOCUMENT_INFO", {
       numPages: document?.numPages || info?.numPages || 0,
       fingerprint:
@@ -238,10 +237,6 @@ const actions = {
     commit("SET_ERROR", { error, type });
     commit("SET_LOADING", false);
   },
-
-  /**
-   * 设置密码状态
-   */
 
   /**
    * 重置文档状态

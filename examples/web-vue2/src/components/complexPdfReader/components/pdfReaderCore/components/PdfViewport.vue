@@ -10,29 +10,27 @@
         :error="docError"
         :message="docErrorMessage"
         :retry="retry"
-      >
-        <pdf-error-display :message="docErrorMessage" @retry="retry" />
-      </slot>
+      ></slot>
     </template>
 
     <!-- PDF 内容区域 -->
     <div
-      v-else-if="documentLoaded"
+      v-else-if="documentReady"
       class="pdf-viewer-core__content"
       ref="content"
     >
       <gesture-container
         ref="gesture"
-        :scale.sync="currentScale"
+        :scale.sync="scale"
         :gestures-enabled="gesturesEnabled"
         :zoom-target="zoomTarget"
-        @update:scale="setScale"
-        @request-prev-page="prevPage"
-        @request-next-page="nextPage"
+        @update:scale="setScaleAction"
+        @request-prev-page="prevPageAction"
+        @request-next-page="nextPageAction"
       >
         <pdf-page
-          :page-number="currentPage"
-          :scale="currentScale"
+          :page-number="page"
+          :scale="scale"
           :pdf-services="pdfServices"
           :text-layer-enabled="true"
           :annotations-enabled="true"
@@ -45,20 +43,14 @@
 
     <!-- 空状态：仅在“无 src 且不在加载中”时显示；加载过程不显示 empty 占位 -->
     <template v-else-if="!src && !docLoading">
-      <slot name="empty">
-        <pdf-empty-state />
-      </slot>
+      <slot name="empty"></slot>
     </template>
-    <!-- 其他情况（如正在加载、有 src 正在初始化/加载）不渲染任何占位，以免与 Toast 冲突 -->
-    <template v-else></template>
   </div>
 </template>
 
 <script>
 import { PdfServices } from "../core";
 import PdfPage from "./PdfPage.vue";
-import PdfErrorDisplay from "./PdfErrorDisplay.vue";
-import PdfEmptyState from "./PdfEmptyState.vue";
 import GestureContainer from "./GestureContainer.vue";
 
 import {
@@ -74,8 +66,6 @@ export default {
 
   components: {
     PdfPage,
-    PdfErrorDisplay,
-    PdfEmptyState,
     GestureContainer,
   },
 
@@ -102,17 +92,6 @@ export default {
     return {
       // 服务实例
       pdfServices: null,
-
-      // 状态（文档级由 Store 管理）
-      documentLoaded: false,
-
-      // 当前状态
-      currentPage: this.initialPage,
-      currentScale: this.initialScale,
-      totalPages: 0,
-
-      // 文档信息
-      documentInfo: null,
     };
   },
 
@@ -144,6 +123,32 @@ export default {
       storeCurrentPage: "currentPage",
       storeScale: "scale",
     }),
+    scale: {
+      get() {
+        return this.storeScale;
+      },
+      set(v) {
+        this.setScaleAction(v);
+      },
+    },
+    page: {
+      get() {
+        return this.storeCurrentPage;
+      },
+      set(v) {
+        this.goToPageAction(v);
+      },
+    },
+    documentLoaded() {
+      return !!this.storePdfDocument;
+    },
+    // PdfServices 也必须完成 attachDocument，二者同时就绪再渲染页面
+    servicesDocumentLoaded() {
+      return !!this.pdfServices?.documentState?.loaded;
+    },
+    documentReady() {
+      return this.documentLoaded && this.servicesDocumentLoaded;
+    },
 
     docLoading() {
       return this.loading;
@@ -170,30 +175,6 @@ export default {
       immediate: false,
     },
 
-    // 监听 Vuex（通过 mapState 暴露的别名），避免硬编码路径
-    storeCurrentPage: {
-      handler(newPage, oldPage) {
-        if (newPage !== oldPage && newPage !== this.currentPage) {
-          // 避免循环调用，只有当Vuex状态与组件状态不同步时才更新
-          this.syncPageFromStore(newPage);
-        }
-      },
-      immediate: false,
-    },
-
-    // 监听全局缩放数值变化（数值模式时），由 Store 驱动 Core 应用
-    storeScale: {
-      handler(newScale, oldScale) {
-        if (
-          typeof newScale === "number" &&
-          newScale !== oldScale &&
-          newScale !== this.currentScale
-        ) {
-          this.syncScaleFromStore(newScale);
-        }
-      },
-      immediate: false,
-    },
     docLoading(n) {
       if (n) {
         this.$emit("loading-start", {
@@ -217,13 +198,17 @@ export default {
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScaleAction: "setScale",
-      zoomInAction: "zoomIn",
-      zoomOutAction: "zoomOut",
     }),
 
-    /**
-     * 初始化服务
-     */
+    // 统一封装常用 refs（方法而非 computed，避免缓存 $refs）
+    gesture() {
+      return this.$refs.gesture || null;
+    },
+    viewerContainer() {
+      return this.$refs.viewerContainer || null;
+    },
+
+    // 初始化服务
     async initializeServices() {
       try {
         // 创建 PDF 服务
@@ -231,19 +216,16 @@ export default {
           isMobile: true,
         });
 
-        // 预初始化（幂等）：确保 application/eventBridge 等就绪
+        // 初始化 application
         await this.pdfServices.initialize();
-
 
         console.log("PDF 查看器核心服务初始化完成");
       } catch (error) {
         console.error("PDF 查看器核心服务初始化失败:", error);
-        if (this.$store && this.setDocumentError) {
-          this.setDocumentError({
-            error: error.message,
-            type: "init",
-          });
-        }
+        this.setDocumentError({
+          error: error.message,
+          type: "init",
+        });
       }
     },
 
@@ -263,8 +245,6 @@ export default {
       }
 
       try {
-        this.documentLoaded = false;
-
         // 统一由 Store 执行真实加载，并在完成后由组件接管
         await this.realLoadDocument({ src: this.src });
 
@@ -328,7 +308,6 @@ export default {
         this.pdfServices.destroy();
         this.pdfServices = null;
       }
-
     },
 
     /**
@@ -344,11 +323,7 @@ export default {
      * 处理文档加载完成
      */
     onDocumentLoaded(event) {
-      this.documentLoaded = true;
-      this.totalPages = event.numPages;
-      this.documentInfo = event;
-
-      // 响应式计算最佳缩放比例
+      // 响应式计算最佳缩放比例（不再维护本地镜像状态）
       this.$nextTick(() => {
         this.initializeScaleForDocument(event);
       });
@@ -378,12 +353,10 @@ export default {
      */
     onLoadProgress(event) {
       // 同步到 Vuex 的文档级加载进度
-      if (this.$store && this.setLoadProgress) {
-        this.setLoadProgress({
-          progress: event.percentage,
-          message: "",
-        });
-      }
+      this.setLoadProgress({
+        progress: event.percentage,
+        message: "",
+      });
 
       // 只向父组件传递事件
       this.$emit("load-progress", event);
@@ -393,7 +366,6 @@ export default {
      * 处理页面变化
      */
     onPageChanged(event) {
-      this.currentPage = event.pageNumber;
       this.$emit("page-changed", event);
     },
 
@@ -401,7 +373,6 @@ export default {
      * 处理缩放变化
      */
     onScaleChanged(event) {
-      this.currentScale = event.scale;
       this.$emit("scale-changed", event);
     },
 
@@ -411,12 +382,11 @@ export default {
     onPageRendered(event) {
       const vp = event && event.viewport;
       if (vp) {
-        this.$refs.gesture &&
-          this.$refs.gesture.setContentSize(vp.width, vp.height);
+        this.gesture()?.setContentSize(vp.width, vp.height);
       }
       this.$nextTick(() => {
-        this.$refs.gesture && this.$refs.gesture.updateContainerSize();
-        this.$refs.gesture && this.$refs.gesture.clampPan();
+        this.gesture()?.updateContainerSize();
+        this.gesture()?.clampPan();
       });
       this.$emit("page-rendered", event);
     },
@@ -433,106 +403,16 @@ export default {
      * 转发 PdfPage 的 canvas 点击事件给手势容器
      */
     onCanvasClick(payload) {
-      if (this.$refs.gesture && this.$refs.gesture.onCanvasClick) {
-        this.$refs.gesture.onCanvasClick(payload);
-      }
-    },
-
-    // 公共方法
-
-    /**
-     * 跳转到指定页面（统一入口：优先通过 Vuex action；无 store 时回退 controlsService）
-     */
-    goToPage(pageNumber) {
-      if (this.$store && this.goToPageAction) {
-        return this.goToPageAction(pageNumber);
-      }
-    },
-
-    /**
-     * 从Vuex store同步页面状态
-     */
-    syncPageFromStore(pageNumber) {
-      if (pageNumber !== this.currentPage) {
-        const previousPage = this.currentPage;
-
-        // 直接更新组件状态，不触发Vuex更新，避免循环
-        this.currentPage = pageNumber;
-        // 触发页面变化事件，但不更新Vuex状态
-        const pageChangedEvent = {
-          pageNumber,
-          previous: previousPage,
-        };
-        this.$emit("page-changed", pageChangedEvent);
-
-        console.log(`页面跳转: ${previousPage} -> ${pageNumber}`);
-      }
-    },
-
-    // 从Vuex store同步缩放（只做本地与服务层同步，不派发Action）
-    syncScaleFromStore(scale) {
-      if (typeof scale === "number" && scale !== this.currentScale) {
-        this.currentScale = scale;
-      }
-    },
-
-    /**
-     * 下一页（统一从 Vuex action 派发；无 store 回退）
-     */
-    nextPage() {
-      if (this.$store && this.nextPageAction) {
-        return this.nextPageAction();
-      }
-    },
-
-    /**
-     * 上一页（统一从 Vuex action 派发；无 store 回退）
-     */
-    prevPage() {
-      if (this.$store && this.prevPageAction) {
-        return this.prevPageAction();
-      }
-    },
-
-    setScale(scale) {
-      if (this.$store && this.setScaleAction) {
-        return this.setScaleAction(scale);
-      }
-    },
-
-    /**
-     * 放大
-     */
-    zoomIn() {
-      if (this.$store && this.zoomInAction) {
-        return this.zoomInAction();
-      }
-    },
-
-    /**
-     * 缩小
-     */
-    zoomOut() {
-      if (this.$store && this.zoomOutAction) {
-        return this.zoomOutAction();
-      }
+      this.gesture()?.onCanvasClick?.(payload);
     },
 
     /**
      * 初始化文档的缩放比例
      */
     initializeScaleForDocument(event) {
-      // 设置初始页面
-      this.currentPage = this.initialPage;
-
-      // 使用初始缩放
-      this.currentScale = this.initialScale;
-
-      // 同步到 Vuex 状态
-      if (this.$store && this.setScaleAction && this.goToPageAction) {
-        this.setScaleAction(this.initialScale);
-        this.goToPageAction(this.initialPage);
-      }
+      // 通过 Store 初始化页码与缩放（不再维护本地镜像）
+      this.setScaleAction(this.initialScale);
+      this.goToPageAction(this.initialPage);
 
       // 初次加载按容器宽度适配一次
       this.$nextTick(() => {
@@ -550,15 +430,10 @@ export default {
      * 应用缩放比例
      */
     applyScale(scale) {
-      this.currentScale = scale;
+      this.scale = scale;
 
-      // 同步到 Vuex 状态
-      if (this.$store && this.setScaleAction) {
-        this.setScaleAction(scale);
-      }
-
-      // 触发页面重新渲染
-      this.onPageChanged({ pageNumber: this.currentPage });
+      // 触发页面重新渲染（以当前页为准）
+      this.onPageChanged({ pageNumber: this.page });
 
       console.log(`缩放比例更新为: ${scale}`);
     },
@@ -569,7 +444,7 @@ export default {
     async fitWidthOnce() {
       try {
         if (!this.documentLoaded || !this.pdfServices) return;
-        const container = this.$refs.viewerContainer;
+        const container = this.viewerContainer();
         if (!container) return;
         const rect = container.getBoundingClientRect();
         if (!rect || rect.width === 0) return;
@@ -577,9 +452,9 @@ export default {
         const page = await this.pdfServices.getPage(1);
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
-        if (computed > 0 && Math.abs(computed - this.currentScale) > 0.005) {
-          this.$refs.gesture && this.$refs.gesture.setInitialFitScale(computed);
-          this.setScale(computed);
+        if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
+          this.gesture()?.setInitialFitScale(computed);
+          this.setScaleAction(computed);
         }
       } catch (e) {
         console.warn("fitWidthOnce 计算失败:", e);

@@ -71,13 +71,13 @@
         <van-image
           class="nav-row-item first-page"
           :src="firstPageIconUrl"
-          @click="goFirstPage"
+          @click="goToPage(1)"
         ></van-image>
 
         <van-image
           class="nav-row-item"
           :src="previousPageIconUrl"
-          @click="goPrevPage"
+          @click="prevPage"
         ></van-image>
 
         <van-field
@@ -98,13 +98,13 @@
         <van-image
           class="nav-row-item"
           :src="nextPageIconUrl"
-          @click="goNextPage"
+          @click="nextPage"
         ></van-image>
 
         <van-image
           class="nav-row-item last-page"
           :src="lastPageIconUrl"
-          @click="goLastPage"
+          @click="goToPage(totalPages)"
         ></van-image>
       </div>
 
@@ -130,14 +130,14 @@
     <drawer
       :is-show.sync="isShowOutlineDrawer"
       title="目录"
-      @close="onOutlineDrawerClose"
+      @closed="onOutlineDrawerClosed"
       @opened="onOutlineOpened"
     >
       <outline-panel
         ref="outlinePanel"
+        :current-page="currentPage"
         :get-outline="getOutline"
         :navigate-to-destination="navigateToDestination"
-        :current-page="currentPage"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
         @loading-start="onLoadingStart"
@@ -147,15 +147,15 @@
     <drawer
       :is-show.sync="isShowThumbnailDrawer"
       title="缩略图"
-      @close="onThumbnailDrawerClose"
+      @closed="onThumbnailDrawerClosed"
       @opened="onThumbnailOpened"
     >
       <thumbnail-panel
         ref="thumbPanel"
-        :get-total-pages="getTotalPages"
+        :current-page="currentPage"
+        :total-pages="totalPages"
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
-        :current-page="currentPage"
         @selected="closeThumbnailDrawer"
         @loading-start="onLoadingStart"
         @loading-stop="onLoadingStop"
@@ -170,6 +170,10 @@ import PdfReaderCore from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/drawer/index.vue";
 import OutlinePanel from "./components/outlinePanel/index.vue";
 import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
+import {
+  mapViewerGetters,
+  mapViewerActions,
+} from "./components/pdfReaderCore/store/index.js";
 
 // 图标
 // import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";
@@ -227,8 +231,15 @@ export default {
       default: 1500,
     },
   },
+  mounted() {
+    this.pdfReaderRef = this.$refs.pdfReader ?? {};
+    this.pageInputRef = this.$refs.pageInput ?? {};
+  },
   data() {
     return {
+      pdfReaderRef: {},
+      pageInputRef: {},
+
       // 全屏
       // fullscreenIconUrl,
       // 搜索
@@ -261,12 +272,9 @@ export default {
       // Drawer/导航相关
       isShowPageNav: false,
       gotoPageInput: 1,
-      // 页信息
-      currentPage: 1,
+      // 用于 slider 展示与拖动中的临时值（实际跳转由 @change 触发）
       sliderValue: 1,
-      totalPages: 0,
-      // 缩放信息（单一目标倍数）
-      currentScale: 1,
+      // 仅用于“放大后可还原”的 UI 状态
       lastScaleBeforeZoom: null,
     };
   },
@@ -275,13 +283,44 @@ export default {
     autoPlayEnabled(val) {
       this.autoPlay = !!val;
     },
+    // 监听真实页码（来自 Vuex）：用于同步 slider 显示与输入框
+    currentPage(n) {
+      if (Number.isFinite(n)) {
+        this.sliderValue = n;
+        this.gotoPageInput = n;
+      }
+    },
   },
   computed: {
+    ...mapViewerGetters(["navigationState", "zoomState"]),
+    currentPage() {
+      return this.navigationState?.currentPage || 1;
+    },
+    totalPages() {
+      return this.navigationState?.totalPages || 0;
+    },
     pageFieldDisplay() {
       return `${this.sliderValue}/${this.totalPages}`;
     },
   },
   methods: {
+    ...mapViewerActions(["goToPage", "nextPage", "prevPage", "setScale"]),
+    handleClickThumbnail() {
+      console.log("open drawer: thumbnail");
+      this.isShowThumbnailDrawer = true;
+    },
+    handleClickOutline() {
+      console.log("open drawer: outline");
+      this.isShowOutlineDrawer = true;
+    },
+    onThumbnailOpened() {
+      console.log("opened drawer: thumbnail");
+      this.$refs.thumbPanel?.onParentOpened?.();
+    },
+    onOutlineOpened() {
+      console.log("opened drawer: outline");
+      this.$refs.outlinePanel?.onParentOpened?.();
+    },
     // Drawer 关闭（按面板分别关闭）
     closeOutlineDrawer() {
       this.isShowOutlineDrawer = false;
@@ -289,120 +328,57 @@ export default {
     closeThumbnailDrawer() {
       this.isShowThumbnailDrawer = false;
     },
-    onOutlineDrawerClose() {
-      console.log("[Demo1] outline drawer closed");
+    onOutlineDrawerClosed() {
+      console.log("closed drawer: outline");
       this.isShowOutlineDrawer = false;
-      const op = this.$refs.outlinePanel;
-      if (op && typeof op.onParentClosed === "function") op.onParentClosed();
+      this.$refs.outlinePanel?.onParentClosed();
     },
-    onThumbnailDrawerClose() {
-      console.log("[Demo1] thumbnail drawer closed");
+    onThumbnailDrawerClosed() {
+      console.log("closed drawer: thumbnail");
       this.isShowThumbnailDrawer = false;
-      // 通知子组件更新可见状态（第二次及以后不会触发 mounted）
-      const tp = this.$refs.thumbPanel;
-      if (tp && typeof tp.onParentClosed === "function") tp.onParentClosed();
+      // 通知子组件更新可见状态
+      this.$refs.thumbPanel?.onParentClosed();
     },
-    handleClickThumbnail() {
-      console.log("[Demo1] open drawer: thumbnail");
-      this.isShowThumbnailDrawer = true;
-    },
-
-    handleClickOutline() {
-      console.log("[Demo1] open drawer: outline");
-      this.isShowOutlineDrawer = true;
-    },
-
-    // Drawer 打开：作为“可见且挂载完成”的稳定时机
-    onThumbnailOpened() {
-      const tp = this.$refs.thumbPanel;
-      if (tp && typeof tp.onParentOpened === "function") tp.onParentOpened();
-    },
-    onOutlineOpened() {
-      const op = this.$refs.outlinePanel;
-      if (op && typeof op.onParentOpened === "function") op.onParentOpened();
-    },
-
-    // 底部翻页导航：开关
+    // 底部翻页导航
     togglePageNav() {
       this.isShowPageNav = !this.isShowPageNav;
     },
-
-    // 翻页能力（通过 PdfReader 暴露的方法）
-    goPrevPage() {
-      const r = this.$refs.pdfReader;
-      if (r && typeof r.prevPage === "function" && (r.canGoPrev ?? true))
-        r.prevPage();
-    },
-    goNextPage() {
-      const r = this.$refs.pdfReader;
-      if (r && typeof r.nextPage === "function" && (r.canGoNext ?? true))
-        r.nextPage();
-    },
-    goFirstPage() {
-      this.goToPage(1);
-    },
-    goLastPage() {
-      const t = this.getTotalPages?.();
-      if (Number.isFinite(t) && t && t > 0) this.goToPage(t);
-    },
     goToPageByInput() {
       const n = Number(this.gotoPageInput);
-      const t = this.getTotalPages?.() || 0;
+      const t = this.totalPages || 0;
       if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
     },
-    // 进度条拖动：仅在拖动结束时触发（依赖 Slider 的 lazy-change）
+    // slider 进度变化且结束拖动后触发
     onSliderChange(val) {
       const n = Number(val);
-      const t = this.getTotalPages?.() || 0;
+      const t = this.totalPages || 0;
       if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
     },
-
     // 与滑条交互开始：若处于编辑态则退出（避免不触发 blur 的情况）
     onSliderDragStart() {
       if (this.isEditingPageInput) {
-        const ref = this.$refs.pageInput;
-        if (ref && typeof ref.blur === "function") {
-          try {
-            ref.blur();
-          } catch (e) {}
-        }
+        this.pageInputRef?.blur();
         this.isEditingPageInput = false;
       }
     },
-
-    // 下一页（单击“翻页”按钮）
-    handleNextPage() {
-      const r = this.$refs.pdfReader;
-      if (r && typeof r.nextPage === "function" && r.canGoNext) {
-        r.nextPage();
-      }
-    },
-
     // 放大：记录放大前倍数 -> 放大到目标倍数
     handleZoomIn() {
-      const reader = this.$refs.pdfReader;
-      if (reader && typeof reader.setScale === "function") {
-        // 记录放大前的倍数，用于“缩小”恢复
-        this.lastScaleBeforeZoom = this.currentScale;
-        reader.setScale(this.zoomTarget);
-      }
+      // 记录放大前的倍数（从 Store 获取当前缩放）
+      this.lastScaleBeforeZoom =
+        this.zoomState?.scale || this.lastScaleBeforeZoom || 1;
+      this.setScale(this.zoomTarget);
     },
-    // 缩小：恢复到最近一次“放大前”的倍数，若没有记录则退回基线倍数
+
+    // 缩小：恢复到最近一次“放大前”的倍数，若没有记录则退回基础倍数
     handleResetZoom() {
-      const reader = this.$refs.pdfReader;
-      if (reader && typeof reader.setScale === "function") {
-        const fallback =
-          typeof reader.getBaselineScale === "function"
-            ? reader.getBaselineScale()
-            : 1;
-        const target =
-          typeof this.lastScaleBeforeZoom === "number"
-            ? this.lastScaleBeforeZoom
-            : fallback;
-        reader.setScale(target);
-        // 恢复后清除记录
-        this.lastScaleBeforeZoom = null;
-      }
+      const fallback = this.pdfReaderRef?.getBaselineScale?.();
+      const target =
+        typeof this.lastScaleBeforeZoom === "number"
+          ? this.lastScaleBeforeZoom
+          : fallback;
+      if (typeof target === "number") this.setScale(target);
+      // 恢复后清除记录
+      this.lastScaleBeforeZoom = null;
     },
 
     // 自动播放：交由 PdfReader 内部实现，这里仅切换 props，并向外同步（.sync）
@@ -410,26 +386,18 @@ export default {
       this.autoPlay = !this.autoPlay;
       this.$emit("update:autoPlayEnabled", this.autoPlay);
     },
-
-    // Drawer -> PdfReader 的方法转发（Plan A）
     getOutline() {
-      const r = this.$refs.pdfReader;
-      return r && typeof r.getOutline === "function" ? r.getOutline() : [];
+      return this.pdfReaderRef?.getOutline();
     },
     renderThumbnail(pageNumber, canvasEl, options) {
-      const r = this.$refs.pdfReader;
-      return r && typeof r.renderThumbnail === "function"
-        ? r.renderThumbnail(pageNumber, canvasEl, options)
-        : Promise.resolve();
+      return this.pdfReaderRef?.renderThumbnail(pageNumber, canvasEl, options);
     },
-
     // 页码输入：编辑/回显切换
     startEditPage() {
       this.gotoPageInput = this.sliderValue;
       this.isEditingPageInput = true;
       this.$nextTick(() => {
-        const pageInputRef = this.$refs.pageInput;
-        if (typeof pageInputRef?.focus === "function") pageInputRef?.focus();
+        this.pageInputRef?.focus();
       });
     },
     finishEditPage() {
@@ -450,44 +418,17 @@ export default {
         this.gotoPageInput = Number(val);
       }
     },
-
-    goToPage(n) {
-      const r = this.$refs.pdfReader;
-      if (r && typeof r.goToPage === "function") r.goToPage(n);
-    },
-    getTotalPages() {
-      const r = this.$refs.pdfReader;
-      return r && typeof r.getTotalPages === "function" ? r.getTotalPages() : 0;
-    },
     navigateToDestination(dest) {
-      const r = this.$refs.pdfReader;
-      return r && typeof r.navigateToDestination === "function"
-        ? r.navigateToDestination(dest)
-        : Promise.resolve();
+      return this.pdfReaderRef?.navigateToDestination(dest);
     },
     resolveDestToPageNumber(dest) {
-      const r = this.$refs.pdfReader;
-      return r && typeof r.resolveDestToPageNumber === "function"
-        ? r.resolveDestToPageNumber(dest)
-        : Promise.resolve(null);
+      return this.pdfReaderRef?.resolveDestToPageNumber(dest);
     },
-
     // 以下事件用于和外层 UI 同步，并向外转发事件
     onPdfLoaded(e) {
-      this.totalPages = this.getTotalPages?.() || 0;
+      // 输入框 & slider 的初始值回显
       this.gotoPageInput = this.currentPage;
       this.sliderValue = this.currentPage;
-      // 同步 PdfReader 的当前缩放到本地，用于阈值切换显示缩放按钮
-      const r = this.$refs.pdfReader;
-      if (r) {
-        if (typeof r.currentScale === "number")
-          this.currentScale = r.currentScale;
-        if (!this._unwatchReaderScale && typeof r.$watch === "function") {
-          this._unwatchReaderScale = r.$watch("currentScale", s => {
-            if (typeof s === "number") this.currentScale = s;
-          });
-        }
-      }
       this.$emit("document-loaded", e);
     },
     onPdfError(e) {
@@ -495,8 +436,7 @@ export default {
       this.$emit("document-error", e);
     },
     onPdfPageChanged(e) {
-      if (e && e.pageNumber) {
-        this.currentPage = e.pageNumber;
+      if (e?.pageNumber) {
         this.gotoPageInput = e.pageNumber;
         this.sliderValue = e.pageNumber;
       }
@@ -510,8 +450,6 @@ export default {
     },
 
     onPdfScaleChanged(e) {
-      const s = typeof e === "number" ? e : e && e.scale;
-      if (typeof s === "number") this.currentScale = s;
       this.$emit("scale-changed", e);
     },
   },

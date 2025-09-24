@@ -120,6 +120,12 @@ export default {
   },
 
   methods: {
+    // 统一封装常用 refs（用方法，避免 computed 缓存 $refs 带来的不可预期）
+    container() { return this.$refs.container || null },
+    pageCanvas() { return this.$refs.pageCanvas || null },
+    textLayer() { return this.$refs.textLayer || null },
+    annotationLayer() { return this.$refs.annotationLayer || null },
+
     /**
      * 初始化渲染服务
      */
@@ -149,7 +155,7 @@ export default {
         // 渲染开始前隐藏画布，避免看到空白底色
         this.canvasStyle = { display: "block", opacity: 0 };
 
-        const canvas = this.$refs.pageCanvas;
+        const canvas = this.pageCanvas();
         if (!canvas) {
           throw new Error("Canvas 元素未找到");
         }
@@ -229,9 +235,9 @@ export default {
       const servicesGetter = () => this.pdfServices.getApplicationServices?.();
 
       // Text Layer
-      if (this.textLayerEnabled && !this.layers.text && this.$refs.textLayer) {
+      if (this.textLayerEnabled && !this.layers.text && this.textLayer()) {
         this.layers.text = createLayer(TextLayerBuilder, {
-          container: this.$refs.textLayer,
+          container: this.textLayer(),
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
@@ -242,10 +248,10 @@ export default {
       if (
         this.annotationsEnabled &&
         !this.layers.annotation &&
-        this.$refs.annotationLayer
+        this.annotationLayer()
       ) {
         this.layers.annotation = createLayer(AnnotationLayerBuilder, {
-          container: this.$refs.annotationLayer,
+          container: this.annotationLayer(),
           pdfServices: this.pdfServices,
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
@@ -295,8 +301,8 @@ export default {
      * 在渲染完成后，根据 viewport 尺寸设置容器高度，防止缩小时容器比 canvas 高
      */
     syncContainerSize() {
-      const container = this.$refs.container;
-      const canvas = this.$refs.pageCanvas;
+      const container = this.container();
+      const canvas = this.pageCanvas();
       if (!container || !canvas || !this.viewport) return;
       const { width, height } = this.viewport;
       container.style.width = `${width}px`;
@@ -340,7 +346,7 @@ export default {
      */
     cleanup() {
       // 清理 Canvas
-      const canvas = this.$refs.pageCanvas;
+      const canvas = this.pageCanvas();
       if (canvas) {
         const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);

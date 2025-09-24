@@ -60,11 +60,3 @@ export const {
   mapMutations: mapViewerMutations,
   mapActions: mapViewerActions,
 } = defaultHelpers.viewer;
-
-/**
- * 默认导出 - 简化版
- */
-export default {
-  pdfReaderModule,
-  createPdfReaderHelpers,
-};

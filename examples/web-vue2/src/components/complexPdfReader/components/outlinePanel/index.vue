@@ -61,7 +61,7 @@ export default {
       const data = await this.getOutline();
       this.outline = Array.isArray(data) ? data : [];
       this.treeData = this.buildTreeData(this.outline);
-      console.log("[Demo1] OutlinePanel loaded, nodes =", this.treeData.length);
+      console.log("OutlinePanel loaded, nodes =", this.treeData.length);
       await this.ensurePageMapOnce();
       // 初始化时尝试根据 currentPage 高亮
       let initKey = this.pickKeyForPageSafe(this.currentPage);
@@ -105,7 +105,7 @@ export default {
   methods: {
     async onTreeSelect(node) {
       console.log(
-        "[Demo1] OutlinePanel.select",
+        "OutlinePanel.select",
         node && {
           key: node.key,
           title: node.title,

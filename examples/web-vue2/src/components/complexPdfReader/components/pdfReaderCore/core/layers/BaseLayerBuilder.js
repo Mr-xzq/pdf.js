@@ -26,6 +26,8 @@ export class BaseLayerBuilder {
       this.layer.style.top = "0";
       this.layer.style.right = "0";
       this.layer.style.bottom = "0";
+      // 确保该包装层不拦截事件（让空白区域的拖拽/滚动透传到底层）
+      this.layer.style.pointerEvents = "none";
       this.container.appendChild(this.layer);
     }
 

@@ -12,13 +12,12 @@
     <div class="drawer">
       <div v-if="showHeader" class="drawer__header">
         <slot name="header">
-          <van-icon
-            name="arrow-left"
+          <van-image
             class="drawer__back"
+            :src="backIconUrl"
             @click="handleClose"
-          />
+          ></van-image>
           <div class="drawer__title">{{ title }}</div>
-          <div class="drawer__header-spacer" />
         </slot>
       </div>
       <div class="drawer__body">
@@ -29,6 +28,8 @@
 </template>
 
 <script>
+import backIconUrl from "@/assets/images/complexPdfReader/back-2x.png";
+
 export default {
   name: "Drawer",
   props: {
@@ -36,10 +37,14 @@ export default {
     title: { type: String, default: "" },
     showHeader: { type: Boolean, default: true },
   },
+  data() {
+    return {
+      backIconUrl,
+    };
+  },
   methods: {
     handleClose() {
       this.$emit("update:is-show", false);
-      this.$emit("close");
     },
   },
 };
@@ -50,32 +55,35 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-.drawer__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 48px;
-  padding: 0 12px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
-}
-.drawer__back {
-  font-size: 18px;
-}
-.drawer__title {
-  flex: 1;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-}
-.drawer__header-spacer {
-  width: 18px;
-}
-.drawer__body {
-  flex: 1;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  background: #fff;
+
+  .drawer__header {
+    display: flex;
+    align-items: center;
+    height: 3.5rem;
+    padding: 0 12px;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .drawer__back {
+    width: 0.6rem;
+    height: 1.19rem;
+  }
+
+  .drawer__title {
+    flex: 1;
+    text-align: center;
+
+    font-size: 1.14rem;
+    color: #000000;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+
+  .drawer__body {
+    flex: 1;
+    overflow: auto;
+    background: #fff;
+  }
 }
 </style>

@@ -29,7 +29,7 @@
 export default {
   name: "ThumbnailPanel",
   props: {
-    getTotalPages: { type: Function, required: true },
+    totalPages: { type: Number, required: true },
     renderThumbnail: { type: Function, required: true },
     goToPage: { type: Function, required: true },
     currentPage: { type: Number, default: 1 },
@@ -38,7 +38,6 @@ export default {
   },
   data() {
     return {
-      totalPages: 0,
       thumbsRendered: false,
       visible: false,
       pendingPage: null,
@@ -48,7 +47,6 @@ export default {
   async mounted() {
     this.$emit("loading-start", { source: "thumbnail" });
     try {
-      this.totalPages = await this.getTotalPages();
       await this.ensureRenderThumbnails();
       this.trySyncCurrent();
     } finally {
@@ -61,6 +59,11 @@ export default {
         this.pendingPage = n;
       } else {
         this.$nextTick(() => this.scrollCurrentIntoView());
+      }
+    },
+    totalPages(n) {
+      if (n && !this.thumbsRendered) {
+        this.$nextTick(() => this.ensureRenderThumbnails());
       }
     },
   },
@@ -139,7 +142,7 @@ export default {
         } catch (_) {}
       }
       console.log(
-        "[Demo1] Thumbnails rendered",
+        "Thumbnails rendered",
         rendered,
         "/",
         this.totalPages
@@ -218,8 +221,10 @@ export default {
 
     .thumb-label {
       margin: 2px 0;
-      font-size: 12px;
-      color: #666;
+      font-size: 14px;
+      color: #000000;
+      letter-spacing: 0;
+      font-weight: 400;
     }
   }
 }
