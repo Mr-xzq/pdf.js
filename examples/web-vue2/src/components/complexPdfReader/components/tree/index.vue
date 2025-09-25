@@ -3,10 +3,10 @@
     class="tree"
     ref="root"
     :style="{
+      // 展开，折叠动画时长
       '--tree-duration': duration + 'ms',
     }"
   >
-    <!-- 根级节点渲染：将顶层 data 渲染为 TreeNode 列表 -->
     <tree-node
       v-for="n in data"
       :key="getKey(n)"
@@ -33,7 +33,7 @@
       ></template>
     </tree-node>
     <!-- empty slot -->
-    <div v-if="!data || !data.length"><slot name="empty">无数据</slot></div>
+    <div v-if="!data || !data.length"><slot name="empty"></slot></div>
   </div>
 </template>
 
@@ -44,41 +44,44 @@ import commonMixin from "./commonMixin";
 export default {
   name: "Tree",
   components: { TreeNode },
+  // 里面有一些和 TreeNode 通用的方法，比如根据属性映射获取真实数据的 props 等
   mixins: [commonMixin],
   props: {
-    // 树数据源（数组）
+    // tree 数据源
     data: { type: Array, default: () => [] },
-    // 受控：展开的 key 列表（支持 expandedKey.sync）
+    // 包含所有展开节点 key 的数组（支持 expandedKey.sync）
     expandedKeys: { type: Array, default: () => [] },
-    // 初始是否展开全部（当未传 expandedKeys 时生效）
+    // 初始是否展开全部节点（当未传 expandedKeys 时生效）
     defaultExpandAll: { type: Boolean, default: false },
-    // 互斥展开：仅保留一条展开路径（类似手风琴）；默认关闭
+    // 互斥展开：仅保留一条展开路径；默认关闭
     accordion: { type: Boolean, default: false },
-    // 是否允许选择节点（触发 select 事件与 activeKey 更新）
+    // 是否允许选择节点（触发 select 事件和 activeKey 更新）
     selectable: { type: Boolean, default: true },
-    // 受控：当前选中节点 key（支持 activeKey.sync）
+    // 当前选中节点 key（支持 activeKey.sync）
     activeKey: [String, Number],
     // 过渡动画时长（毫秒）
     duration: { type: Number, default: 160 },
   },
   data() {
-    // 初始化展开态哈希：将 expandedKeys 转为 O(1) 查询的 Map 结构
+    // 初始化将 expandedKeys 映射为 {}，方便后面查询对应节点
     const m = {};
     (this.expandedKeys || []).forEach(k => {
       m[k] = true;
     });
     return {
-      // 展开态映射：key => true
+      // 展开状态映射表：key => true
       expandedMap: m,
-      // 快速索引映射：nodesMap: key => node；parentMap: childKey => parentKey
+      // 快速索引映射：包含节点和父节点映射
+      // nodesMap: key => node；parentMap: childKey => parentKey
       maps: { nodesMap: {}, parentMap: {} },
     };
   },
-  // Watchers: keep expanded/active state in sync and rebuild maps on data change
+  // 保持展开和选中状态的同步，并在数据变化时重建映射表
   watch: {
     expandedKeys: {
       deep: true,
       handler(v) {
+        // 将新的 expandedKeys 数组转换为映射表
         const m = {};
         (v || []).forEach(k => {
           m[k] = true;
@@ -87,24 +90,28 @@ export default {
       },
     },
     activeKey(v) {
+      // 当 activeKey 变化时，自动展开其所有父节点
       if (v !== undefined && v !== null) this.expandToKey(v);
     },
     data: {
       immediate: true,
       handler() {
+        // 重建节点和父节点的映射表
         this.maps = this.buildMaps(this.data);
+        // 如果设置了 defaultExpandAll 且 expandedKeys 为空，则自动展开所有节点
         if (
           this.defaultExpandAll &&
           (!this.expandedKeys || !this.expandedKeys.length)
         ) {
           const all = this.collectAllExpandable(this.data);
+          // 触发 expandedKeys 的更新
           this.$emit("update:expandedKeys", all);
         }
       },
     },
   },
   methods: {
-    // maps builder
+    // 递归构建 nodesMap (key -> node) 和 parentMap (childKey -> parentKey)
     buildMaps(list, parent = null, maps = { nodesMap: {}, parentMap: {} }) {
       for (const n of list || []) {
         const key = this.getKey(n);
@@ -120,13 +127,16 @@ export default {
       }
       return maps;
     },
+
+    // 处理子组件传递的 toggle 事件
     onToggle(node, ex) {
       const key = this.getKey(node);
+      // 如果 accordion 为 true
       if (ex && this.accordion) {
-        // 仅保留“祖先链 + 当前节点”处于展开态
-        const pm = this.maps?.parentMap || this.buildMaps(this.data).parentMap;
+        // 只保留“祖先链 + 当前节点”处于展开状态
+        const pm = this.maps?.parentMap || this.buildMaps(this.data)?.parentMap;
         const keep = {};
-        // 保留祖先链
+        // 向上追溯父节点，保留祖先链
         let cur = key;
         while (pm[cur]) {
           keep[pm[cur]] = true;
@@ -136,27 +146,37 @@ export default {
         keep[key] = true;
         const next = Object.keys(keep);
         this.expandedMap = keep;
+        // 触发更新事件
         this.$emit("update:expandedKeys", next);
         this.$emit("toggle", node, ex, { expandedKeys: next });
         return;
       }
       // 默认：合并/移除单个展开项
       const map = { ...(this.expandedMap || {}) };
+      // 展开
       if (ex) map[key] = true;
+      // 收起
       else delete map[key];
       const next = Object.keys(map);
       this.expandedMap = map;
+      // 触发更新事件
       this.$emit("update:expandedKeys", next);
       this.$emit("toggle", node, ex, { expandedKeys: next });
     },
+
+    // 处理子组件传递的 select 事件
     onSelect(node) {
+      // 如果不可选择，则直接返回
       if (!this.selectable) return;
       const k = this.getKey(node);
-      // 激活时：仅展开其祖先，不展开其子级
+      // 选中时自动展开其所有父节点
       this.expandToKey(k);
+      // 触发 activeKey 更新
       this.$emit("update:activeKey", k);
       this.$emit("select", node, { activeKey: k });
     },
+
+    // 递归收集所有可展开节点的 key
     collectAllExpandable(list, acc = []) {
       for (const n of list || []) {
         const ch = this.getChildren(n);
@@ -168,16 +188,8 @@ export default {
       }
       return acc;
     },
-    buildParentMap(list, parent = null, map = {}) {
-      for (const n of list || []) {
-        const nk = this.getKey(n);
-        const pk = parent ? this.getKey(parent) : null;
-        if (parent && nk != null && pk != null) map[nk] = pk;
-        const ch = this.getChildren(n);
-        if (ch?.length) this.buildParentMap(ch, n, map);
-      }
-      return map;
-    },
+
+    // 展开所有节点
     expandAll() {
       const keys = this.collectAllExpandable(this.data);
       const m = {};
@@ -187,14 +199,18 @@ export default {
       this.expandedMap = m;
       this.$emit("update:expandedKeys", keys);
     },
+
+    // 收起所有节点
     collapseAll() {
       this.expandedMap = {};
       this.$emit("update:expandedKeys", []);
     },
+
+    // 展开到指定 key 所在的路径
     expandToKey(key) {
-      const pm = this.maps?.parentMap || this.buildMaps(this.data).parentMap;
+      const pm = this.maps?.parentMap || this.buildMaps(this.data)?.parentMap;
+      // 单路径模式：仅保留祖先链展开
       if (this.accordion) {
-        // 单路径模式：仅保留祖先链展开
         const map = {};
         let cur = pm[key];
         while (cur) {
@@ -206,7 +222,7 @@ export default {
         this.$emit("update:expandedKeys", next);
         return;
       }
-      // 默认：在原有基础上合并祖先展开
+      // 默认：在现有展开基础上合并祖先展开
       const map = { ...(this.expandedMap || {}) };
       let cur = pm[key];
       while (cur) {
@@ -217,6 +233,8 @@ export default {
       this.expandedMap = map;
       this.$emit("update:expandedKeys", next);
     },
+
+    // 滚动到指定 key 对应的节点
     scrollToKey(key) {
       const root = this.$refs.root;
       const el = root?.querySelector(`[data-key="${CSS.escape(String(key))}"]`);
@@ -226,7 +244,7 @@ export default {
       }
     },
 
-    // Wait until the target node exists in DOM and no height transitions are running
+    // 等待目标节点在 DOM 中存在且动画结束
     waitForNodeReady(key, maxMs = 2000) {
       const root = this.$refs.root;
       const start = Date.now();
@@ -235,14 +253,17 @@ export default {
           const el = root?.querySelector(
             `[data-key="${CSS.escape(String(key))}"]`
           );
+          // 检查节点是否可见
           const present = !!(el?.getClientRects && el?.getClientRects().length);
-          // During expand/collapse, TreeNode sets inline style.height; cleared on after-enter/after-leave
+          // 检查是否有高度过渡动画正在进行
           const running = root?.querySelector(
             '.tree__children[style*="height"]'
           );
+          // 如果节点存在且没有动画运行，或超时
           if ((present && !running) || Date.now() - start > maxMs) {
             resolve();
           } else {
+            // 否则，在下一帧继续检查
             requestAnimationFrame(check);
           }
         };
@@ -250,28 +271,35 @@ export default {
       });
     },
 
-    // unified activate: expand ancestors, set active, optional scroll
+    // 展开祖先，设置激活状态，可选：滚动 key 对应的节点
     async activate(key, opts = {}) {
       if (key === undefined || key === null) return;
       this.expandToKey(key);
       this.$emit("update:activeKey", key);
+      // 如果需要滚动
       if (opts?.scroll) {
+        // 等待节点准备就绪
         await this.waitForNodeReady(key);
+        // 滚动到该节点
         this.scrollToKey(key);
       }
     },
-    // get ancestor keys from root -> parent of key
+
+    // 获取指定 key 的所有祖先 key
     getAncestorKeys(key) {
-      const pm = this.maps?.parentMap || this.buildMaps(this.data).parentMap;
+      const pm = this.maps?.parentMap || this.buildMaps(this.data)?.parentMap;
       const chain = [];
+      // 迭代获取祖先链
       let cur = pm[key];
       while (cur) {
         chain.push(cur);
         cur = pm[cur];
       }
+      // 返回从根节点到父节点的顺序
       return chain.reverse();
     },
-    // get label by key with current mapping
+
+    // 根据 key 获取节点的 label
     getLabelByKey(key) {
       const n = this.maps?.nodesMap ? this.maps.nodesMap[key] : null;
       return n ? this.getLabel(n) : undefined;

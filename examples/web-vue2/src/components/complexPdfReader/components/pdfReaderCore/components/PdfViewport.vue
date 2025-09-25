@@ -49,7 +49,7 @@
 </template>
 
 <script>
-import { PdfServices } from "../core";
+import { createPdfServices } from "../core/pdf-services.js";
 import PdfPage from "./PdfPage.vue";
 import GestureContainer from "./GestureContainer.vue";
 
@@ -104,7 +104,8 @@ export default {
   },
 
   beforeDestroy() {
-    this.destroyServices();
+    // 函数式服务无内部状态，直接释放引用即可
+    this.pdfServices = null;
   },
 
   computed: {
@@ -198,6 +199,7 @@ export default {
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScaleAction: "setScale",
+      goToDestinationAction: "goToDestination",
     }),
 
     // 统一封装常用 refs（方法而非 computed，避免缓存 $refs）
@@ -208,24 +210,21 @@ export default {
       return this.$refs.viewerContainer || null;
     },
 
-    // 初始化服务
+    // 初始化服务（函数式，无 class）
     async initializeServices() {
       try {
-        // 创建 PDF 服务
-        this.pdfServices = new PdfServices(this, {
+        // 确保 PDF.js 与核心服务（EventBus/LinkService）就绪
+        await this.$store.dispatch('pdfReader/document/initializeServices');
+        // 创建面向组件的轻量服务对象
+        this.pdfServices = createPdfServices(this.$store, {
           isMobile: true,
+          // 通过 Vuex 统一导航，解耦服务层对 store 的直接依赖
+          navigateToDestination: dest => this.goToDestinationAction(dest),
         });
-
-        // 初始化 application
-        await this.pdfServices.initialize();
-
         console.log("PDF 查看器核心服务初始化完成");
       } catch (error) {
         console.error("PDF 查看器核心服务初始化失败:", error);
-        this.setDocumentError({
-          error: error.message,
-          type: "init",
-        });
+        this.setDocumentError({ error: error.message, type: 'init' });
       }
     },
 
@@ -240,43 +239,21 @@ export default {
       // 确保服务已初始化（幂等）
       if (!this.pdfServices) {
         await this.initializeServices();
-      } else if (!this.pdfServices.initialized && this.pdfServices.initialize) {
-        await this.pdfServices.initialize();
+      } else {
+        await this.$store.dispatch('pdfReader/document/initializeServices');
       }
 
       try {
         // 统一由 Store 执行真实加载，并在完成后由组件接管
         await this.realLoadDocument({ src: this.src });
 
-        // 从 Store 取出文档并附加给 Services（使用映射的 computed）
+        // 文档已在 Store 中完成 linkService.setDocument 关联，这里无需再手动关联
         const pdfDocument = this.storePdfDocument;
         const infoState = this.storeDocumentInfo || {};
-        if (pdfDocument && this.pdfServices?.attachDocument) {
-          // 通过映射的 computed 读取 metadata，避免直接访问 $store
-          const metadata = this.storeMetadata || null;
-          this.pdfServices.attachDocument(pdfDocument, {
-            info: {
-              numPages: infoState.numPages || pdfDocument?.numPages || 0,
-              fingerprint:
-                infoState.fingerprint ||
-                (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-                pdfDocument?.fingerprint ||
-                null,
-            },
-            metadata,
-          });
-        }
 
         // 获取文档信息用于组件后续初始化（从映射的 computed 读取一次）
         const loadedEvent = {
           document: pdfDocument,
-          // 兼容旧结构：顶层也提供 numPages/fingerprint
-          numPages: infoState.numPages || pdfDocument?.numPages || 0,
-          fingerprint:
-            infoState.fingerprint ||
-            (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-            pdfDocument?.fingerprint ||
-            null,
           info: {
             numPages: infoState.numPages || pdfDocument?.numPages || 0,
             fingerprint:
@@ -284,6 +261,7 @@ export default {
               (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
               pdfDocument?.fingerprint ||
               null,
+            metadata: this.storeMetadata || null,
           },
         };
         this.onDocumentLoaded(loadedEvent);
@@ -300,15 +278,6 @@ export default {
       await this.loadDocument();
     },
 
-    /**
-     * 销毁服务
-     */
-    destroyServices() {
-      if (this.pdfServices) {
-        this.pdfServices.destroy();
-        this.pdfServices = null;
-      }
-    },
 
     /**
      * 处理 src 变化
@@ -420,7 +389,7 @@ export default {
       });
 
       console.log(
-        `PDF 文档加载完成，共 ${event?.numPages || "unknown"} 页，初始缩放: ${
+        `PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，初始缩放: ${
           this.initialScale
         }`
       );
@@ -465,6 +434,8 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@import url('~pdfjs-dist/web/pdf_viewer.css');
+
 .pdf-viewer-core {
   width: 100%;
   height: 100%;
@@ -479,7 +450,7 @@ export default {
     justify-content: center;
     align-items: flex-start;
     padding: 0; // 由外层控制留白
-    min-height: 0; // 确保flex子元素能够正确缩放
+    min-height: 0; // 确保 flex 子元素能够正确缩放
     touch-action: none; // 允许自定义手势（禁用浏览器默认手势）
   }
 

@@ -18,7 +18,7 @@
 
 <script>
 import PdfViewport from "./components/PdfViewport.vue";
-import { PageRenderService } from "./core";
+import { renderPageToCanvasCore } from "./core/pdf-utils.js";
 import {
   mapDocumentState,
   mapViewerState,
@@ -230,9 +230,9 @@ export default {
         }
         const services = this.services();
         if (!services) throw new Error("pdfServices 不可用");
-        const renderer = new PageRenderService(services);
         const opts = { scale: options.scale || 0.2, ...options };
-        await renderer.renderPageToCanvas(pageNumber, canvasEl, opts);
+        const tasks = {};
+        await renderPageToCanvasCore(services, tasks, pageNumber, canvasEl, opts);
       } catch (e) {
         console.warn("renderThumbnail 失败:", e);
       }

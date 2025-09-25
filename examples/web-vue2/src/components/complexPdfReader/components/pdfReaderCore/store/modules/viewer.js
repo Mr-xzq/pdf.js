@@ -9,6 +9,7 @@ import {
   MAX_SCALE,
   round2,
 } from "../../core/pdf-config.js";
+import { resolveDestToPage } from "../../core/pdf-utils.js";
 
 const state = {
   // 当前页面
@@ -105,6 +106,22 @@ const actions = {
     const next = Math.max(state.scale / DEFAULT_SCALE_DELTA, state.minScale);
     return dispatch("setScale", round2(next));
   },
+
+
+	  /**
+	   * 跳转到 PDF 内部目的地（支持命名目的地或 explicitDest 数组）
+	   */
+	  async goToDestination({ dispatch, rootState }, dest) {
+	    const doc = rootState?.pdfReader?.document?.pdfDocument;
+	    if (!doc) {
+	      throw new Error("PDF 文档未加载");
+	    }
+	    const pageNumber = await resolveDestToPage(doc, dest);
+	    if (!pageNumber) {
+	      throw new Error("无法解析目的地页码");
+	    }
+	    return await dispatch("goToPage", pageNumber);
+	  },
 
   /**
    * 重置查看器

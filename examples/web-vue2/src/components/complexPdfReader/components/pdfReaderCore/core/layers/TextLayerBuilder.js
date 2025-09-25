@@ -1,6 +1,6 @@
 // TextLayerBuilder（官方构建器封装版）：提供文本选中/搜索基础能力
 import { BaseLayerBuilder } from "./BaseLayerBuilder";
-import { getPdfjsViewer } from "../pdf-config.js";
+import { TextLayerBuilder as PdfjsTextLayerBuilder } from "pdfjs-dist/legacy/web/pdf_viewer.mjs";
 
 export class TextLayerBuilder extends BaseLayerBuilder {
   constructor(ctx) {
@@ -15,13 +15,11 @@ export class TextLayerBuilder extends BaseLayerBuilder {
     this.layer.innerHTML = "";
 
     try {
-      const page = await this.pdfServices.application?.getPage(this.pageNumber);
+      const page = await this.pdfServices?.getPage?.(this.pageNumber);
       if (!page) return;
 
-      const pdfjsViewer = getPdfjsViewer();
-
       // 创建官方 TextLayerBuilder，并把其内部 div 挂载到我们的容器下
-      this._builder = new pdfjsViewer.TextLayerBuilder({
+      this._builder = new PdfjsTextLayerBuilder({
         pdfPage: page,
         onAppend: div => {
           // div.className === 'textLayer'

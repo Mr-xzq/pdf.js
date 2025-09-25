@@ -1,6 +1,6 @@
 // AnnotationLayerBuilder（官方构建器封装版）：渲染表单与链接等注释，行为与官方一致
 import { BaseLayerBuilder } from "./BaseLayerBuilder";
-import { getPdfjsViewer } from "../pdf-config.js";
+import { AnnotationLayerBuilder as PdfjsAnnotationLayerBuilder } from "pdfjs-dist/legacy/web/pdf_viewer.mjs";
 
 export class AnnotationLayerBuilder extends BaseLayerBuilder {
   constructor(ctx) {
@@ -15,10 +15,12 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
     this.layer.innerHTML = "";
 
     try {
-      const page = await this.pdfServices.application?.getPage(this.pageNumber);
+      const page = await this.pdfServices?.getPage?.(this.pageNumber);
       if (!page) return;
 
-      const services = this.getServices?.() || {};
+      const services = (this.getServices && this.getServices())
+        || this.pdfServices?.getApplicationServices?.()
+        || {};
       const appLinkService = services.linkService;
 
       // 适配器：将注释层中的“内部链接”跳转，统一委托给我们自己的 PdfServices.goToDestination，
@@ -92,9 +94,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
       // 为了兼容官方 AnnotationLayerBuilder 的演示模式事件监听，这里补充 eventBus
       linkService.eventBus = services.eventBus || null;
 
-      const pdfjsViewer = getPdfjsViewer();
-
-      this._builder = new pdfjsViewer.AnnotationLayerBuilder({
+      this._builder = new PdfjsAnnotationLayerBuilder({
         pdfPage: page,
         linkService,
         renderForms: true,

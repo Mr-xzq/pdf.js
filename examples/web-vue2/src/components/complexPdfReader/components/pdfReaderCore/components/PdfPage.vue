@@ -31,15 +31,15 @@
 </template>
 
 <script>
-import { PageRenderService } from "../core";
-import { TextLayerBuilder } from "../core";
-import { AnnotationLayerBuilder } from "../core";
+import { cancelRenderTask, cancelAllRenderTasks, renderPageToCanvasCore } from "../core/pdf-utils.js";
+import { TextLayerBuilder } from "../core/layers/TextLayerBuilder.js";
+import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder.js";
 import {
   createLayer,
   updateAndRenderLayer,
   cancelLayer,
   destroyLayer,
-} from "../core";
+} from "../core/layers/lifecycle.js";
 
 export default {
   name: "PdfPage",
@@ -69,8 +69,8 @@ export default {
 
   data() {
     return {
-      // 渲染服务
-      renderService: null,
+      // 渲染任务表（函数式）
+      renderTasks: {},
 
       // 渲染状态
       rendering: false,
@@ -96,13 +96,12 @@ export default {
   },
 
   mounted() {
-    this.initializeRenderService();
     this.renderPage();
   },
 
   beforeDestroy() {
     try {
-      this.renderService?.cancelRender(this.pageNumber);
+      cancelAllRenderTasks(this.renderTasks);
     } catch (_) {}
     this.destroyLayers();
     this.cleanup();
@@ -126,22 +125,17 @@ export default {
     textLayer() { return this.$refs.textLayer || null },
     annotationLayer() { return this.$refs.annotationLayer || null },
 
-    /**
-     * 初始化渲染服务
-     */
-    initializeRenderService() {
-      this.renderService = new PageRenderService(this.pdfServices);
-    },
+
     /**
      * 渲染页面
      */
     async renderPage() {
-      if (!this.pdfServices || !this.renderService) {
+      if (!this.pdfServices) {
         return;
       }
       // 若存在在途渲染，先取消之，避免重叠
       try {
-        this.renderService.cancelRender(this.pageNumber);
+        cancelRenderTask(this.renderTasks, this.pageNumber);
       } catch (_) {}
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
@@ -161,12 +155,12 @@ export default {
         }
 
         // 渲染页面到 Canvas
-        const result = await this.renderService.renderPageToCanvas(
+        const result = await renderPageToCanvasCore(
+          this.pdfServices,
+          this.renderTasks,
           this.pageNumber,
           canvas,
-          {
-            scale: this.scale,
-          }
+          { scale: this.scale }
         );
         // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
         if (token !== this.renderRequestId) {
@@ -232,7 +226,9 @@ export default {
      * 初始化 Layer builders
      */
     initializeLayers() {
-      const servicesGetter = () => this.pdfServices.getApplicationServices?.();
+      const servicesGetter = () => {
+        return this.$store?.getters?.["pdfReader/document/services"] || { eventBus: null, linkService: null };
+      };
 
       // Text Layer
       if (this.textLayerEnabled && !this.layers.text && this.textLayer()) {
@@ -357,9 +353,7 @@ export default {
      * 处理页码变化
      */
     async onPageNumberChange() {
-      try {
-        this.renderService?.cancelRender(this.pageNumber);
-      } catch (_) {}
+      try { cancelRenderTask(this.renderTasks, this.pageNumber); } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },
@@ -368,9 +362,7 @@ export default {
      * 处理缩放变化
      */
     async onScaleChange() {
-      try {
-        this.renderService?.cancelRender(this.pageNumber);
-      } catch (_) {}
+      try { cancelRenderTask(this.renderTasks, this.pageNumber); } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },

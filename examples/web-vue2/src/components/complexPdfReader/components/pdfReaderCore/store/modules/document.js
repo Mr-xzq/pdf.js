@@ -27,6 +27,12 @@ const state = {
   // 加载控制
   loadToken: 0,
   abortController: null,
+
+  // 应用服务（集中托管）
+  services: {
+    eventBus: null,
+    linkService: null,
+  },
 };
 
 const mutations = {
@@ -102,6 +108,13 @@ const mutations = {
     }
     state.abortController = null;
   },
+
+  // 应用服务（EventBus/LinkService）
+  SET_SERVICES(state, services) {
+    const { eventBus = null, linkService = null } = services || {};
+    state.services.eventBus = eventBus;
+    state.services.linkService = linkService;
+  },
 };
 
 const actions = {
@@ -133,7 +146,30 @@ const actions = {
   },
 
   /**
-   * 真实加载文档（Headless 服务）
+   * 初始化 PDF.js 与核心服务（EventBus/LinkService）
+   * 幂等：可多次调用
+   */
+  async initializeServices({ state, commit }) {
+    try {
+      const { initializePdfJs } = await import("../../core/pdf-config.js");
+      await initializePdfJs();
+      if (!state.services.eventBus || !state.services.linkService) {
+        const { EventBus, PDFLinkService } = await import("pdfjs-dist/legacy/web/pdf_viewer.mjs");
+        const eventBus = new EventBus();
+        const linkService = new PDFLinkService({ eventBus });
+        commit("SET_SERVICES", { eventBus, linkService });
+      }
+      // 若已有文档，确保 linkService 关联文档
+      if (state.pdfDocument && state.services.linkService) {
+        try { state.services.linkService.setDocument(state.pdfDocument); } catch (_) {}
+      }
+    } catch (e) {
+      console.warn("initializeServices 失败:", e);
+    }
+  },
+
+  /**
+   * 真实加载文档
    */
   async realLoadDocument({ state, commit, dispatch }, { src }) {
     try {
@@ -150,6 +186,9 @@ const actions = {
       // 置状态（便于直接调用 realLoadDocument）
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
+
+      // 确保核心服务就绪
+      await dispatch("initializeServices");
 
       // 动态导入 headless loader，避免循环依赖
       const { loadPdfDocument } = await import("../../core/pdf-config.js");
@@ -173,12 +212,9 @@ const actions = {
       });
 
       // 元信息读取上移到调用方
-      let info = null;
       let metadata = null;
       try {
-        const meta = await pdfDocument.getMetadata();
-        info = meta.info || null;
-        metadata = meta || null;
+        metadata = await pdfDocument.getMetadata();
       } catch (_) {}
 
       // 若已被新任务取代，直接丢弃
@@ -203,6 +239,9 @@ const actions = {
       if (metadata) {
         commit("SET_METADATA", metadata);
       }
+
+      // 将文档关联到 LinkService
+      try { state.services.linkService?.setDocument?.(pdfDocument); } catch (_) {}
 
       // 加载完成
       commit("SET_LOADING", false);
@@ -254,6 +293,12 @@ const getters = {
   totalPages: state => state.documentInfo.numPages,
 
   // 文档元数据
+
+  // 应用服务（EventBus/LinkService）
+  services: state => state.services,
+  eventBus: state => state.services.eventBus,
+  linkService: state => state.services.linkService,
+
   metadata: state => state.metadata,
 };
 

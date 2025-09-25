@@ -1,30 +1,33 @@
 <script>
 import commonMixin from "./commonMixin";
 
-/*
-    TreeNode（递归节点）职责说明：
-    - 仅负责单个节点的渲染与交互；不直接管理展开集合
-    - 展开状态来自父组件传入的 expandedMap；自身只维护派生状态 expanded
-    - 通过 @toggle / @select 向父组件上报交互事件（父负责更新 expandedKeys/activeKey）
-    - 使用过渡钩子实现“高度动画”；动画时长/缓动来自样式变量（--tree-duration/--tree-ease）
-    - 字段映射 props：{ key, label, children, isLeaf }，避免绑定具体数据结构
-  */
+// TreeNode (递归节点): 负责单个节点的渲染与交互
 export default {
   name: "TreeNode",
+  // 里面有一些和 Tree 通用的方法，比如根据属性映射获取真实数据的 props 等
   mixins: [commonMixin],
   props: {
+    // 当前节点数据对象
     node: { type: Object, required: true },
+    // 当前节点的层级，默认为 1
     level: { type: Number, default: 1 },
+    // 展开状态的映射表
     expandedMap: { type: Object, required: true },
+    // 当前激活（选中）节点的 key
     activeKey: [String, Number],
   },
   data() {
-    return { expanded: false };
+    return {
+      // 当前节点的展开状态（从 expandedMap 获取，用于内部控制）
+      expanded: false,
+    };
   },
   computed: {
+    // 判断是否为叶子节点 (没有子节点)
     isLeaf() {
       return this.isLeafNode(this.node);
     },
+    // 判断当前节点是否为激活（选中）状态
     isActive() {
       return this.activeKey === this.getKey(this.node);
     },
@@ -33,48 +36,65 @@ export default {
     expandedMap: {
       immediate: true,
       handler() {
+        // 根据传入的 expandedMap 更新内部的 expanded 状态
         this.expanded = !!this?.expandedMap[this.getKey(this.node)];
       },
     },
   },
   methods: {
+    // 切换节点的展开/收起状态
     toggle(e) {
+      // 阻止事件冒泡
       e && e.stopPropagation();
+      // 如果是叶子节点，则不能切换，直接返回
       if (this.isLeaf) return;
       const ex = !this.expanded;
+      // 传递当前节点和新的展开状态
       this.$emit("toggle", this.node, ex);
     },
+    // 选中当前节点
     select() {
       this.$emit("select", this.node);
     },
+    // 动画过渡钩子函数
+    // 节点进入前的钩子 (展开动画开始)
     onEnter(el) {
-      // console.log("onEnter");
-      // 手动改 height 触发 transiton height 过渡动画
+      // 手动改 height 触发 css transiton height 过渡动画
       el.style.height = "0px";
+      // 获取子节点容器的实际高度
       const h = el.scrollHeight + "px";
+      // 确保在下一帧更新高度，触发过渡
       requestAnimationFrame(() => {
         el.style.height = h;
       });
     },
+    // 节点进入后的钩子 (展开动画结束)
     onAfterEnter(el) {
+      // 动画结束后，清除 onEnter 中手动设置的高度样式，让其由内容撑开，避免布局问题
       el.style.height = "";
     },
+    // 节点离开前的钩子 (收起动画开始)
     onLeave(el) {
-      // console.log("onLeave");
-      // 手动改 height 触发 transiton height 过渡动画
+      // 动画开始前，将高度设为实际高度
       el.style.height = el.scrollHeight + "px";
+      // 确保在下一帧将高度设为 0，触发过渡
       requestAnimationFrame(() => {
         el.style.height = "0px";
       });
     },
+    // 节点离开后的钩子 (收起动画结束)
     onAfterLeave(el) {
+      // 动画结束后，清除高度样式
       el.style.height = "";
     },
   },
   render() {
+    // 渲染切换图标 (展开/收起箭头) 或占位符
     const switcherVnode = this.isLeaf ? (
+      // 如果是叶子节点，显示一个不可点击的占位符
       <div class="tree__toggle tree__toggle--placeholder" />
     ) : (
+      // 如果不是叶子节点，显示可点击的切换图标
       <div
         class={["tree__toggle", { "is-expanded": this.expanded }]}
         onClick={this.toggle}
@@ -86,11 +106,13 @@ export default {
             level: this.level,
           })
         ) : (
+          // 没有 switcher 插槽就渲染默认的箭头图标
           <span class="arrow" />
         )}
       </div>
     );
 
+    // 渲染节点的主要内容区域 - label
     const contentSectionVnode = (
       <div class="tree__content" onClick={this.select}>
         {this.$scopedSlots.label ? (
@@ -99,6 +121,7 @@ export default {
             label: this.getLabel(this.node),
           })
         ) : (
+          // 没有 label 插槽就渲染默认的标签文本
           <div class={["tree__label", this.labelClassName]}>
             {this.getLabel(this.node)}
           </div>
@@ -115,12 +138,14 @@ export default {
         },
       ],
       style: {
+        // 根据层级设置左侧缩进
         paddingLeft: (this.level - 1) * this.indent + "px",
         height: this.itemHeight + "px",
       },
       attrs: { "data-key": this.getKey(this.node) },
     };
 
+    // 切换图标 + 内容区
     const mainVnode = (
       <div {...mainVnodeConfig}>
         {switcherVnode}
@@ -128,30 +153,43 @@ export default {
       </div>
     );
 
+    // 当前展开的子节点列表
     let childrenVnode = null;
+    // 获取当前节点的子节点列表
     const list = this.getChildren(this.node);
 
+    // 如果存在子节点
     if (list && list.length) {
+      // 渲染子节点列表容器
       const expandedChildrenVnode = (
         <div ref="wrap" class="tree__children">
           {list.map(childItem => {
+            // 为每个子节点创建一个新的 TreeNode 组件
             const treeNodeVnodeConfig = {
               props: {
+                // 当前从父组件传递的 props
                 ...this.$props,
+                // 传入子节点数据，也就是当前要渲染的节点数据
                 node: childItem,
+                // 层级加 1
                 level: this.level + 1,
               },
               on: {
+                // 监听子组件的 toggle/select 事件并向父组件传递
                 toggle: (n, next) => this.$emit("toggle", n, next),
                 select: n => this.$emit("select", n),
               },
+              // 传递作用域插槽，比如 label，switcher 等
               scopedSlots: this.$scopedSlots,
             };
+            // 递归渲染子组件
             return <tree-node {...treeNodeVnodeConfig} />;
           })}
         </div>
       );
+      // 根据 useTransition 属性判断是否使用过渡动画
       childrenVnode = this.useTransition ? (
+        // 使用 transition 组件绑定动画钩子函数
         <transition
           on={{
             enter: this.onEnter,
@@ -160,9 +198,11 @@ export default {
             "after-leave": this.onAfterLeave,
           }}
         >
+          {/* 只有在 expanded 为 true 时才渲染子节点 */}
           {this.expanded && expandedChildrenVnode}
         </transition>
       ) : (
+        // 不使用过渡动画，直接根据 expanded 状态渲染
         this.expanded && expandedChildrenVnode
       );
     }
