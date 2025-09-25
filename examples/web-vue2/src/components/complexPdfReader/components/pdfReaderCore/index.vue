@@ -219,7 +219,7 @@ export default {
   },
 
   beforeDestroy() {
-    this.stopAutoPlay && this.stopAutoPlay(true);
+    this.stopAutoPlay(true);
   },
 
   methods: {
@@ -475,7 +475,7 @@ export default {
         const s = this.navigationState || {};
         const canGoNext = (s.currentPage || 0) < (s.totalPages || 0);
         if (!canGoNext) {
-          this.stopAutoPlay(true);
+          this.stopAutoPlay(false);
           return;
         }
         this.nextPageAction();
@@ -489,7 +489,7 @@ export default {
       }
       this.autoPlaying = false;
       if (!silent) {
-        // 可按需对外抛出事件
+        this.$emit("auto-play-ended", { reason: "reached-end" });
       }
     },
 

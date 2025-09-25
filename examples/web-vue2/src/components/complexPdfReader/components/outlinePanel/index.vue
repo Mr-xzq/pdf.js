@@ -26,9 +26,6 @@ import Tree from "../tree/index.vue";
 import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
-import { createNamespacedHelpers } from "vuex";
-const { mapActions: mapViewerActions } =
-  createNamespacedHelpers("pdfReader/viewer");
 export default {
   name: "OutlinePanel",
   components: { Tree },
@@ -65,28 +62,19 @@ export default {
     };
   },
   async mounted() {
-    // 统一交由 store 控制 loading 展示
-    this.setDisplayLoading({
-      loading: true,
-      message: "正在加载目录...",
-    });
+    // 通过事件向上抛出 loading
+    this.$emit("loading-start", { source: "viewer", message: "加载中" });
     try {
-      // 获取大纲数据
       const data = await this.getOutline();
       this.outline = Array.isArray(data) ? data : [];
-      // 将原始大纲数据转换为树形结构
       this.treeData = this.buildTreeData(this.outline);
-      console.log("OutlinePanel loaded: ", this.treeData);
-      // 确保页码映射构建完成
       await this.ensurePageMapOnce();
-      // 根据当前页码高亮对应的目录节点
       let initKey = this.pickKeyForPageSafe(this.currentPage);
       if (initKey) {
         this.activeKey = initKey;
       }
     } finally {
-      // 无论成功失败，都停止加载状态
-      this.setDisplayLoading({ loading: false });
+      this.$emit("loading-stop", { source: "viewer" });
     }
   },
   watch: {
@@ -121,7 +109,6 @@ export default {
     },
   },
   methods: {
-    ...mapViewerActions(["setDisplayLoading"]),
     // 树节点选中事件处理
     async onTreeSelect(node) {
       console.log(
@@ -145,10 +132,7 @@ export default {
       this.$nextTick(async () => {
         const needLoad = !this.pageMapReady;
         if (needLoad) {
-          this.setDisplayLoading({
-            loading: true,
-            message: "正在加载目录...",
-          });
+          this.$emit("loading-start", { source: "viewer", message: "加载中" });
         }
         try {
           await this.ensurePageMapOnce();
@@ -158,11 +142,10 @@ export default {
               : this.activeKey;
           if (k != null) {
             await this.activateAndScroll(k);
-            // 滚动后清除待处理key
             this.pendingActiveKey = null;
           }
         } finally {
-          if (needLoad) this.setDisplayLoading({ loading: false });
+          if (needLoad) this.$emit("loading-stop", { source: "viewer" });
         }
       });
     },

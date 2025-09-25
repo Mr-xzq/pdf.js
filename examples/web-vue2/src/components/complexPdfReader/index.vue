@@ -23,6 +23,10 @@
         @page-changed="onPdfPageChanged"
         @scale-changed="onPdfScaleChanged"
         @page-rendered="onPdfPageRendered"
+        @render-error="onPdfRenderError"
+        @loading-start="onLoadingStart"
+        @loading-stop="onLoadingStop"
+        @auto-play-ended="onAutoPlayEnded"
       />
     </div>
     <div class="bottom-toolbar">
@@ -139,6 +143,8 @@
         :navigate-to-destination="navigateToDestination"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
+        @loading-start="onChildLoadingStart"
+        @loading-stop="onChildLoadingStop"
       />
     </drawer>
     <drawer
@@ -154,6 +160,8 @@
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
         @selected="closeThumbnailDrawer"
+        @loading-start="onChildLoadingStart"
+        @loading-stop="onChildLoadingStop"
       />
     </drawer>
   </div>
@@ -306,47 +314,62 @@ export default {
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScale: "setScale",
-      setDisplayLoading: "setDisplayLoading",
     }),
 
-    startDisplayLoading(message) {
+    startDisplayLoading() {
       if (this.isDisplayLoading) return;
       this.isDisplayLoading = true;
-      // 统一在 Store 中维护 loading 状态
-      this.setDisplayLoading({
-        loading: true,
-        message: message || "正在翻页...",
+      this.$emit("loading-start", {
+        source: "viewer",
+        message: "加载中",
       });
     },
     stopDisplayLoading() {
       if (!this.isDisplayLoading) return;
       this.isDisplayLoading = false;
-      this.setDisplayLoading({
-        loading: false,
-      });
+      this.$emit("loading-stop", { source: "viewer" });
     },
 
     async goToPage(n) {
       const t = this.totalPages || 0;
       if (!Number.isFinite(n) || n < 1 || n > t) return;
-      this.startDisplayLoading(`正在前往第 ${n} 页...`);
+      if (n === this.currentPage) return;
+      this.startDisplayLoading();
       try {
         await this.goToPageAction(n);
-      } catch (_) {}
+      } catch (_) {
+        // 如果发生错误（例如内部校验失败），立即停止 loading，避免卡住
+        this.stopDisplayLoading();
+      }
     },
     async nextPage() {
-      const target = (this.currentPage || 0) + 1;
-      this.startDisplayLoading(`正在前往第 ${target} 页...`);
+      const t = this.totalPages || 0;
+      const cur = this.currentPage || 0;
+      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
+      this.startDisplayLoading();
       try {
         await this.nextPageAction();
-      } catch (_) {}
+      } catch (_) {
+        this.stopDisplayLoading();
+      }
     },
     async prevPage() {
-      const target = (this.currentPage || 2) - 1;
-      this.startDisplayLoading(`正在前往第 ${target} 页...`);
+      const cur = this.currentPage || 0;
+      if (!Number.isFinite(cur) || cur <= 1) return;
+      this.startDisplayLoading();
       try {
         await this.prevPageAction();
-      } catch (_) {}
+      } catch (_) {
+        this.stopDisplayLoading();
+      }
+    },
+
+    // 子面板触发的 loading 统一代理到组件级（对外抛出）
+    onChildLoadingStart() {
+      this.startDisplayLoading();
+    },
+    onChildLoadingStop() {
+      this.stopDisplayLoading();
     },
 
     handleClickThumbnail() {
@@ -430,6 +453,11 @@ export default {
       this.autoPlay = !this.autoPlay;
       this.$emit("update:autoPlayEnabled", this.autoPlay);
     },
+    onAutoPlayEnded() {
+      // 子组件自动播放到达最后一页后，重置本地与对外同步状态
+      this.autoPlay = false;
+      this.$emit("update:autoPlayEnabled", false);
+    },
     getOutline() {
       return this.pdfReaderRef?.getOutline();
     },
@@ -487,7 +515,8 @@ export default {
       this.$emit("page-changed", e);
     },
     onLoadingStart(e) {
-      this.$emit("loading-start", e);
+      const payload = { source: (e && e.source) || "core", message: "加载中" };
+      this.$emit("loading-start", payload);
     },
     onLoadingStop(e) {
       this.$emit("loading-stop", e);
@@ -498,6 +527,10 @@ export default {
     onPdfPageRendered(e) {
       this.stopDisplayLoading();
       this.$emit("page-rendered", e);
+    },
+    onPdfRenderError(e) {
+      this.stopDisplayLoading();
+      this.$emit("render-error", e);
     },
   },
 };
