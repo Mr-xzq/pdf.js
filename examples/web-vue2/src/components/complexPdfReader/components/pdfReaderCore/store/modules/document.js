@@ -7,7 +7,7 @@ const state = {
   // 文档实例
   pdfDocument: null,
 
-  // 文档基本信息（MVP版本：只保留核心信息）
+  // 文档基本信息
   documentInfo: {
     numPages: 0,
     fingerprint: null,
@@ -28,7 +28,7 @@ const state = {
   loadToken: 0,
   abortController: null,
 
-  // 应用服务（集中托管）
+  // 应用服务
   services: {
     eventBus: null,
     linkService: null,
@@ -190,9 +190,9 @@ const actions = {
   },
 
   /**
-   * 真实加载文档
+   * 加载文档
    */
-  async realLoadDocument({ state, commit, dispatch }, { src }) {
+  async loadDocument({ state, commit, dispatch }, { src }) {
     try {
       // 取消上一轮
       if (state.abortController) {
@@ -204,14 +204,13 @@ const actions = {
       state.loadToken = currentToken;
       state.abortController = new AbortController();
 
-      // 置状态（便于直接调用 realLoadDocument）
+      // 置状态
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
 
       // 确保核心服务就绪
       await dispatch("initializeServices");
 
-      // 动态导入 headless loader，避免循环依赖
       const { loadPdfDocument } = await import("../../utils/pdf-config.js");
 
       let lastProgress = 0;
@@ -232,17 +231,12 @@ const actions = {
         },
       });
 
-      // 元信息读取上移到调用方
       let metadata = null;
-      try {
-        metadata = await pdfDocument.getMetadata();
-      } catch (_) {}
+      metadata = await pdfDocument.getMetadata();
 
       // 若已被新任务取代，直接丢弃
       if (state.loadToken !== currentToken) {
-        try {
-          pdfDocument?.destroy?.();
-        } catch (_) {}
+        pdfDocument?.destroy?.();
         return null;
       }
 
@@ -256,7 +250,7 @@ const actions = {
           pdfDocument?.fingerprint ||
           null,
       });
-      // 元数据（可选）
+
       if (metadata) {
         commit("SET_METADATA", metadata);
       }

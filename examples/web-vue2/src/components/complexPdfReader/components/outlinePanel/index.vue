@@ -26,6 +26,9 @@ import Tree from "../tree/index.vue";
 import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
+import { createNamespacedHelpers } from "vuex";
+const { mapActions: mapViewerActions } =
+  createNamespacedHelpers("pdfReader/viewer");
 export default {
   name: "OutlinePanel",
   components: { Tree },
@@ -62,7 +65,11 @@ export default {
     };
   },
   async mounted() {
-    this.$emit("loading-start", { source: "outline" });
+    // 统一交由 store 控制 loading 展示
+    this.setDisplayLoading({
+      loading: true,
+      message: "正在加载目录...",
+    });
     try {
       // 获取大纲数据
       const data = await this.getOutline();
@@ -79,7 +86,7 @@ export default {
       }
     } finally {
       // 无论成功失败，都停止加载状态
-      this.$emit("loading-stop", { source: "outline" });
+      this.setDisplayLoading({ loading: false });
     }
   },
   watch: {
@@ -114,6 +121,7 @@ export default {
     },
   },
   methods: {
+    ...mapViewerActions(["setDisplayLoading"]),
     // 树节点选中事件处理
     async onTreeSelect(node) {
       console.log(
@@ -136,7 +144,12 @@ export default {
       this.visible = true;
       this.$nextTick(async () => {
         const needLoad = !this.pageMapReady;
-        if (needLoad) this.$emit("loading-start", { source: "outline" });
+        if (needLoad) {
+          this.setDisplayLoading({
+            loading: true,
+            message: "正在加载目录...",
+          });
+        }
         try {
           await this.ensurePageMapOnce();
           const k =
@@ -149,7 +162,7 @@ export default {
             this.pendingActiveKey = null;
           }
         } finally {
-          if (needLoad) this.$emit("loading-stop", { source: "outline" });
+          if (needLoad) this.setDisplayLoading({ loading: false });
         }
       });
     },

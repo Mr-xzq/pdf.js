@@ -26,6 +26,9 @@
 </template>
 
 <script>
+import { createNamespacedHelpers } from "vuex";
+const { mapActions: mapViewerActions } =
+  createNamespacedHelpers("pdfReader/viewer");
 export default {
   name: "ThumbnailPanel",
   props: {
@@ -50,14 +53,18 @@ export default {
     };
   },
   async mounted() {
-    this.$emit("loading-start", { source: "thumbnail" });
+    // 统一交由 store 控制 loading 展示
+    this.setDisplayLoading({
+      loading: true,
+      message: "正在加载缩略图...",
+    });
     try {
       // 确保缩略图被渲染
       await this.ensureRenderThumbnails();
       // 尝试同步当前页，确保滚动到可视区域
       this.trySyncCurrent();
     } finally {
-      this.$emit("loading-stop", { source: "thumbnail" });
+      this.setDisplayLoading({ loading: false });
     }
   },
   watch: {
@@ -86,6 +93,7 @@ export default {
     },
   },
   methods: {
+    ...mapViewerActions(["setDisplayLoading"]),
     // 计算第一个缩略图的实际 CSS 宽度（与列数/容器宽度相关）
     getCssThumbWidth() {
       const list = this.$el && this.$el.querySelector(".thumb-list");
@@ -112,7 +120,12 @@ export default {
       this.visible = true;
       this.$nextTick(async () => {
         const needLoad = !this.thumbsRendered;
-        if (needLoad) this.$emit("loading-start", { source: "thumbnail" });
+        if (needLoad) {
+          this.setDisplayLoading({
+            loading: true,
+            message: "正在加载缩略图...",
+          });
+        }
         try {
           // 确保缩略图已渲染
           await this.ensureRenderThumbnails();
@@ -123,7 +136,7 @@ export default {
           // 清空待同步页码
           this.pendingPage = null;
         } finally {
-          if (needLoad) this.$emit("loading-stop", { source: "thumbnail" });
+          if (needLoad) this.setDisplayLoading({ loading: false });
         }
       });
     },

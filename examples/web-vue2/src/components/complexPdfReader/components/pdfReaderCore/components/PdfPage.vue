@@ -45,6 +45,9 @@ import {
   destroyLayer,
 } from "../utils/layers/lifecycle.js";
 
+// 引入第三方库
+import { mapState, mapGetters, mapActions } from "vuex";
+
 export default {
   name: "PdfPage",
 
@@ -95,11 +98,13 @@ export default {
       renderRequestId: 0,
     };
   },
-
+  computed: {
+    ...mapState("pdfReader/document", ["pdfDocument"]),
+    ...mapGetters("pdfReader/document", ["services"]),
+  },
   mounted() {
     this.renderPage();
   },
-
   beforeDestroy() {
     try {
       cancelAllRenderTasks(this.renderTasks);
@@ -107,7 +112,6 @@ export default {
     this.destroyLayers();
     this.cleanup();
   },
-
   watch: {
     pageNumber: {
       handler: "onPageNumberChange",
@@ -120,33 +124,17 @@ export default {
   },
 
   methods: {
-    // 统一封装常用 refs（用方法，避免 computed 缓存 $refs 带来的不可预期）
-    container() {
-      return this.$refs.container || null;
-    },
-    pageCanvas() {
-      return this.$refs.pageCanvas || null;
-    },
-    // 本地服务：通过 Vuex 获取页与导航
+    ...mapActions("pdfReader/document", ["getPage"]),
+    ...mapActions("pdfReader/viewer", ["goToDestination"]),
     getPdfServices() {
       return {
-        getPage: n => this.$store.dispatch("pdfReader/document/getPage", n),
-        goToDestination: dest =>
-          this.$store.dispatch("pdfReader/viewer/goToDestination", dest),
+        getPage: this.getPage,
+        goToDestination: this.goToDestination,
       };
     },
-    textLayer() {
-      return this.$refs.textLayer || null;
-    },
-    annotationLayer() {
-      return this.$refs.annotationLayer || null;
-    },
-
-    /**
-     * 渲染页面
-     */
+    // 渲染页面
     async renderPage() {
-      const doc = this.$store?.state?.pdfReader?.document?.pdfDocument;
+      const doc = this.pdfDocument;
       if (!doc) return;
       // 若存在在途渲染，先取消之，避免重叠
       try {
@@ -164,7 +152,7 @@ export default {
         // 渲染开始前隐藏画布，避免看到空白底色
         this.canvasStyle = { display: "block", opacity: 0 };
 
-        const canvas = this.pageCanvas();
+        const canvas = this.$refs.pageCanvas;
         if (!canvas) {
           throw new Error("Canvas 元素未找到");
         }
@@ -229,21 +217,17 @@ export default {
       }
     },
 
-    /**
-     * 取消进行中的 Layer 任务
-     */
+    // 取消进行中的 Layer 任务
     cancelLayers() {
       cancelLayer(this.layers?.text);
       cancelLayer(this.layers?.annotation);
     },
 
-    /**
-     * 初始化 Layer builders
-     */
+    // 初始化 Layer builders
     initializeLayers() {
       const servicesGetter = () => {
         return (
-          this.$store?.getters?.["pdfReader/document/services"] || {
+          this.services || {
             eventBus: null,
             linkService: null,
           }
@@ -251,9 +235,9 @@ export default {
       };
 
       // Text Layer
-      if (this.textLayerEnabled && !this.layers.text && this.textLayer()) {
+      if (this.textLayerEnabled && !this.layers.text && this.$refs.textLayer) {
         this.layers.text = createLayer(TextLayerBuilder, {
-          container: this.textLayer(),
+          container: this.$refs.textLayer,
           pdfServices: this.getPdfServices(),
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
@@ -264,10 +248,10 @@ export default {
       if (
         this.annotationsEnabled &&
         !this.layers.annotation &&
-        this.annotationLayer()
+        this.$refs.annotationLayer
       ) {
         this.layers.annotation = createLayer(AnnotationLayerBuilder, {
-          container: this.annotationLayer(),
+          container: this.$refs.annotationLayer,
           pdfServices: this.getPdfServices(),
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
@@ -275,9 +259,7 @@ export default {
       }
     },
 
-    /**
-     * 渲染所有启用的 Layer
-     */
+    // 渲染所有启用的 Layer
     async renderLayers() {
       const tasks = [];
       if (this.layers.text) {
@@ -299,9 +281,7 @@ export default {
       await Promise.all(tasks);
     },
 
-    /**
-     * 销毁所有 Layer
-     */
+    // 销毁所有 Layer
     destroyLayers() {
       if (this.layers.text) {
         destroyLayer(this.layers.text);
@@ -313,21 +293,16 @@ export default {
       }
     },
 
-    /**
-     * 在渲染完成后，根据 viewport 尺寸设置容器高度，防止缩小时容器比 canvas 高
-     */
+    // 在渲染完成后，根据 viewport 尺寸设置容器高度，防止缩小时容器比 canvas 高
     syncContainerSize() {
-      const container = this.container();
-      const canvas = this.pageCanvas();
+      const container = this.$refs.container;
+      const canvas = this.$refs.pageCanvas;
       if (!container || !canvas || !this.viewport) return;
       const { width, height } = this.viewport;
       container.style.width = `${width}px`;
       container.style.height = `${height}px`;
     },
 
-    /**
-     * 更新样式
-     */
     updateStyles() {
       if (!this.viewport) {
         return;
@@ -357,21 +332,17 @@ export default {
       };
     },
 
-    /**
-     * 清理资源
-     */
+    // 清理资源
     cleanup() {
       // 清理 Canvas
-      const canvas = this.pageCanvas();
+      const canvas = this.$refs.pageCanvas;
       if (canvas) {
         const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
       }
     },
 
-    /**
-     * 处理页码变化
-     */
+    // 处理页码变化
     async onPageNumberChange() {
       try {
         cancelRenderTask(this.renderTasks, this.pageNumber);
@@ -380,9 +351,7 @@ export default {
       await this.renderPage();
     },
 
-    /**
-     * 处理缩放变化
-     */
+    // 处理缩放变化
     async onScaleChange() {
       try {
         cancelRenderTask(this.renderTasks, this.pageNumber);
@@ -391,9 +360,7 @@ export default {
       await this.renderPage();
     },
 
-    /**
-     * 处理 Canvas 点击
-     */
+    // 处理 Canvas 点击
     onCanvasClick(event) {
       this.$emit("canvas-click", {
         pageNumber: this.pageNumber,

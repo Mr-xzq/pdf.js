@@ -45,18 +45,15 @@
 </template>
 
 <script>
-import PdfPage from "./PdfPage.vue";
-import GestureContainer from "./GestureContainer.vue";
+// 引入组件
+import PdfPage from "./components/PdfPage.vue";
+import GestureContainer from "./components/GestureContainer.vue";
 
-import { renderPageToCanvasCore } from "../utils/pdf-utils.js";
-import {
-  mapDocumentState,
-  mapViewerState,
-  mapDocumentActions,
-  mapViewerActions,
-  mapDocumentGetters,
-  mapViewerGetters,
-} from "../store/index.js";
+// 引入自己项目里的工具函数
+import { renderPageToCanvasCore } from "./utils/pdf-utils.js";
+
+// 引入第三方库
+import { mapState, mapGetters, mapActions } from "vuex";
 
 export default {
   name: "PdfViewport",
@@ -99,31 +96,54 @@ export default {
   },
 
   async mounted() {
-    await this.initializeServices();
-
     if (this.src) {
-      await this.loadDocument();
+      await this.initializeServicesAction();
+      try {
+        await this.loadDocumentAction({ src: this.src });
+        const pdfDocument = this.storePdfDocument;
+        const infoState = this.storeDocumentInfo || {};
+        const loadedEvent = {
+          document: pdfDocument,
+          info: {
+            numPages: infoState.numPages || pdfDocument?.numPages || 0,
+            fingerprint:
+              infoState.fingerprint ||
+              (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+              pdfDocument?.fingerprint ||
+              null,
+            metadata: this.storeMetadata || null,
+          },
+        };
+        this.onDocumentLoaded(loadedEvent);
+      } catch (error) {
+        this.onDocumentError({ error: error.message, type: "load" });
+      }
     }
   },
 
   computed: {
-    // 来自 Store 的文档级 loading/进度/错误（使用 mapState 统一风格）
-    ...mapDocumentState(["loading", "loadProgress", "loadMessage", "error"]),
+    // 来自 Store 的文档级 loading/进度/错误
+    ...mapState("pdfReader/document", [
+      "loading",
+      "loadProgress",
+      "loadMessage",
+      "error",
+    ]),
     // 引入文档模块中的文档实例与信息（用别名避免与 data 冲突）
-    ...mapDocumentState({
-      storePdfDocument: "pdfDocument",
-      storeDocumentInfo: "documentInfo",
+    ...mapState("pdfReader/document", {
+      storePdfDocument: state => state.pdfDocument,
+      storeDocumentInfo: state => state.documentInfo,
     }),
-    ...mapDocumentGetters({
-      storeMetadata: "metadata",
+    // 文档元信息 getter（使用模块前缀对象映射，便于本地别名）
+    ...mapGetters({
+      storeMetadata: "pdfReader/document/metadata",
     }),
-    // 将 viewer 的关键状态通过 mapState 引入为别名，避免与本地 data 冲突
-    ...mapViewerState({
-      storeCurrentPage: "currentPage",
-      storeScale: "scale",
+    // 视图状态与派生状态
+    ...mapState("pdfReader/viewer", {
+      storeCurrentPage: state => state.currentPage,
+      storeScale: state => state.scale,
     }),
-    // 从 viewer getters 引入导航/缩放派生状态（用于自动播放与 UI）
-    ...mapViewerGetters(["navigationState", "zoomState"]),
+    ...mapGetters("pdfReader/viewer", ["navigationState", "zoomState"]),
     scale: {
       get() {
         return this.storeScale;
@@ -140,9 +160,11 @@ export default {
         this.goToPageAction(v);
       },
     },
+
     documentLoaded() {
       return !!this.storePdfDocument;
     },
+
     documentReady() {
       return this.documentLoaded;
     },
@@ -150,9 +172,7 @@ export default {
     docLoading() {
       return this.loading;
     },
-    docProgress() {
-      return this.loadProgress || 0;
-    },
+
     docMessage() {
       return this.loadMessage || "加载中";
     },
@@ -203,17 +223,21 @@ export default {
   },
 
   methods: {
-    ...mapDocumentActions([
-      "realLoadDocument",
-      "setLoadProgress",
-      "setDocumentError",
-    ]),
-    ...mapViewerActions({
+    ...mapActions("pdfReader/document", {
+      loadDocumentAction: "loadDocument",
+      setLoadProgress: "setLoadProgress",
+      setDocumentError: "setDocumentError",
+      initializeServicesAction: "initializeServices",
+      getOutlineAction: "getOutline",
+      getPageAction: "getPage",
+    }),
+    ...mapActions("pdfReader/viewer", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScaleAction: "setScale",
       goToDestinationAction: "goToDestination",
+      resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
 
     // 统一封装常用 refs（方法而非 computed，避免缓存 $refs）
@@ -224,36 +248,18 @@ export default {
       return this.$refs.viewerContainer || null;
     },
 
-    // 初始化服务
-    async initializeServices() {
-      try {
-        // 确保 PDF.js 与核心服务（EventBus/LinkService）就绪
-        await this.$store.dispatch("pdfReader/document/initializeServices");
-        console.log("PDF 查看器核心服务初始化完成");
-      } catch (error) {
-        console.error("PDF 查看器核心服务初始化失败:", error);
-        this.setDocumentError({ error: error.message, type: "init" });
-      }
-    },
-
     /**
-     * 加载文档
+     * 重试加载
      */
-    async loadDocument() {
+    async retry() {
       if (!this.src) {
         return;
       }
-
-      // 确保服务已初始化（幂等）
-      await this.$store.dispatch("pdfReader/document/initializeServices");
-
+      await this.initializeServicesAction();
       try {
-        await this.realLoadDocument({ src: this.src });
-
+        await this.loadDocumentAction({ src: this.src });
         const pdfDocument = this.storePdfDocument;
         const infoState = this.storeDocumentInfo || {};
-
-        // 获取文档信息用于组件后续初始化（从映射的 computed 读取一次）
         const loadedEvent = {
           document: pdfDocument,
           info: {
@@ -268,16 +274,8 @@ export default {
         };
         this.onDocumentLoaded(loadedEvent);
       } catch (error) {
-        console.error("PDF 文档加载失败:", error);
         this.onDocumentError({ error: error.message, type: "load" });
       }
-    },
-
-    /**
-     * 重试加载
-     */
-    async retry() {
-      await this.loadDocument();
     },
 
     /**
@@ -285,7 +283,30 @@ export default {
      */
     async onSrcChange(newSrc, oldSrc) {
       if (newSrc !== oldSrc) {
-        await this.loadDocument();
+        if (!this.src) {
+          return;
+        }
+        await this.initializeServicesAction();
+        try {
+          await this.loadDocumentAction({ src: this.src });
+          const pdfDocument = this.storePdfDocument;
+          const infoState = this.storeDocumentInfo || {};
+          const loadedEvent = {
+            document: pdfDocument,
+            info: {
+              numPages: infoState.numPages || pdfDocument?.numPages || 0,
+              fingerprint:
+                infoState.fingerprint ||
+                (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
+                pdfDocument?.fingerprint ||
+                null,
+              metadata: this.storeMetadata || null,
+            },
+          };
+          this.onDocumentLoaded(loadedEvent);
+        } catch (error) {
+          this.onDocumentError({ error: error.message, type: "load" });
+        }
       }
     },
 
@@ -332,20 +353,6 @@ export default {
 
       // 只向父组件传递事件
       this.$emit("load-progress", event);
-    },
-
-    /**
-     * 处理页面变化
-     */
-    onPageChanged(event) {
-      this.$emit("page-changed", event);
-    },
-
-    /**
-     * 处理缩放变化
-     */
-    onScaleChanged(event) {
-      this.$emit("scale-changed", event);
     },
 
     /**
@@ -403,9 +410,7 @@ export default {
      */
     async getOutline() {
       try {
-        return (
-          (await this.$store.dispatch("pdfReader/document/getOutline")) ?? []
-        );
+        return (await this.getOutlineAction()) ?? [];
       } catch (e) {
         console.warn("getOutline 调用失败:", e);
         return [];
@@ -430,7 +435,7 @@ export default {
         }
         const opts = { scale: options.scale || 0.2, ...options };
         const services = {
-          getPage: n => this.$store.dispatch("pdfReader/document/getPage", n),
+          getPage: n => this.getPageAction(n),
         };
         await renderPageToCanvasCore(
           services,
@@ -444,14 +449,9 @@ export default {
       }
     },
 
-    getTotalPages() {
-      const nav = this.navigationState || {};
-      return nav.totalPages || this.storePdfDocument?.numPages || 0;
-    },
-
     async navigateToDestination(dest) {
       try {
-        await this.$store.dispatch("pdfReader/viewer/goToDestination", dest);
+        await this.goToDestinationAction(dest);
       } catch (e) {
         console.warn("navigateToDestination 失败:", e);
       }
@@ -459,10 +459,7 @@ export default {
 
     async resolveDestToPageNumber(dest) {
       try {
-        return await this.$store.dispatch(
-          "pdfReader/viewer/resolveDestinationToPage",
-          dest
-        );
+        return await this.resolveDestinationToPageAction(dest);
       } catch (e) {
         console.warn("resolveDestToPageNumber 失败:", e);
         return null;
@@ -506,18 +503,6 @@ export default {
     },
 
     /**
-     * 应用缩放比例
-     */
-    applyScale(scale) {
-      this.scale = scale;
-
-      // 触发页面重新渲染（以当前页为准）
-      this.onPageChanged({ pageNumber: this.page });
-
-      console.log(`缩放比例更新为: ${scale}`);
-    },
-
-    /**
      * 按容器宽度适配一次（无监听、无后续自动调整）
      */
     async fitWidthOnce() {
@@ -528,10 +513,7 @@ export default {
         const rect = container.getBoundingClientRect();
         if (!rect || rect.width === 0) return;
 
-        const page = await this.$store.dispatch(
-          "pdfReader/document/getPage",
-          1
-        );
+        const page = await this.getPageAction(1);
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {

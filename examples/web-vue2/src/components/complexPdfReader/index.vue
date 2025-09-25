@@ -22,8 +22,7 @@
         @document-error="onPdfError"
         @page-changed="onPdfPageChanged"
         @scale-changed="onPdfScaleChanged"
-        @loading-start="onLoadingStart"
-        @loading-stop="onLoadingStop"
+        @page-rendered="onPdfPageRendered"
       />
     </div>
     <div class="bottom-toolbar">
@@ -140,8 +139,6 @@
         :navigate-to-destination="navigateToDestination"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
-        @loading-start="onLoadingStart"
-        @loading-stop="onLoadingStop"
       />
     </drawer>
     <drawer
@@ -157,25 +154,19 @@
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
         @selected="closeThumbnailDrawer"
-        @loading-start="onLoadingStart"
-        @loading-stop="onLoadingStop"
       />
     </drawer>
   </div>
 </template>
 
 <script>
-// 组件
-import PdfViewport from "./components/pdfReaderCore/components/PdfViewport.vue";
+// 引入组件
+import Index from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/drawer/index.vue";
 import OutlinePanel from "./components/outlinePanel/index.vue";
 import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
-import {
-  mapViewerGetters,
-  mapViewerActions,
-} from "./components/pdfReaderCore/store/index.js";
 
-// 图标
+// 引入图标
 // import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";
 // import searchIconUrl from "@/assets/images/complexPdfReader/search-2x.png";
 import thumbnailIconUrl from "@/assets/images/complexPdfReader/thumbnail-2x.png";
@@ -185,18 +176,22 @@ import firstPageIconUrl from "@/assets/images/complexPdfReader/firstPage-2x.png"
 import lastPageIconUrl from "@/assets/images/complexPdfReader/lastPage-2x.png";
 import previousPageIconUrl from "@/assets/images/complexPdfReader/previousPage-2x.png";
 import nextPageIconUrl from "@/assets/images/complexPdfReader/nextPage-2x.png";
-
 // import pageFlipAudioIconUrl from "@/assets/images/complexPdfReader/page-flip-audio-2x.png";
 import zoomInIconUrl from "@/assets/images/complexPdfReader/zoom-in-2x.png";
 import zoomOutIconUrl from "@/assets/images/complexPdfReader/zoom-out-2x.png";
 import autoPlayIconUrl from "@/assets/images/complexPdfReader/auto-play-2x.png";
 import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
 
+// 引入第三方库
+import { createNamespacedHelpers } from "vuex";
+const { mapGetters: mapViewerGetters, mapActions: mapViewerActions } =
+  createNamespacedHelpers("pdfReader/viewer");
+
 export default {
   name: "ComplexPdfReader",
   components: {
     Drawer,
-    PdfViewport,
+    PdfViewport: Index,
     OutlinePanel,
     ThumbnailPanel,
   },
@@ -276,6 +271,8 @@ export default {
       sliderValue: 1,
       // 仅用于“放大后可还原”的 UI 状态
       lastScaleBeforeZoom: null,
+      // 显示层统一 loading（只在点击翻页/打开面板等需要时触发）
+      isDisplayLoading: false,
     };
   },
   watch: {
@@ -304,7 +301,54 @@ export default {
     },
   },
   methods: {
-    ...mapViewerActions(["goToPage", "nextPage", "prevPage", "setScale"]),
+    ...mapViewerActions({
+      goToPageAction: "goToPage",
+      nextPageAction: "nextPage",
+      prevPageAction: "prevPage",
+      setScale: "setScale",
+      setDisplayLoading: "setDisplayLoading",
+    }),
+
+    startDisplayLoading(message) {
+      if (this.isDisplayLoading) return;
+      this.isDisplayLoading = true;
+      // 统一在 Store 中维护 loading 状态
+      this.setDisplayLoading({
+        loading: true,
+        message: message || "正在翻页...",
+      });
+    },
+    stopDisplayLoading() {
+      if (!this.isDisplayLoading) return;
+      this.isDisplayLoading = false;
+      this.setDisplayLoading({
+        loading: false,
+      });
+    },
+
+    async goToPage(n) {
+      const t = this.totalPages || 0;
+      if (!Number.isFinite(n) || n < 1 || n > t) return;
+      this.startDisplayLoading(`正在前往第 ${n} 页...`);
+      try {
+        await this.goToPageAction(n);
+      } catch (_) {}
+    },
+    async nextPage() {
+      const target = (this.currentPage || 0) + 1;
+      this.startDisplayLoading(`正在前往第 ${target} 页...`);
+      try {
+        await this.nextPageAction();
+      } catch (_) {}
+    },
+    async prevPage() {
+      const target = (this.currentPage || 2) - 1;
+      this.startDisplayLoading(`正在前往第 ${target} 页...`);
+      try {
+        await this.prevPageAction();
+      } catch (_) {}
+    },
+
     handleClickThumbnail() {
       console.log("open drawer: thumbnail");
       this.isShowThumbnailDrawer = true;
@@ -429,6 +473,7 @@ export default {
       this.gotoPageInput = this.currentPage;
       this.sliderValue = this.currentPage;
       this.$emit("document-loaded", e);
+      // 注意：初始化时不触发翻页 loading，避免与文档级 loading 冲突
     },
     onPdfError(e) {
       console.error("PDF 加载失败", e);
@@ -449,6 +494,10 @@ export default {
     },
     onPdfScaleChanged(e) {
       this.$emit("scale-changed", e);
+    },
+    onPdfPageRendered(e) {
+      this.stopDisplayLoading();
+      this.$emit("page-rendered", e);
     },
   },
 };

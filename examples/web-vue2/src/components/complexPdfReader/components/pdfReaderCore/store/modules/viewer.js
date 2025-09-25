@@ -19,6 +19,10 @@ const state = {
   scale: 1.0,
   minScale: 0.1,
   maxScale: 10.0,
+
+  // UI：统一显示层 loading（集中在 store 维护）
+  displayLoading: false,
+  displayLoadingMessage: "",
 };
 
 const mutations = {
@@ -40,6 +44,14 @@ const mutations = {
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
+    state.displayLoading = false;
+    state.displayLoadingMessage = "";
+  },
+
+  // 统一显示层 loading（集中式）
+  SET_DISPLAY_LOADING(state, { loading, message }) {
+    state.displayLoading = !!loading;
+    state.displayLoadingMessage = loading ? message || "" : "";
   },
 };
 
@@ -108,6 +120,13 @@ const actions = {
   },
 
   /**
+   * UI：集中设置翻页 loading
+   */
+  setDisplayLoading({ commit }, payload) {
+    commit("SET_DISPLAY_LOADING", payload || { loading: false, message: "" });
+  },
+
+  /**
    * 跳转到 PDF 内部目的地（支持命名目的地或 explicitDest 数组）
    */
   async goToDestination({ dispatch, rootState }, dest) {
@@ -163,6 +182,10 @@ const getters = {
     minScale: state.minScale,
     maxScale: state.maxScale,
   }),
+
+  // UI：统一显示层 loading 派生
+  displayLoading: state => state.displayLoading,
+  displayLoadingMessage: state => state.displayLoadingMessage,
 };
 
 export default {
