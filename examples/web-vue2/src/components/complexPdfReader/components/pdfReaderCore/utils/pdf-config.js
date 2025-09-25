@@ -2,7 +2,7 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 let _libInitialized = false;
 
-export async function initializePdfJs() {
+export function initializePdfJs() {
   if (!_libInitialized) {
     pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
       new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
@@ -17,6 +17,7 @@ export const DEFAULT_SCALE_DELTA = 1.1; // 乘法步进
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 10.0;
 
+// 四舍五入小数点后两位
 export function round2(value) {
   return Math.round(value * 100) / 100;
 }
@@ -36,7 +37,7 @@ export async function loadPdfDocument({
 } = {}) {
   if (!src) throw new Error("loadPdfDocument 需要 src");
 
-  const pdfjsLib = await initializePdfJs();
+  const pdfjsLib = initializePdfJs();
 
   // 合并默认阅读器配置，保持与应用层一致
   const params = { url: src, ...getDocumentOptions };

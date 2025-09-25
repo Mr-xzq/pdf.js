@@ -8,8 +8,8 @@ import {
   MIN_SCALE,
   MAX_SCALE,
   round2,
-} from "../../core/pdf-config.js";
-import { resolveDestToPage } from "../../core/pdf-utils.js";
+} from "../../utils/pdf-config.js";
+import { resolveDestToPage } from "../../utils/pdf-utils.js";
 
 const state = {
   // 当前页面
@@ -107,21 +107,29 @@ const actions = {
     return dispatch("setScale", round2(next));
   },
 
+  /**
+   * 跳转到 PDF 内部目的地（支持命名目的地或 explicitDest 数组）
+   */
+  async goToDestination({ dispatch, rootState }, dest) {
+    const doc = rootState?.pdfReader?.document?.pdfDocument;
+    if (!doc) {
+      throw new Error("PDF 文档未加载");
+    }
+    const pageNumber = await resolveDestToPage(doc, dest);
+    if (!pageNumber) {
+      throw new Error("无法解析目的地页码");
+    }
+    return await dispatch("goToPage", pageNumber);
+  },
 
-	  /**
-	   * 跳转到 PDF 内部目的地（支持命名目的地或 explicitDest 数组）
-	   */
-	  async goToDestination({ dispatch, rootState }, dest) {
-	    const doc = rootState?.pdfReader?.document?.pdfDocument;
-	    if (!doc) {
-	      throw new Error("PDF 文档未加载");
-	    }
-	    const pageNumber = await resolveDestToPage(doc, dest);
-	    if (!pageNumber) {
-	      throw new Error("无法解析目的地页码");
-	    }
-	    return await dispatch("goToPage", pageNumber);
-	  },
+  async resolveDestinationToPage({ rootState }, dest) {
+    const doc = rootState?.pdfReader?.document?.pdfDocument;
+    try {
+      return await resolveDestToPage(doc, dest);
+    } catch (_) {
+      return null;
+    }
+  },
 
   /**
    * 重置查看器

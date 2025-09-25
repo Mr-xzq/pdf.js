@@ -208,7 +208,11 @@ export default {
       const moved = Math.hypot(dx, dy) > (this.panThreshold || 6);
 
       // 当放大且移动超过阈值时，才进入拖拽模式并阻止默认事件
-      if (!this.isPanning && this.currentScale > this.getBaselineScale() + 0.001 && moved) {
+      if (
+        !this.isPanning &&
+        this.currentScale > this.getBaselineScale() + 0.001 &&
+        moved
+      ) {
         this.isPanning = true;
         if (e && e.cancelable) {
           e.preventDefault();

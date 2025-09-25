@@ -31,15 +31,19 @@
 </template>
 
 <script>
-import { cancelRenderTask, cancelAllRenderTasks, renderPageToCanvasCore } from "../core/pdf-utils.js";
-import { TextLayerBuilder } from "../core/layers/TextLayerBuilder.js";
-import { AnnotationLayerBuilder } from "../core/layers/AnnotationLayerBuilder.js";
+import {
+  cancelRenderTask,
+  cancelAllRenderTasks,
+  renderPageToCanvasCore,
+} from "../utils/pdf-utils.js";
+import { TextLayerBuilder } from "../utils/layers/TextLayerBuilder.js";
+import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
 import {
   createLayer,
   updateAndRenderLayer,
   cancelLayer,
   destroyLayer,
-} from "../core/layers/lifecycle.js";
+} from "../utils/layers/lifecycle.js";
 
 export default {
   name: "PdfPage",
@@ -53,10 +57,7 @@ export default {
       type: Number,
       default: 1.0,
     },
-    pdfServices: {
-      type: Object,
-      required: true,
-    },
+
     textLayerEnabled: {
       type: Boolean,
       default: true,
@@ -120,19 +121,33 @@ export default {
 
   methods: {
     // 统一封装常用 refs（用方法，避免 computed 缓存 $refs 带来的不可预期）
-    container() { return this.$refs.container || null },
-    pageCanvas() { return this.$refs.pageCanvas || null },
-    textLayer() { return this.$refs.textLayer || null },
-    annotationLayer() { return this.$refs.annotationLayer || null },
-
+    container() {
+      return this.$refs.container || null;
+    },
+    pageCanvas() {
+      return this.$refs.pageCanvas || null;
+    },
+    // 本地服务：通过 Vuex 获取页与导航
+    getPdfServices() {
+      return {
+        getPage: n => this.$store.dispatch("pdfReader/document/getPage", n),
+        goToDestination: dest =>
+          this.$store.dispatch("pdfReader/viewer/goToDestination", dest),
+      };
+    },
+    textLayer() {
+      return this.$refs.textLayer || null;
+    },
+    annotationLayer() {
+      return this.$refs.annotationLayer || null;
+    },
 
     /**
      * 渲染页面
      */
     async renderPage() {
-      if (!this.pdfServices) {
-        return;
-      }
+      const doc = this.$store?.state?.pdfReader?.document?.pdfDocument;
+      if (!doc) return;
       // 若存在在途渲染，先取消之，避免重叠
       try {
         cancelRenderTask(this.renderTasks, this.pageNumber);
@@ -156,7 +171,7 @@ export default {
 
         // 渲染页面到 Canvas
         const result = await renderPageToCanvasCore(
-          this.pdfServices,
+          this.getPdfServices(),
           this.renderTasks,
           this.pageNumber,
           canvas,
@@ -227,14 +242,19 @@ export default {
      */
     initializeLayers() {
       const servicesGetter = () => {
-        return this.$store?.getters?.["pdfReader/document/services"] || { eventBus: null, linkService: null };
+        return (
+          this.$store?.getters?.["pdfReader/document/services"] || {
+            eventBus: null,
+            linkService: null,
+          }
+        );
       };
 
       // Text Layer
       if (this.textLayerEnabled && !this.layers.text && this.textLayer()) {
         this.layers.text = createLayer(TextLayerBuilder, {
           container: this.textLayer(),
-          pdfServices: this.pdfServices,
+          pdfServices: this.getPdfServices(),
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
         });
@@ -248,7 +268,7 @@ export default {
       ) {
         this.layers.annotation = createLayer(AnnotationLayerBuilder, {
           container: this.annotationLayer(),
-          pdfServices: this.pdfServices,
+          pdfServices: this.getPdfServices(),
           getServices: servicesGetter,
           setup: { pageNumber: this.pageNumber, viewport: this.viewport },
         });
@@ -353,7 +373,9 @@ export default {
      * 处理页码变化
      */
     async onPageNumberChange() {
-      try { cancelRenderTask(this.renderTasks, this.pageNumber); } catch (_) {}
+      try {
+        cancelRenderTask(this.renderTasks, this.pageNumber);
+      } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },
@@ -362,7 +384,9 @@ export default {
      * 处理缩放变化
      */
     async onScaleChange() {
-      try { cancelRenderTask(this.renderTasks, this.pageNumber); } catch (_) {}
+      try {
+        cancelRenderTask(this.renderTasks, this.pageNumber);
+      } catch (_) {}
       this.cancelLayers?.();
       await this.renderPage();
     },

@@ -1,10 +1,7 @@
 <template>
   <div class="pdf-viewer-core" ref="viewerContainer">
-    <!-- 加载进度改为使用 Vant Toast 显示，这里不再渲染占位内容，以避免“空白界面上叠一个loading” -->
-    <template v-if="false"></template>
-
-    <!-- 错误显示（可被插槽覆盖） -->
-    <template v-else-if="docError">
+    <!-- 错误显示 -->
+    <template v-if="docError">
       <slot
         name="error"
         :error="docError"
@@ -31,7 +28,6 @@
         <pdf-page
           :page-number="page"
           :scale="scale"
-          :pdf-services="pdfServices"
           :text-layer-enabled="true"
           :annotations-enabled="true"
           @page-rendered="onPageRendered"
@@ -49,16 +45,17 @@
 </template>
 
 <script>
-import { createPdfServices } from "../core/pdf-services.js";
 import PdfPage from "./PdfPage.vue";
 import GestureContainer from "./GestureContainer.vue";
 
+import { renderPageToCanvasCore } from "../utils/pdf-utils.js";
 import {
   mapDocumentState,
   mapViewerState,
   mapDocumentActions,
   mapViewerActions,
   mapDocumentGetters,
+  mapViewerGetters,
 } from "../store/index.js";
 
 export default {
@@ -86,12 +83,18 @@ export default {
     gesturesEnabled: { type: Boolean, default: true },
     // 双击放大目标（优先使用外部传入；未传则使用 baseline*1.5）
     zoomTarget: { type: Number, default: null },
+    // 自动播放控制（从原 index.vue 合并进来）
+    autoPlayEnabled: { type: Boolean, default: false },
+    autoPlayIntervalMs: { type: Number, default: 3000 },
   },
 
   data() {
     return {
-      // 服务实例
-      pdfServices: null,
+      // 自动播放
+      autoPlaying: false,
+      autoPlayTimer: null,
+      // 缩略图渲染任务表，避免并发冲突
+      thumbnailTasks: {},
     };
   },
 
@@ -101,11 +104,6 @@ export default {
     if (this.src) {
       await this.loadDocument();
     }
-  },
-
-  beforeDestroy() {
-    // 函数式服务无内部状态，直接释放引用即可
-    this.pdfServices = null;
   },
 
   computed: {
@@ -124,6 +122,8 @@ export default {
       storeCurrentPage: "currentPage",
       storeScale: "scale",
     }),
+    // 从 viewer getters 引入导航/缩放派生状态（用于自动播放与 UI）
+    ...mapViewerGetters(["navigationState", "zoomState"]),
     scale: {
       get() {
         return this.storeScale;
@@ -143,12 +143,8 @@ export default {
     documentLoaded() {
       return !!this.storePdfDocument;
     },
-    // PdfServices 也必须完成 attachDocument，二者同时就绪再渲染页面
-    servicesDocumentLoaded() {
-      return !!this.pdfServices?.documentState?.loaded;
-    },
     documentReady() {
-      return this.documentLoaded && this.servicesDocumentLoaded;
+      return this.documentLoaded;
     },
 
     docLoading() {
@@ -186,6 +182,24 @@ export default {
         this.$emit("loading-stop", { source: "core" });
       }
     },
+
+    autoPlayEnabled(val) {
+      if (val) {
+        if (this.documentLoaded) this.startAutoPlay();
+      } else {
+        this.stopAutoPlay(true);
+      }
+    },
+
+    scale(val) {
+      if (typeof val === "number") {
+        this.$emit("scale-changed", { scale: val });
+      }
+    },
+  },
+
+  beforeDestroy() {
+    this.stopAutoPlay && this.stopAutoPlay(true);
   },
 
   methods: {
@@ -210,21 +224,15 @@ export default {
       return this.$refs.viewerContainer || null;
     },
 
-    // 初始化服务（函数式，无 class）
+    // 初始化服务
     async initializeServices() {
       try {
         // 确保 PDF.js 与核心服务（EventBus/LinkService）就绪
-        await this.$store.dispatch('pdfReader/document/initializeServices');
-        // 创建面向组件的轻量服务对象
-        this.pdfServices = createPdfServices(this.$store, {
-          isMobile: true,
-          // 通过 Vuex 统一导航，解耦服务层对 store 的直接依赖
-          navigateToDestination: dest => this.goToDestinationAction(dest),
-        });
+        await this.$store.dispatch("pdfReader/document/initializeServices");
         console.log("PDF 查看器核心服务初始化完成");
       } catch (error) {
         console.error("PDF 查看器核心服务初始化失败:", error);
-        this.setDocumentError({ error: error.message, type: 'init' });
+        this.setDocumentError({ error: error.message, type: "init" });
       }
     },
 
@@ -237,17 +245,11 @@ export default {
       }
 
       // 确保服务已初始化（幂等）
-      if (!this.pdfServices) {
-        await this.initializeServices();
-      } else {
-        await this.$store.dispatch('pdfReader/document/initializeServices');
-      }
+      await this.$store.dispatch("pdfReader/document/initializeServices");
 
       try {
-        // 统一由 Store 执行真实加载，并在完成后由组件接管
         await this.realLoadDocument({ src: this.src });
 
-        // 文档已在 Store 中完成 linkService.setDocument 关联，这里无需再手动关联
         const pdfDocument = this.storePdfDocument;
         const infoState = this.storeDocumentInfo || {};
 
@@ -278,7 +280,6 @@ export default {
       await this.loadDocument();
     },
 
-
     /**
      * 处理 src 变化
      */
@@ -297,14 +298,16 @@ export default {
         this.initializeScaleForDocument(event);
       });
 
+      // 启动自动播放（若外部开启）
+      if (this.autoPlayEnabled) {
+        this.startAutoPlay();
+      }
+
       // 传递完整的文档信息给父组件
-      // event 结构: { document, numPages, fingerprint, info, metadata }
+      // event 结构: { document, info: { numPages, fingerprint, metadata } }
       this.$emit("document-loaded", {
         document: event.document,
-        info: {
-          numPages: event.numPages,
-          fingerprint: event.fingerprint,
-        },
+        info: event.info,
       });
     },
 
@@ -389,10 +392,117 @@ export default {
       });
 
       console.log(
-        `PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，初始缩放: ${
-          this.initialScale
-        }`
+        `PDF 文档加载完成，共 ${
+          event?.info?.numPages || "unknown"
+        } 页，初始缩放: ${this.initialScale}`
       );
+    },
+
+    /**
+     * 提供对外 API：Outline/跳转/缩略图/统计
+     */
+    async getOutline() {
+      try {
+        return (
+          (await this.$store.dispatch("pdfReader/document/getOutline")) ?? []
+        );
+      } catch (e) {
+        console.warn("getOutline 调用失败:", e);
+        return [];
+      }
+    },
+
+    async renderThumbnail(pageNumber, canvasEl, options = {}) {
+      try {
+        const isCanvas =
+          canvasEl &&
+          ((typeof HTMLCanvasElement !== "undefined" &&
+            canvasEl instanceof HTMLCanvasElement) ||
+            (canvasEl.tagName &&
+              String(canvasEl.tagName).toLowerCase() === "canvas"));
+        if (!isCanvas) {
+          console.warn(
+            "renderThumbnail: 非法的 canvas 元素，已跳过",
+            pageNumber,
+            canvasEl
+          );
+          return;
+        }
+        const opts = { scale: options.scale || 0.2, ...options };
+        const services = {
+          getPage: n => this.$store.dispatch("pdfReader/document/getPage", n),
+        };
+        await renderPageToCanvasCore(
+          services,
+          this.thumbnailTasks,
+          pageNumber,
+          canvasEl,
+          opts
+        );
+      } catch (e) {
+        console.warn("renderThumbnail 失败:", e);
+      }
+    },
+
+    getTotalPages() {
+      const nav = this.navigationState || {};
+      return nav.totalPages || this.storePdfDocument?.numPages || 0;
+    },
+
+    async navigateToDestination(dest) {
+      try {
+        await this.$store.dispatch("pdfReader/viewer/goToDestination", dest);
+      } catch (e) {
+        console.warn("navigateToDestination 失败:", e);
+      }
+    },
+
+    async resolveDestToPageNumber(dest) {
+      try {
+        return await this.$store.dispatch(
+          "pdfReader/viewer/resolveDestinationToPage",
+          dest
+        );
+      } catch (e) {
+        console.warn("resolveDestToPageNumber 失败:", e);
+        return null;
+      }
+    },
+
+    startAutoPlay() {
+      if (this.autoPlaying || !this.documentLoaded) return;
+      this.autoPlaying = true;
+      const nav = this.navigationState || {};
+      if (nav.currentPage < (nav.totalPages || 0)) this.nextPageAction();
+      this.autoPlayTimer = setInterval(() => {
+        const s = this.navigationState || {};
+        const canGoNext = (s.currentPage || 0) < (s.totalPages || 0);
+        if (!canGoNext) {
+          this.stopAutoPlay(true);
+          return;
+        }
+        this.nextPageAction();
+      }, this.autoPlayIntervalMs);
+    },
+
+    stopAutoPlay(silent = false) {
+      if (this.autoPlayTimer) {
+        clearInterval(this.autoPlayTimer);
+        this.autoPlayTimer = null;
+      }
+      this.autoPlaying = false;
+      if (!silent) {
+        // 可按需对外抛出事件
+      }
+    },
+
+    getBaselineScale() {
+      const val = this.gesture()?.getBaselineScale?.();
+      return typeof val === "number"
+        ? val
+        : typeof this.scale === "number"
+        ? this.scale
+        : 1;
     },
 
     /**
@@ -412,13 +522,16 @@ export default {
      */
     async fitWidthOnce() {
       try {
-        if (!this.documentLoaded || !this.pdfServices) return;
+        if (!this.documentLoaded) return;
         const container = this.viewerContainer();
         if (!container) return;
         const rect = container.getBoundingClientRect();
         if (!rect || rect.width === 0) return;
 
-        const page = await this.pdfServices.getPage(1);
+        const page = await this.$store.dispatch(
+          "pdfReader/document/getPage",
+          1
+        );
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
@@ -434,7 +547,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@import url('~pdfjs-dist/web/pdf_viewer.css');
+@import url("~pdfjs-dist/web/pdf_viewer.css");
 
 .pdf-viewer-core {
   width: 100%;

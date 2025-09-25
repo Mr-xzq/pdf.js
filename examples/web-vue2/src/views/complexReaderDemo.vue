@@ -58,26 +58,22 @@ export default {
       this.progress = p;
     },
     onLoaded({ info }) {
-      this.$toast &&
-        this.$toast.success(`加载完成，共 ${info?.numPages || 0} 页`);
+      console.log("加载完成: ", info);
+      this.$toast.success(`加载完成`);
     },
     onError(err) {
       const msg = err?.message || err?.error || "文件加载失败";
-      this.$toast && this.$toast.fail(msg);
+      this.$toast.fail(msg);
     },
     onLoadingStart(e) {
-      const t = this.$toast;
-      if (t && typeof t.loading === "function") {
-        t.loading({
-          message: e?.message || "加载中",
-          duration: 0,
-          forbidClick: true,
-        });
-      }
+      this.$toast.loading({
+        message: e?.message || "加载中",
+        duration: 0,
+        forbidClick: true,
+      });
     },
     onLoadingStop() {
-      const t = this.$toast;
-      if (t && typeof t.clear === "function") t.clear();
+      this.$toast.clear();
     },
   },
 };

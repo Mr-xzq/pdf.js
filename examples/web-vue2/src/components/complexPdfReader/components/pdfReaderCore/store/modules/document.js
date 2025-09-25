@@ -118,6 +118,23 @@ const mutations = {
 };
 
 const actions = {
+  async getPage({ state }, pageNumber) {
+    const doc = state.pdfDocument;
+    if (!doc) throw new Error("文档未加载");
+    if (pageNumber < 1 || pageNumber > (doc.numPages || 0))
+      throw new Error(`页码超出范围: ${pageNumber}`);
+    return await doc.getPage(pageNumber);
+  },
+
+  async getOutline({ state }) {
+    const doc = state.pdfDocument;
+    if (!doc) throw new Error("文档未加载");
+    try {
+      return await doc.getOutline();
+    } catch (_) {
+      return null;
+    }
+  },
   /**
    * 设置文档加载完成
    */
@@ -151,17 +168,21 @@ const actions = {
    */
   async initializeServices({ state, commit }) {
     try {
-      const { initializePdfJs } = await import("../../core/pdf-config.js");
-      await initializePdfJs();
+      const { initializePdfJs } = await import("../../utils/pdf-config.js");
+      initializePdfJs();
       if (!state.services.eventBus || !state.services.linkService) {
-        const { EventBus, PDFLinkService } = await import("pdfjs-dist/legacy/web/pdf_viewer.mjs");
+        const { EventBus, PDFLinkService } = await import(
+          "pdfjs-dist/legacy/web/pdf_viewer.mjs"
+        );
         const eventBus = new EventBus();
         const linkService = new PDFLinkService({ eventBus });
         commit("SET_SERVICES", { eventBus, linkService });
       }
       // 若已有文档，确保 linkService 关联文档
       if (state.pdfDocument && state.services.linkService) {
-        try { state.services.linkService.setDocument(state.pdfDocument); } catch (_) {}
+        try {
+          state.services.linkService.setDocument(state.pdfDocument);
+        } catch (_) {}
       }
     } catch (e) {
       console.warn("initializeServices 失败:", e);
@@ -191,7 +212,7 @@ const actions = {
       await dispatch("initializeServices");
 
       // 动态导入 headless loader，避免循环依赖
-      const { loadPdfDocument } = await import("../../core/pdf-config.js");
+      const { loadPdfDocument } = await import("../../utils/pdf-config.js");
 
       let lastProgress = 0;
       const { pdfDocument } = await loadPdfDocument({
@@ -241,7 +262,9 @@ const actions = {
       }
 
       // 将文档关联到 LinkService
-      try { state.services.linkService?.setDocument?.(pdfDocument); } catch (_) {}
+      try {
+        state.services.linkService?.setDocument?.(pdfDocument);
+      } catch (_) {}
 
       // 加载完成
       commit("SET_LOADING", false);

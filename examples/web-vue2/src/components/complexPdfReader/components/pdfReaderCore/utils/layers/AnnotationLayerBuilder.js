@@ -18,9 +18,10 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
       const page = await this.pdfServices?.getPage?.(this.pageNumber);
       if (!page) return;
 
-      const services = (this.getServices && this.getServices())
-        || this.pdfServices?.getApplicationServices?.()
-        || {};
+      const services =
+        (this.getServices && this.getServices()) ||
+        this.pdfServices?.getApplicationServices?.() ||
+        {};
       const appLinkService = services.linkService;
 
       // 适配器：将注释层中的“内部链接”跳转，统一委托给我们自己的 PdfServices.goToDestination，

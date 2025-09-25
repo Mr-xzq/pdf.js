@@ -10,7 +10,7 @@
       </div>
     </div> -->
     <div class="content-area">
-      <pdf-reader-core
+      <pdf-viewport
         ref="pdfReader"
         :src="src"
         :initial-page="initialPage"
@@ -166,7 +166,7 @@
 
 <script>
 // 组件
-import PdfReaderCore from "./components/pdfReaderCore/index.vue";
+import PdfViewport from "./components/pdfReaderCore/components/PdfViewport.vue";
 import Drawer from "./components/drawer/index.vue";
 import OutlinePanel from "./components/outlinePanel/index.vue";
 import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
@@ -196,7 +196,7 @@ export default {
   name: "ComplexPdfReader",
   components: {
     Drawer,
-    PdfReaderCore,
+    PdfViewport,
     OutlinePanel,
     ThumbnailPanel,
   },
@@ -424,7 +424,6 @@ export default {
     resolveDestToPageNumber(dest) {
       return this.pdfReaderRef?.resolveDestToPageNumber(dest);
     },
-    // 以下事件用于和外层 UI 同步，并向外转发事件
     onPdfLoaded(e) {
       // 输入框 & slider 的初始值回显
       this.gotoPageInput = this.currentPage;
@@ -448,7 +447,6 @@ export default {
     onLoadingStop(e) {
       this.$emit("loading-stop", e);
     },
-
     onPdfScaleChanged(e) {
       this.$emit("scale-changed", e);
     },
@@ -461,12 +459,12 @@ export default {
   @top-toolbar-height: 2.73rem;
   @bottom-toolbar-height: 4.14rem;
 
-  /* z-index */
+  // z-index
   --z-canvas: 0;
   --z-text: 1;
   --z-annot: 2;
-  --z-toolbar: 10;
   --z-page-nav: 9;
+  --z-toolbar: 10;
   --z-page-nav-open: 11;
 
   position: relative;
