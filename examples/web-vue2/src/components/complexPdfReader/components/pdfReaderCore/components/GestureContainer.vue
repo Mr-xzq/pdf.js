@@ -195,7 +195,8 @@ export default {
       this.panStartY = point.clientY;
       this.panAtStartX = this.panX;
       this.panAtStartY = this.panY;
-      // 注意：此处不调用 preventDefault，避免阻断注释链接的原生按压/高亮
+
+      // 注意：此处不调用 preventDefault，避免阻断注释链接的原生高亮
     },
 
     onPanMove(e) {
@@ -233,15 +234,13 @@ export default {
       this.isPanning = false;
       this._enableAnnotationInteractivity();
 
-      try {
-        // 若触发点为注释链接且未发生有效位移
-        if (this.maybeLinkTap && !this.panMoved && this.maybeTapTarget) {
-          if (this._synthClickNeeded) {
-            // 在拖拽中曾阻止默认行为，补发一次点击
-            this.maybeTapTarget.click && this.maybeTapTarget.click();
-          } // 否则交由浏览器的原生点击/高亮处理
-        }
-      } catch (_) {}
+      // 若触发点为注释链接且未发生有效位移
+      if (this.maybeLinkTap && !this.panMoved && this.maybeTapTarget) {
+        if (this._synthClickNeeded) {
+          // 在拖拽中曾阻止默认行为，补发一次点击
+          this.maybeTapTarget.click && this.maybeTapTarget.click();
+        } // 否则交由浏览器的原生点击/高亮处理
+      }
 
       this.maybeLinkTap = false;
       this.maybeTapTarget = null;

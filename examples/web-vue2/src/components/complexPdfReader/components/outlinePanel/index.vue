@@ -30,9 +30,9 @@ export default {
   name: "OutlinePanel",
   components: { Tree },
   props: {
-    // 获取PDF大纲数据
+    // 获取 PDF 大纲数据
     getOutline: { type: Function, required: true },
-    // 导航到指定PDF目标位置
+    // 导航到指定 PDF 目标位置
     navigateToDestination: { type: Function, required: true },
     // 用于将 PDF dest 解析为页码
     resolveDestToPageNumber: { type: Function, required: true },
@@ -45,24 +45,23 @@ export default {
       collapseIconUrl,
       // 原始大纲数据
       outline: [],
-      // 格式化后供Tree组件使用的数据
+      // 格式化后供 Tree 组件使用的数据
       treeData: [],
       // 当前高亮/选中的节点key
       activeKey: null,
       treeProps: { key: "key", label: "title", children: "items" },
       visible: false,
-      // 面板不可见时，待同步的高亮key
+      // popup 不可见时，待同步的高亮 key
       pendingActiveKey: null,
-      // 当前展开的节点key列表
+      // 当前展开的节点 key 列表
       expandedKeys: [],
-      // 页码到最佳节点key的映射
+      // 页码到最佳节点 key 的映射
       pageToKeyMap: {},
       // 映射是否已构建完成
       pageMapReady: false,
     };
   },
   async mounted() {
-    // 通过事件向上抛出 loading
     this.$emit("loading-start", { source: "viewer", message: "加载中" });
     try {
       const data = await this.getOutline();
@@ -78,13 +77,14 @@ export default {
     }
   },
   watch: {
-    // 监听 activeKey 变化，根据面板可见性决定是立即滚动还是延迟处理
+    // 监听 activeKey 变化，根据 popup 可见性决定是立即滚动还是延迟处理
     activeKey(n) {
       if (n == null) return;
       if (!this.visible) {
-        this.pendingActiveKey = n; // 面板不可见时，先缓存key
+        // popup 不可见时，先缓存 key
+        this.pendingActiveKey = n;
       } else {
-        // 面板可见时，下一个tick执行滚动
+        // popup 可见时，下一个tick执行滚动
         this.$nextTick(async () => {
           await this.activateAndScroll(n);
         });
@@ -97,11 +97,11 @@ export default {
       const key = this.pickKeyForPageSafe(n);
       if (!key) return;
       if (!this.visible) {
-        // 面板不可见时，只记录，等打开时再统一滚动
+        // popup 不可见时，只记录，等打开时再统一滚动
         this.activeKey = key;
         this.pendingActiveKey = key;
       } else {
-        // 面板可见时，立即激活并滚动
+        // popup 可见时，立即激活并滚动
         this.activeKey = key;
         await this.$nextTick();
         await this.activateAndScroll(key);
@@ -121,7 +121,7 @@ export default {
       );
       if (node) this.activeKey = node.key;
       if (node && node.dest) {
-        // 导航到PDF指定位置
+        // 导航到 PDF 指定位置
         await this.navigateToDestination(node.dest);
         this.$emit("selected", node);
       }
@@ -153,7 +153,7 @@ export default {
     onParentClosed() {
       this.visible = false;
     },
-    // 构建页码到节点key的映射（只执行一次）
+    // 构建页码到节点 key 的映射（只执行一次）
     async ensurePageMapOnce() {
       if (this.pageMapReady) return;
       const map = {};
@@ -163,9 +163,9 @@ export default {
         for (const n of nodes || []) {
           // 解析当前节点的页码
           let page = null;
-          try {
-            if (n && n.dest) page = await resolver(n.dest);
-          } catch (_) {}
+          
+          if (n && n.dest) page = await resolver(n.dest);
+
           if (Number.isInteger(page) && page > 0) {
             const prevDepth = depthMap[page] ?? -1;
             // 优先选择更深层次的节点作为最佳匹配
@@ -184,7 +184,7 @@ export default {
       this.pageToKeyMap = map;
       this.pageMapReady = true;
     },
-    // 根据页码找到对应的最佳节点key（支持“就近前驱”回退）
+    // 根据页码找到对应的最佳节点 key（支持“就近前驱”回退）
     pickKeyForPageSafe(pageNumber) {
       if (!this.pageMapReady) return null;
       const map = this.pageToKeyMap || {};

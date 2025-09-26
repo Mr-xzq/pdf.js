@@ -106,9 +106,7 @@ export default {
     this.renderPage();
   },
   beforeDestroy() {
-    try {
-      cancelAllRenderTasks(this.renderTasks);
-    } catch (_) {}
+    cancelAllRenderTasks(this.renderTasks);
     this.destroyLayers();
     this.cleanup();
   },
@@ -137,9 +135,7 @@ export default {
       const doc = this.pdfDocument;
       if (!doc) return;
       // 若存在在途渲染，先取消之，避免重叠
-      try {
-        cancelRenderTask(this.renderTasks, this.pageNumber);
-      } catch (_) {}
+      cancelRenderTask(this.renderTasks, this.pageNumber);
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
 
@@ -344,18 +340,14 @@ export default {
 
     // 处理页码变化
     async onPageNumberChange() {
-      try {
-        cancelRenderTask(this.renderTasks, this.pageNumber);
-      } catch (_) {}
+      cancelRenderTask(this.renderTasks, this.pageNumber);
       this.cancelLayers?.();
       await this.renderPage();
     },
 
     // 处理缩放变化
     async onScaleChange() {
-      try {
-        cancelRenderTask(this.renderTasks, this.pageNumber);
-      } catch (_) {}
+      cancelRenderTask(this.renderTasks, this.pageNumber);
       this.cancelLayers?.();
       await this.renderPage();
     },
@@ -375,7 +367,6 @@ export default {
 
 <style lang="less" scoped>
 .pdf-page-container {
-  /* 清理默认视觉风格，交给外部控制 */
   position: relative;
   display: inline-block;
   background: transparent;
@@ -385,15 +376,11 @@ export default {
   &__canvas {
     display: block;
     border: none;
-    background-color: transparent !important; // 避免默认白底
 
-    // 移除 object-fit，让Canvas保持原始尺寸
-    // object-fit: contain; // 这可能导致意外的缩放
+    // 避免默认白底
+    background-color: transparent !important;
 
-    // 优化Canvas渲染质量
-    image-rendering: auto; // 对于PDF文本内容，auto通常是最佳选择
-
-    // 确保Canvas不会被意外缩放
+    // 确保 canvas 不会被意外缩放
     max-width: none;
     max-height: none;
   }
@@ -423,7 +410,8 @@ export default {
     right: 0;
     bottom: 0;
     pointer-events: auto;
-    z-index: var(--z-annot); // 明确置于文本层之上，保证点击
+    // 明确置于文本层之上，保证点击
+    z-index: var(--z-annot);
   }
 }
 </style>

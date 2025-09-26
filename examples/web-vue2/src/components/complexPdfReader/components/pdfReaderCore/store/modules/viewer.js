@@ -128,7 +128,7 @@ const actions = {
     const doc = rootState?.pdfReader?.document?.pdfDocument;
     try {
       return await resolveDestToPage(doc, dest);
-    } catch (_) {
+    } catch (error) {
       return null;
     }
   },

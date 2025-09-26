@@ -101,11 +101,7 @@ const mutations = {
     state.error = null;
     // 取消控制
     state.loadToken = 0;
-    if (state.abortController) {
-      try {
-        state.abortController.abort();
-      } catch (_) {}
-    }
+    state.abortController?.abort?.();
     state.abortController = null;
   },
 
@@ -131,41 +127,12 @@ const actions = {
     if (!doc) throw new Error("文档未加载");
     try {
       return await doc.getOutline();
-    } catch (_) {
+    } catch (error) {
       return null;
     }
   },
-  /**
-   * 设置文档加载完成
-   */
-  setDocumentLoaded({ commit, dispatch }, { document, info }) {
-    commit("SET_DOCUMENT", document);
-    commit("SET_DOCUMENT_INFO", {
-      numPages: document?.numPages || info?.numPages || 0,
-      fingerprint:
-        info?.fingerprint ||
-        (document?.fingerprints && document.fingerprints[0]) ||
-        document?.fingerprint ||
-        null,
-    });
-    commit("SET_LOADING", false);
-    commit("CLEAR_ERROR");
 
-    // 确保文档信息正确设置
-    const totalPages = document?.numPages || info?.numPages || 0;
-    console.log("文档加载完成，总页数:", totalPages);
-
-    // 确保当前页面状态正确初始化
-    if (totalPages > 0) {
-      // 初始化当前页面为第1页（使用绝对命名空间路径）
-      dispatch("pdfReader/viewer/goToPage", 1, { root: true });
-    }
-  },
-
-  /**
-   * 初始化 PDF.js 与核心服务（EventBus/LinkService）
-   * 幂等：可多次调用
-   */
+  // 初始化 PDF.js 与核心服务（EventBus/LinkService）
   async initializeServices({ state, commit }) {
     try {
       const { initializePdfJs } = await import("../../utils/pdf-config.js");
@@ -180,26 +147,18 @@ const actions = {
       }
       // 若已有文档，确保 linkService 关联文档
       if (state.pdfDocument && state.services.linkService) {
-        try {
-          state.services.linkService.setDocument(state.pdfDocument);
-        } catch (_) {}
+        state.services.linkService?.setDocument?.(state.pdfDocument);
       }
     } catch (e) {
       console.warn("initializeServices 失败:", e);
     }
   },
 
-  /**
-   * 加载文档
-   */
+  // 加载文档
   async loadDocument({ state, commit, dispatch }, { src }) {
     try {
       // 取消上一轮
-      if (state.abortController) {
-        try {
-          state.abortController.abort();
-        } catch (_) {}
-      }
+      state.abortController?.abort?.();
       const currentToken = (state.loadToken || 0) + 1;
       state.loadToken = currentToken;
       state.abortController = new AbortController();
@@ -244,11 +203,8 @@ const actions = {
       commit("SET_DOCUMENT", pdfDocument);
       commit("SET_DOCUMENT_INFO", {
         numPages: pdfDocument?.numPages || 0,
-        // 优先使用 fingerprints[0]，回退 fingerprint
         fingerprint:
-          (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-          pdfDocument?.fingerprint ||
-          null,
+          pdfDocument?.fingerprints?.[0] || pdfDocument?.fingerprint || null,
       });
 
       if (metadata) {
@@ -256,9 +212,7 @@ const actions = {
       }
 
       // 将文档关联到 LinkService
-      try {
-        state.services.linkService?.setDocument?.(pdfDocument);
-      } catch (_) {}
+      state.services.linkService?.setDocument?.(pdfDocument);
 
       // 加载完成
       commit("SET_LOADING", false);
@@ -306,10 +260,8 @@ const getters = {
   // 文档是否已加载
   isDocumentLoaded: state => !!state.pdfDocument,
 
-  // 总页数（供 viewer 导航计算）
+  // 总页数
   totalPages: state => state.documentInfo.numPages,
-
-  // 文档元数据
 
   // 应用服务（EventBus/LinkService）
   services: state => state.services,

@@ -337,7 +337,7 @@ export default {
       this.startDisplayLoading();
       try {
         await this.goToPageAction(n);
-      } catch (_) {
+      } catch (error) {
         // 如果发生错误（例如内部校验失败），立即停止 loading，避免卡住
         this.stopDisplayLoading();
       }
@@ -349,7 +349,7 @@ export default {
       this.startDisplayLoading();
       try {
         await this.nextPageAction();
-      } catch (_) {
+      } catch (error) {
         this.stopDisplayLoading();
       }
     },
@@ -359,7 +359,7 @@ export default {
       this.startDisplayLoading();
       try {
         await this.prevPageAction();
-      } catch (_) {
+      } catch (error) {
         this.stopDisplayLoading();
       }
     },
@@ -515,7 +515,7 @@ export default {
       this.$emit("page-changed", e);
     },
     onLoadingStart(e) {
-      const payload = { source: (e && e.source) || "core", message: "加载中" };
+      const payload = { source: e?.source || "core", message: "加载中" };
       this.$emit("loading-start", payload);
     },
     onLoadingStop(e) {

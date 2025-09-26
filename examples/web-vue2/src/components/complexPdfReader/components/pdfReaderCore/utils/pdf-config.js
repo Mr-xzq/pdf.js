@@ -61,7 +61,7 @@ export async function loadPdfDocument({
       const p = loadingTask.destroy();
       destroyPromise =
         p && typeof p.then === "function" ? p : Promise.resolve();
-    } catch (_) {
+    } catch (error) {
       destroyPromise = Promise.resolve();
     }
   };
@@ -76,9 +76,7 @@ export async function loadPdfDocument({
     return { pdfDocument };
   } catch (err) {
     if (aborted) {
-      try {
-        await destroyPromise;
-      } catch (_) {}
+      await destroyPromise;
       // 标准化为 AbortError
       const abortError = new DOMException("Aborted", "AbortError");
       throw abortError;
@@ -86,9 +84,7 @@ export async function loadPdfDocument({
     throw err;
   } finally {
     if (signal) {
-      try {
-        signal.removeEventListener("abort", onAbort);
-      } catch (_) {}
+      signal.removeEventListener("abort", onAbort);
     }
   }
 }

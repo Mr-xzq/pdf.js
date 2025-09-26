@@ -42,9 +42,7 @@ export class TextLayerBuilder extends BaseLayerBuilder {
 
   cancel() {
     super.cancel();
-    try {
-      this._builder?.cancel();
-    } catch (_) {}
+    this._builder?.cancel?.();
   }
 
   destroy() {

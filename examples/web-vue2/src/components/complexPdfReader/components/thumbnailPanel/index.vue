@@ -149,17 +149,15 @@ export default {
       let rendered = 0;
       // 循环遍历每一页，渲染缩略图
       for (let p = 1; p <= this.totalPages; p += 1) {
-        try {
-          const tmp = document.createElement("canvas");
-          await this.renderThumbnail(p, tmp, { scale });
-          const url = tmp.toDataURL("image/png");
-          // 将生成的 Data URL 存入 thumbSrcs
-          this.$set(this.thumbSrcs, p, url);
-          // 释放 canvas 内存
-          tmp.width = 0;
-          tmp.height = 0;
-          rendered += 1;
-        } catch (_) {}
+        const tmp = document.createElement("canvas");
+        await this.renderThumbnail(p, tmp, { scale });
+        const url = tmp.toDataURL("image/png");
+        // 将生成的 Data URL 存入 thumbSrcs
+        this.$set(this.thumbSrcs, p, url);
+        // 释放 canvas 内存
+        tmp.width = 0;
+        tmp.height = 0;
+        rendered += 1;
       }
       console.log("Thumbnails rendered", rendered, "/", this.totalPages);
     },

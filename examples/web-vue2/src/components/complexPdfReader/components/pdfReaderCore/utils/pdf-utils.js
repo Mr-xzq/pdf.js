@@ -49,9 +49,7 @@ export function cancelRenderTask(tasks, pageNumber) {
   if (!tasks) return;
   const task = tasks[pageNumber];
   if (task) {
-    try {
-      task.cancel?.();
-    } catch (_) {}
+    task.cancel?.();
     delete tasks[pageNumber];
   }
 }
@@ -59,9 +57,7 @@ export function cancelRenderTask(tasks, pageNumber) {
 export function cancelAllRenderTasks(tasks) {
   if (!tasks) return;
   for (const key of Object.keys(tasks)) {
-    try {
-      tasks[key]?.cancel?.();
-    } catch (_) {}
+    tasks[key]?.cancel?.();
     delete tasks[key];
   }
 }

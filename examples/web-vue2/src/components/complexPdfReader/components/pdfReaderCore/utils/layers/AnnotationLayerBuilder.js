@@ -28,22 +28,18 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
       const linkService = {
         // 外部链接：直接设置 a 标签属性
         addLinkAttributes(el, url, newWindow = true) {
-          try {
-            el.href = url;
-            el.rel = "noopener noreferrer nofollow";
-            el.target = newWindow ? "_blank" : "_self";
-          } catch (_) {}
+          el.href = url;
+          el.rel = "noopener noreferrer nofollow";
+          el.target = newWindow ? "_blank" : "_self";
         },
         // 供 AnnotationLayer 设定锚点（内部链接也会调用），返回一个 hash
         getDestinationHash(dest) {
-          try {
-            if (typeof dest === "string") {
-              return "#" + encodeURIComponent(dest);
-            }
-            if (Array.isArray(dest)) {
-              return "#" + encodeURIComponent(JSON.stringify(dest));
-            }
-          } catch (_) {}
+          if (typeof dest === "string") {
+            return "#" + encodeURIComponent(dest);
+          }
+          if (Array.isArray(dest)) {
+            return "#" + encodeURIComponent(JSON.stringify(dest));
+          }
           return "#";
         },
         // 兼容接口：返回带 baseUrl 的锚点（我们不使用 baseUrl，直接回传）
@@ -115,15 +111,13 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         const h = `${this.viewport.height}px`;
         this.layer.style.width = w;
         this.layer.style.height = h;
-        try {
-          const inner = this._builder?.div; // 官方 AnnotationLayerBuilder 创建的 div.annotationLayer
-          if (inner) {
-            inner.style.width = w;
-            inner.style.height = h;
-            inner.style.left = "0px";
-            inner.style.top = "0px";
-          }
-        } catch (_) {}
+        const inner = this._builder?.div; // 官方 AnnotationLayerBuilder 创建的 div.annotationLayer
+        if (inner) {
+          inner.style.width = w;
+          inner.style.height = h;
+          inner.style.left = "0px";
+          inner.style.top = "0px";
+        }
       }
     } catch (e) {
       console.warn("AnnotationLayerBuilder 渲染失败（忽略）:", e);
@@ -132,9 +126,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
 
   cancel() {
     super.cancel();
-    try {
-      this._builder?.cancel?.();
-    } catch (_) {}
+    this._builder?.cancel?.()
   }
 
   destroy() {
