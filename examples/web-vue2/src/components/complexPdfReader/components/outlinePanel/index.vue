@@ -163,7 +163,7 @@ export default {
         for (const n of nodes || []) {
           // 解析当前节点的页码
           let page = null;
-          
+
           if (n && n.dest) page = await resolver(n.dest);
 
           if (Number.isInteger(page) && page > 0) {

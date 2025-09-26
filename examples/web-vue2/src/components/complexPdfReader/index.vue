@@ -345,7 +345,8 @@ export default {
     async nextPage() {
       const t = this.totalPages || 0;
       const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
+      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0)
+        return;
       this.startDisplayLoading();
       try {
         await this.nextPageAction();

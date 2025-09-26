@@ -126,7 +126,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
 
   cancel() {
     super.cancel();
-    this._builder?.cancel?.()
+    this._builder?.cancel?.();
   }
 
   destroy() {

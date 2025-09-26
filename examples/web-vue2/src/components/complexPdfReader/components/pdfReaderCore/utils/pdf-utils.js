@@ -28,10 +28,7 @@ export async function resolveDestToPage(pdfDocument, dest) {
   }
 }
 
-/**
- * 根据 viewport 与设备像素比计算 Canvas 尺寸参数
- * 返回：{ canvasWidth, canvasHeight, cssWidth, cssHeight, outputScale }
- */
+// 根据 viewport 与设备像素比计算 Canvas 尺寸参数
 export function computeCanvasSizing(viewport, devicePixelRatio = 1) {
   const dpr = Number(devicePixelRatio) || 1;
   const outputScale = { sx: dpr, sy: dpr, scaled: dpr !== 1 };
@@ -42,9 +39,7 @@ export function computeCanvasSizing(viewport, devicePixelRatio = 1) {
   return { canvasWidth, canvasHeight, cssWidth, cssHeight, outputScale };
 }
 
-/**
- * 取消指定页的在途渲染任务
- */
+// 取消指定页的在途渲染任务
 export function cancelRenderTask(tasks, pageNumber) {
   if (!tasks) return;
   const task = tasks[pageNumber];
@@ -62,10 +57,7 @@ export function cancelAllRenderTasks(tasks) {
   }
 }
 
-/**
- * 渲染页面到 Canvas
- * 返回: { canvas, viewport, pageNumber, outputScale }
- */
+// 渲染页面到 Canvas
 export async function renderPageToCanvasCore(
   pdfServices,
   tasks,
@@ -89,8 +81,6 @@ export async function renderPageToCanvasCore(
   canvas.style.height = cssHeight;
 
   const context = canvas.getContext("2d");
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
 
   const renderContext = {
     canvasContext: context,
@@ -111,9 +101,8 @@ export async function renderPageToCanvasCore(
     await renderTask.promise;
   } catch (error) {
     if (
-      error &&
-      (error.name === "RenderingCancelledException" ||
-        /cancel/i.test(String(error.message || "")))
+      error?.name === "RenderingCancelledException" ||
+      /cancel/i.test(String(error.message || ""))
     ) {
       throw Object.assign(new Error("render-cancelled"), {
         code: "RENDER_CANCELLED",

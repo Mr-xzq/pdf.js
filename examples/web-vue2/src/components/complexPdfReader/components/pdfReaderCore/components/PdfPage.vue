@@ -161,6 +161,7 @@ export default {
           canvas,
           { scale: this.scale }
         );
+
         // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
         if (token !== this.renderRequestId) {
           return;
@@ -172,12 +173,13 @@ export default {
         // 更新样式
         this.updateStyles();
 
-        // 初始化并渲染各 Layer（Builder 模式）
+        // 初始化并渲染各 Layer
         this.initializeLayers();
         await this.renderLayers();
 
         this.rendering = false;
         this.rendered = true;
+
         // 首帧渲染完成后淡入画布
         this.canvasStyle = {
           display: "block",

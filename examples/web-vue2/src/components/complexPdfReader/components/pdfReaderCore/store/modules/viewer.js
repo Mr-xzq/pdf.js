@@ -1,8 +1,3 @@
-/**
- * PDF 查看器状态管理模块
- * 管理查看器的显示状态、导航、缩放等
- */
-
 import {
   DEFAULT_SCALE_DELTA,
   MIN_SCALE,

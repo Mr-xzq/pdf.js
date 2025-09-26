@@ -122,23 +122,19 @@ export default {
   },
 
   computed: {
-    // 来自 Store 的文档级 loading/进度/错误
     ...mapState("pdfReader/document", [
       "loading",
       "loadProgress",
       "loadMessage",
       "error",
     ]),
-    // 引入文档模块中的文档实例与信息（用别名避免与 data 冲突）
     ...mapState("pdfReader/document", {
       storePdfDocument: state => state.pdfDocument,
       storeDocumentInfo: state => state.documentInfo,
     }),
-    // 文档元信息 getter（使用模块前缀对象映射，便于本地别名）
     ...mapGetters({
       storeMetadata: "pdfReader/document/metadata",
     }),
-    // 视图状态与派生状态
     ...mapState("pdfReader/viewer", {
       storeCurrentPage: state => state.currentPage,
       storeScale: state => state.scale,
@@ -248,9 +244,7 @@ export default {
       return this.$refs.viewerContainer || null;
     },
 
-    /**
-     * 重试加载
-     */
+    // 重试加载
     async retry() {
       if (!this.src) {
         return;
@@ -278,9 +272,7 @@ export default {
       }
     },
 
-    /**
-     * 处理 src 变化
-     */
+    // 处理 src 变化
     async onSrcChange(newSrc, oldSrc) {
       if (newSrc !== oldSrc) {
         if (!this.src) {
@@ -310,9 +302,7 @@ export default {
       }
     },
 
-    /**
-     * 处理文档加载完成
-     */
+    // 处理文档加载完成
     onDocumentLoaded(event) {
       // 响应式计算最佳缩放比例（不再维护本地镜像状态）
       this.$nextTick(() => {
@@ -332,9 +322,7 @@ export default {
       });
     },
 
-    /**
-     * 处理文档加载错误
-     */
+    // 处理文档加载错误
     onDocumentError(event) {
       // 由 Store 管理错误显示；这里仅转发事件
       this.$emit("document-error", event);
@@ -355,9 +343,7 @@ export default {
       this.$emit("load-progress", event);
     },
 
-    /**
-     * 处理页面渲染完成
-     */
+    // 处理页面渲染完成
     onPageRendered(event) {
       const vp = event && event.viewport;
       if (vp) {
@@ -370,26 +356,20 @@ export default {
       this.$emit("page-rendered", event);
     },
 
-    /**
-     * 处理页面渲染错误
-     */
+    // 处理页面渲染错误
     onRenderError(event) {
       console.error("页面渲染错误:", event);
       this.$emit("render-error", event);
     },
 
-    /**
-     * 转发 PdfPage 的 canvas 点击事件给手势容器
-     */
+    // 转发 PdfPage 的 canvas 点击事件给手势容器
     onCanvasClick(payload) {
       this.gesture()?.onCanvasClick?.(payload);
     },
 
-    /**
-     * 初始化文档的缩放比例
-     */
+    // 初始化文档的缩放比例
     initializeScaleForDocument(event) {
-      // 通过 Store 初始化页码与缩放（不再维护本地镜像）
+      // 通过 Store 初始化页码与缩放
       this.setScaleAction(this.initialScale);
       this.goToPageAction(this.initialPage);
 
@@ -502,9 +482,7 @@ export default {
         : 1;
     },
 
-    /**
-     * 按容器宽度适配一次（无监听、无后续自动调整）
-     */
+    // 按容器宽度适配一次（无监听、无后续自动调整）
     async fitWidthOnce() {
       try {
         if (!this.documentLoaded) return;
