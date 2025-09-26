@@ -39,18 +39,14 @@ export function updateAndRenderLayer(builder, { pageNumber, viewport }) {
   return builder.render();
 }
 
-/**
- * 取消进行中的 Layer 渲染
- */
+// 取消进行中的 Layer 渲染
 export function cancelLayer(builder) {
   if (builder && typeof builder.cancel === "function") {
     builder.cancel();
   }
 }
 
-/**
- * 销毁 Layer 资源
- */
+// 销毁 Layer 资源
 export function destroyLayer(builder) {
   if (builder && typeof builder.destroy === "function") {
     builder.destroy();

@@ -12,14 +12,6 @@
       @click="onCanvasClick"
     ></canvas>
 
-    <!-- 文本层（用于文本选择和搜索） -->
-    <div
-      v-if="textLayerEnabled"
-      ref="textLayer"
-      class="pdf-page-container__text-layer"
-      :style="textLayerStyle"
-    ></div>
-
     <!-- 注释层 -->
     <div
       v-if="annotationsEnabled"
@@ -36,7 +28,7 @@ import {
   cancelAllRenderTasks,
   renderPageToCanvasCore,
 } from "../utils/pdf-utils.js";
-import { TextLayerBuilder } from "../utils/layers/TextLayerBuilder.js";
+
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
 import {
   createLayer,
@@ -61,10 +53,6 @@ export default {
       default: 1.0,
     },
 
-    textLayerEnabled: {
-      type: Boolean,
-      default: true,
-    },
     annotationsEnabled: {
       type: Boolean,
       default: false,
@@ -86,12 +74,10 @@ export default {
 
       // 样式
       canvasStyle: {},
-      textLayerStyle: {},
       annotationLayerStyle: {},
 
       // Layer builders 注册表
       layers: {
-        text: null,
         annotation: null,
       },
       // 渲染请求并发保护：仅接受最后一次请求的结果
@@ -217,7 +203,6 @@ export default {
 
     // 取消进行中的 Layer 任务
     cancelLayers() {
-      cancelLayer(this.layers?.text);
       cancelLayer(this.layers?.annotation);
     },
 
@@ -231,16 +216,6 @@ export default {
           }
         );
       };
-
-      // Text Layer
-      if (this.textLayerEnabled && !this.layers.text && this.$refs.textLayer) {
-        this.layers.text = createLayer(TextLayerBuilder, {
-          container: this.$refs.textLayer,
-          pdfServices: this.getPdfServices(),
-          getServices: servicesGetter,
-          setup: { pageNumber: this.pageNumber, viewport: this.viewport },
-        });
-      }
 
       // Annotation Layer
       if (
@@ -260,14 +235,6 @@ export default {
     // 渲染所有启用的 Layer
     async renderLayers() {
       const tasks = [];
-      if (this.layers.text) {
-        tasks.push(
-          updateAndRenderLayer(this.layers.text, {
-            pageNumber: this.pageNumber,
-            viewport: this.viewport,
-          })
-        );
-      }
       if (this.layers.annotation) {
         tasks.push(
           updateAndRenderLayer(this.layers.annotation, {
@@ -281,10 +248,6 @@ export default {
 
     // 销毁所有 Layer
     destroyLayers() {
-      if (this.layers.text) {
-        destroyLayer(this.layers.text);
-        this.layers.text = null;
-      }
       if (this.layers.annotation) {
         destroyLayer(this.layers.annotation);
         this.layers.annotation = null;
@@ -311,14 +274,6 @@ export default {
       // Canvas 样式 - 现在由渲染服务直接设置尺寸，这里不再干预
       this.canvasStyle = {
         display: "block",
-      };
-
-      // 文本层样式
-      this.textLayerStyle = {
-        width: `${width}px`,
-        height: `${height}px`,
-        maxWidth: "100%",
-        maxHeight: "100%",
       };
 
       // 注释层样式
@@ -385,24 +340,6 @@ export default {
     // 确保 canvas 不会被意外缩放
     max-width: none;
     max-height: none;
-  }
-
-  &__text-layer {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    overflow: hidden;
-    opacity: 0.2;
-    line-height: 1;
-    z-index: var(--z-text);
-
-    // 优化文本渲染
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "liga" 1, "kern" 1;
   }
 
   &__annotation-layer {

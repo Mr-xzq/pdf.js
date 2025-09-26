@@ -28,7 +28,6 @@
         <pdf-page
           :page-number="page"
           :scale="scale"
-          :text-layer-enabled="true"
           :annotations-enabled="true"
           @page-rendered="onPageRendered"
           @render-error="onRenderError"
@@ -80,7 +79,7 @@ export default {
     gesturesEnabled: { type: Boolean, default: true },
     // 双击放大目标（优先使用外部传入；未传则使用 baseline*1.5）
     zoomTarget: { type: Number, default: null },
-    // 自动播放控制（从原 index.vue 合并进来）
+    // 自动播放控制
     autoPlayEnabled: { type: Boolean, default: false },
     autoPlayIntervalMs: { type: Number, default: 3000 },
   },
@@ -169,9 +168,19 @@ export default {
   },
 
   watch: {
-    src: {
-      handler: "onSrcChange",
-      immediate: false,
+    async src(newSrc, oldSrc) {
+      if (newSrc !== oldSrc) {
+        if (!this.src) {
+          return;
+        }
+        await this.initializeServicesAction();
+        try {
+          await this.loadDocumentAction({ src: this.src });
+          this.onDocumentLoaded(this.loadedEvent);
+        } catch (error) {
+          this.onDocumentError({ error: error.message, type: "load" });
+        }
+      }
     },
 
     docLoading(n) {
@@ -222,14 +231,6 @@ export default {
       resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
 
-    // 统一封装常用 refs（方法而非 computed，避免缓存 $refs）
-    gesture() {
-      return this.$refs.gesture || null;
-    },
-    viewerContainer() {
-      return this.$refs.viewerContainer || null;
-    },
-
     // 重试加载
     async retry() {
       if (!this.src) {
@@ -244,25 +245,9 @@ export default {
       }
     },
 
-    // 处理 src 变化
-    async onSrcChange(newSrc, oldSrc) {
-      if (newSrc !== oldSrc) {
-        if (!this.src) {
-          return;
-        }
-        await this.initializeServicesAction();
-        try {
-          await this.loadDocumentAction({ src: this.src });
-          this.onDocumentLoaded(this.loadedEvent);
-        } catch (error) {
-          this.onDocumentError({ error: error.message, type: "load" });
-        }
-      }
-    },
-
     // 处理文档加载完成
     onDocumentLoaded(event) {
-      // 响应式计算最佳缩放比例（不再维护本地镜像状态）
+      // 响应式计算最佳缩放比例
       this.$nextTick(() => {
         this.initializeScaleForDocument(event);
       });
@@ -273,7 +258,7 @@ export default {
       }
 
       // 传递完整的文档信息给父组件
-      // event 结构: { document, info: { numPages, fingerprint, metadata } }
+      // { document, info: { numPages, fingerprint, metadata } }
       this.$emit("document-loaded", {
         document: event.document,
         info: event.info,
@@ -282,22 +267,16 @@ export default {
 
     // 处理文档加载错误
     onDocumentError(event) {
-      // 由 Store 管理错误显示；这里仅转发事件
       this.$emit("document-error", event);
     },
 
-    /**
-     * 处理加载进度
-     * 注意：这个方法现在通过 pdf-services 直接调用，不再作为事件监听器
-     */
+    // 处理加载进度
     onLoadProgress(event) {
-      // 同步到 Vuex 的文档级加载进度
       this.setLoadProgress({
         progress: event.percentage,
         message: "",
       });
 
-      // 只向父组件传递事件
       this.$emit("load-progress", event);
     },
 
@@ -305,11 +284,11 @@ export default {
     onPageRendered(event) {
       const vp = event && event.viewport;
       if (vp) {
-        this.gesture()?.setContentSize(vp.width, vp.height);
+        this.$refs.gesture?.setContentSize(vp.width, vp.height);
       }
       this.$nextTick(() => {
-        this.gesture()?.updateContainerSize();
-        this.gesture()?.clampPan();
+        this.$refs.gesture?.updateContainerSize();
+        this.$refs.gesture?.clampPan();
       });
       this.$emit("page-rendered", event);
     },
@@ -322,7 +301,7 @@ export default {
 
     // 转发 PdfPage 的 canvas 点击事件给手势容器
     onCanvasClick(payload) {
-      this.gesture()?.onCanvasClick?.(payload);
+      this.$refs.gesture?.onCanvasClick(payload);
     },
 
     // 初始化文档的缩放比例
@@ -343,9 +322,7 @@ export default {
       );
     },
 
-    /**
-     * 提供对外 API：Outline/跳转/缩略图/统计
-     */
+    // 对外提供 API，获取目录
     async getOutline() {
       try {
         return (await this.getOutlineAction()) ?? [];
@@ -355,6 +332,7 @@ export default {
       }
     },
 
+    // 对外提供 API，渲染缩略图
     async renderThumbnail(pageNumber, canvasEl, options = {}) {
       try {
         const isCanvas =
@@ -432,7 +410,7 @@ export default {
     },
 
     getBaselineScale() {
-      const val = this.gesture()?.getBaselineScale?.();
+      const val = this.$refs.gesture?.getBaselineScale();
       return typeof val === "number"
         ? val
         : typeof this.scale === "number"
@@ -444,7 +422,7 @@ export default {
     async fitWidthOnce() {
       try {
         if (!this.documentLoaded) return;
-        const container = this.viewerContainer();
+        const container = this.$refs.viewerContainer;
         if (!container) return;
         const rect = container.getBoundingClientRect();
         if (!rect || rect.width === 0) return;
@@ -453,7 +431,7 @@ export default {
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
-          this.gesture()?.setInitialFitScale(computed);
+          this.$refs.gesture?.setInitialFitScale(computed);
           this.setScaleAction(computed);
         }
       } catch (e) {

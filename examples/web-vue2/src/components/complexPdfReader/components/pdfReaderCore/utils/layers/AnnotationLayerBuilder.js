@@ -102,7 +102,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         },
       });
 
-      // 渲染注释层（"display" 意图）
+      // 渲染注释层
       await this._builder.render(this.viewport, "display");
 
       // 尺寸同步：不仅同步容器（this.layer），也同步内部 annotationLayer div
@@ -111,7 +111,7 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
         const h = `${this.viewport.height}px`;
         this.layer.style.width = w;
         this.layer.style.height = h;
-        const inner = this._builder?.div; // 官方 AnnotationLayerBuilder 创建的 div.annotationLayer
+        const inner = this._builder?.div; // pdfjs web 内部 AnnotationLayerBuilder 创建的 div.annotationLayer
         if (inner) {
           inner.style.width = w;
           inner.style.height = h;
