@@ -29,105 +29,110 @@
         @auto-play-ended="onAutoPlayEnded"
       />
     </div>
-    <div class="bottom-toolbar">
-      <van-image
-        class="thumbnail-tool-item"
-        :src="thumbnailIconUrl"
-        @click="handleClickThumbnail"
-      ></van-image>
-      <van-image
-        class="outline-tool-item"
-        :src="outlineIconUrl"
-        @click="handleClickOutline"
-      ></van-image>
-      <van-image
-        class="page-flip-tool-item"
-        :src="pageFlipIconUrl"
-        @click="togglePageNav"
-      ></van-image>
-      <!-- <van-image
-        class="page-flip-audio-tool-item"
-        :src="pageFlipAudioIconUrl"
-      ></van-image> -->
-      <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
-      <van-image
-        v-if="!lastScaleBeforeZoom"
-        class="zoom-in-tool-item"
-        :src="zoomInIconUrl"
-        @click="handleZoomIn"
-      ></van-image>
-      <van-image
-        v-else
-        class="zoom-out-tool-item"
-        :src="zoomOutIconUrl"
-        @click="handleResetZoom"
-      ></van-image>
-      <!-- 自动播放/暂停 -->
-      <van-image
-        class="auto-play-tool-item"
-        :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
-        @click="handleToggleAutoPlay"
-      ></van-image>
-    </div>
-    <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
-      <div class="nav-row">
-        <van-image
-          class="nav-row-item first-page"
-          :src="firstPageIconUrl"
-          @click="goToPage(1)"
-        ></van-image>
+    <div class="bottom-toolbar" :class="{ 'is-open-page-nav': isShowPageNav }">
+      <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
+        <div class="nav-row">
+          <van-image
+            class="nav-row-item first-page"
+            :src="firstPageIconUrl"
+            @click="goToPage(1)"
+          ></van-image>
 
-        <van-image
-          class="nav-row-item"
-          :src="previousPageIconUrl"
-          @click="prevPage"
-        ></van-image>
+          <van-image
+            class="nav-row-item"
+            :src="previousPageIconUrl"
+            @click="prevPage"
+          ></van-image>
 
-        <van-field
-          ref="pageInput"
-          class="page-input"
-          :value="
-            isEditingPageInput ? String(gotoPageInput || '') : pageFieldDisplay
-          "
-          :readonly="!isEditingPageInput"
-          :type="isEditingPageInput ? 'digit' : 'text'"
-          input-align="center"
-          @click="handlePageFieldClick"
-          @input="onPageFieldInput"
-          @blur="cancelEditPage"
-          @keyup.enter.native="finishEditPage"
-        />
+          <van-field
+            ref="pageInput"
+            class="page-input"
+            :value="
+              isEditingPageInput
+                ? String(gotoPageInput || '')
+                : pageFieldDisplay
+            "
+            :readonly="!isEditingPageInput"
+            :type="isEditingPageInput ? 'digit' : 'text'"
+            input-align="center"
+            @click="handlePageFieldClick"
+            @input="onPageFieldInput"
+            @blur="cancelEditPage"
+            @keyup.enter.native="finishEditPage"
+          />
 
-        <van-image
-          class="nav-row-item"
-          :src="nextPageIconUrl"
-          @click="nextPage"
-        ></van-image>
+          <van-image
+            class="nav-row-item"
+            :src="nextPageIconUrl"
+            @click="nextPage"
+          ></van-image>
 
-        <van-image
-          class="nav-row-item last-page"
-          :src="lastPageIconUrl"
-          @click="goToPage(totalPages)"
-        ></van-image>
+          <van-image
+            class="nav-row-item last-page"
+            :src="lastPageIconUrl"
+            @click="goToPage(totalPages)"
+          ></van-image>
+        </div>
+
+        <van-slider
+          class="slider-wrap"
+          v-model="sliderValue"
+          active-color="#CBCBCB"
+          inactive-color="#F9F5FF"
+          bar-height="0.29rem"
+          :min="1"
+          :max="Math.max(totalPages, 1)"
+          :step="1"
+          :lazy-change="true"
+          @drag-start="onSliderDragStart"
+          @change="onSliderChange"
+        >
+          <template #button>
+            <div class="custom-slide-button"></div>
+          </template>
+        </van-slider>
       </div>
 
-      <van-slider
-        class="slider-wrap"
-        v-model="sliderValue"
-        active-color="#CBCBCB"
-        inactive-color="#F9F5FF"
-        bar-height="0.29rem"
-        :min="1"
-        :max="Math.max(totalPages, 1)"
-        :step="1"
-        :lazy-change="true"
-        @drag-start="onSliderDragStart"
-        @change="onSliderChange"
-      >
-        <template #button>
-          <div class="custom-slide-button"></div>
-        </template>
-      </van-slider>
+      <div class="bottom-toolbar-tool-list">
+        <van-image
+          class="thumbnail-tool-item"
+          :src="thumbnailIconUrl"
+          @click="handleClickThumbnail"
+        ></van-image>
+        <van-image
+          class="outline-tool-item"
+          :src="outlineIconUrl"
+          @click="handleClickOutline"
+        ></van-image>
+        <van-image
+          class="page-flip-tool-item"
+          :src="pageFlipIconUrl"
+          @click="togglePageNav"
+        ></van-image>
+        <!-- <van-image
+          class="page-flip-audio-tool-item"
+          :src="pageFlipAudioIconUrl"
+        ></van-image> -->
+        <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
+        <van-image
+          v-if="!lastScaleBeforeZoom"
+          class="zoom-in-tool-item"
+          :src="zoomInIconUrl"
+          @click="handleZoomIn"
+        ></van-image>
+        <van-image
+          v-else
+          class="zoom-out-tool-item"
+          :src="zoomOutIconUrl"
+          @click="handleResetZoom"
+        ></van-image>
+        <!-- 自动播放/暂停 -->
+        <van-image
+          class="auto-play-tool-item"
+          :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
+          @click="handleToggleAutoPlay"
+        ></van-image>
+      </div>
     </div>
 
     <drawer
@@ -539,22 +544,20 @@ export default {
 
 <style lang="less" scoped>
 .complex-pdf-reader {
-  @top-toolbar-height: 2.73rem;
-  @bottom-toolbar-height: 4.14rem;
+  --top-toolbar-height: 2.73rem;
+  --bottom-toolbar-height: 4.14rem;
 
   // z-index
   --z-canvas: 0;
   --z-text: 1;
   --z-annot: 2;
-  --z-page-nav: 9;
-  --z-toolbar: 10;
-  --z-page-nav-open: 11;
+  --z-bottom-toolbar-tool-list: 10;
 
   position: relative;
 
   height: 100%;
-  padding-top: @top-toolbar-height;
-  padding-bottom: @bottom-toolbar-height;
+  padding-top: var(--top-toolbar-height);
+  padding-bottom: var(--bottom-toolbar-height);
 
   background-image: url("@/assets/images/complexPdfReader/full-background-2x.jpg");
   background-repeat: no-repeat;
@@ -568,7 +571,7 @@ export default {
     justify-content: flex-end;
 
     width: 100%;
-    height: @top-toolbar-height;
+    height: var(--top-toolbar-height);
 
     opacity: 0.7;
     background-image: linear-gradient(
@@ -576,6 +579,7 @@ export default {
       #ffffff 0%,
       rgba(255, 255, 255, 0.6) 100%
     );
+
     box-shadow: 0 0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
     border-radius: 0 0 0.57rem 0.57rem;
 
@@ -601,128 +605,135 @@ export default {
     height: 100%;
   }
 
-  .page-nav {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: @bottom-toolbar-height;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 0.8rem 2.39rem;
-    background: #fff;
-    //box-shadow: 0 -0.29rem 0.29rem rgba(0, 0, 0, 0.05);
-    border-radius: 0.43rem 0.43rem 0 0;
-    // 初始收起：下滑隐藏，避免遮挡与点击穿透
-    transform: translateY(100%);
-    opacity: 0;
-    z-index: var(--z-page-nav);
-    transition: all 240ms ease;
-    &.is-open {
-      transform: translateY(0);
-      opacity: 1;
-      z-index: var(--z-page-nav-open);
-    }
-    .nav-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      flex-wrap: wrap;
-
-      .nav-row-item {
-        width: 0.7rem;
-        height: 1.3rem;
-
-        &.first-page,
-        &.last-page {
-          width: 0.9rem;
-          height: 1.2rem;
-        }
-      }
-    }
-
-    .slider-wrap {
-      margin: 10px 0;
-
-      &.van-slider {
-        background: #cbcbcb;
-      }
-
-      .custom-slide-button {
-        width: 1.43rem;
-        height: 1.43rem;
-        background: #e5d7f6;
-        border-radius: 50%;
-        border: 3px solid #7e38d2;
-      }
-    }
-
-    .page-input {
-      display: flex;
-      align-items: center;
-      padding: 0;
-      width: 12rem;
-      height: 2rem;
-      border: 0.07rem solid rgba(241, 234, 250, 1);
-      border-radius: 3.21rem;
-
-      font-size: 0.86rem;
-      color: #000000;
-      letter-spacing: 0;
-      font-weight: 400;
-    }
-  }
-
   .bottom-toolbar {
     position: absolute;
     bottom: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
     width: 100%;
-    height: @bottom-toolbar-height;
-    padding: 0 2.39rem;
+    height: var(--bottom-toolbar-height);
+    overflow: hidden;
+    background-color: rgba(256, 256, 256, 0.7);
 
-    opacity: 0.7;
-    background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
-    //box-shadow: 0 -0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
-    //border-radius: 0.43rem 0.43rem 0 0;
-    z-index: var(--z-toolbar);
-
-    .thumbnail-tool-item {
-      width: 1.7rem;
-      height: 1.56rem;
+    &.is-open-page-nav {
+      overflow: initial;
     }
 
-    .outline-tool-item {
-      width: 1.43rem;
-      height: 1.29rem;
+    .page-nav {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 0.8rem 2.39rem;
+      background: #fff;
+      border-radius: 0.43rem 0.43rem 0 0;
+      // 初始收起：下滑隐藏
+      transform: translateY(calc(100% + var(--bottom-toolbar-height)));
+      // 防止遮住
+      z-index: calc(var(--z-bottom-toolbar-tool-list) - 1);
+      transition: all 240ms ease;
+
+      &.is-open {
+        transform: translateY(calc(-1 * var(--bottom-toolbar-height)));
+      }
+
+      .nav-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        flex-wrap: wrap;
+
+        .nav-row-item {
+          width: 0.7rem;
+          height: 1.3rem;
+
+          &.first-page,
+          &.last-page {
+            width: 0.9rem;
+            height: 1.2rem;
+          }
+        }
+      }
+
+      .slider-wrap {
+        margin: 10px 0;
+
+        &.van-slider {
+          background: #cbcbcb;
+        }
+
+        .custom-slide-button {
+          width: 1.43rem;
+          height: 1.43rem;
+          background: #e5d7f6;
+          border-radius: 50%;
+          border: 3px solid #7e38d2;
+        }
+      }
+
+      .page-input {
+        display: flex;
+        align-items: center;
+        padding: 0;
+        width: 12rem;
+        height: 2rem;
+        border: 0.07rem solid rgba(241, 234, 250, 1);
+        border-radius: 3.21rem;
+
+        font-size: 0.86rem;
+        color: #000000;
+        letter-spacing: 0;
+        font-weight: 400;
+      }
     }
 
-    .page-flip-tool-item {
-      width: 1.74rem;
-      height: 0.68rem;
-    }
+    .bottom-toolbar-tool-list {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: rgba(256, 256, 256, 0.7);
 
-    .page-flip-audio-tool-item {
-      width: 1.21rem;
-      height: 1.91rem;
-    }
+      width: 100%;
+      height: 100%;
+      padding: 0 2.39rem;
 
-    .zoom-in-tool-item,
-    .zoom-out-tool-item {
-      width: 1.29rem;
-      height: 1.52rem;
-    }
+      z-index: var(--z-bottom-toolbar-tool-list);
 
-    .auto-play-tool-item,
-    .pause-tool-item {
-      width: 1.5rem;
-      height: 1.5rem;
+      .thumbnail-tool-item {
+        width: 1.7rem;
+        height: 1.56rem;
+      }
+
+      .outline-tool-item {
+        width: 1.43rem;
+        height: 1.29rem;
+      }
+
+      .page-flip-tool-item {
+        width: 1.74rem;
+        height: 0.68rem;
+      }
+
+      .page-flip-audio-tool-item {
+        width: 1.21rem;
+        height: 1.91rem;
+      }
+
+      .zoom-in-tool-item,
+      .zoom-out-tool-item {
+        width: 1.29rem;
+        height: 1.52rem;
+      }
+
+      .auto-play-tool-item,
+      .pause-tool-item {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
     }
   }
 }

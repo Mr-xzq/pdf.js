@@ -100,21 +100,7 @@ export default {
       await this.initializeServicesAction();
       try {
         await this.loadDocumentAction({ src: this.src });
-        const pdfDocument = this.storePdfDocument;
-        const infoState = this.storeDocumentInfo || {};
-        const loadedEvent = {
-          document: pdfDocument,
-          info: {
-            numPages: infoState.numPages || pdfDocument?.numPages || 0,
-            fingerprint:
-              infoState.fingerprint ||
-              (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-              pdfDocument?.fingerprint ||
-              null,
-            metadata: this.storeMetadata || null,
-          },
-        };
-        this.onDocumentLoaded(loadedEvent);
+        this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
         this.onDocumentError({ error: error.message, type: "load" });
       }
@@ -130,10 +116,10 @@ export default {
     ]),
     ...mapState("pdfReader/document", {
       storePdfDocument: state => state.pdfDocument,
-      storeDocumentInfo: state => state.documentInfo,
     }),
     ...mapGetters({
       storeMetadata: "pdfReader/document/metadata",
+      loadedEvent: "pdfReader/document/loadedEvent",
     }),
     ...mapState("pdfReader/viewer", {
       storeCurrentPage: state => state.currentPage,
@@ -252,21 +238,7 @@ export default {
       await this.initializeServicesAction();
       try {
         await this.loadDocumentAction({ src: this.src });
-        const pdfDocument = this.storePdfDocument;
-        const infoState = this.storeDocumentInfo || {};
-        const loadedEvent = {
-          document: pdfDocument,
-          info: {
-            numPages: infoState.numPages || pdfDocument?.numPages || 0,
-            fingerprint:
-              infoState.fingerprint ||
-              (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-              pdfDocument?.fingerprint ||
-              null,
-            metadata: this.storeMetadata || null,
-          },
-        };
-        this.onDocumentLoaded(loadedEvent);
+        this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
         this.onDocumentError({ error: error.message, type: "load" });
       }
@@ -281,21 +253,7 @@ export default {
         await this.initializeServicesAction();
         try {
           await this.loadDocumentAction({ src: this.src });
-          const pdfDocument = this.storePdfDocument;
-          const infoState = this.storeDocumentInfo || {};
-          const loadedEvent = {
-            document: pdfDocument,
-            info: {
-              numPages: infoState.numPages || pdfDocument?.numPages || 0,
-              fingerprint:
-                infoState.fingerprint ||
-                (pdfDocument?.fingerprints && pdfDocument.fingerprints[0]) ||
-                pdfDocument?.fingerprint ||
-                null,
-              metadata: this.storeMetadata || null,
-            },
-          };
-          this.onDocumentLoaded(loadedEvent);
+          this.onDocumentLoaded(this.loadedEvent);
         } catch (error) {
           this.onDocumentError({ error: error.message, type: "load" });
         }

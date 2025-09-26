@@ -199,13 +199,8 @@ const actions = {
         return null;
       }
 
-      // 提交文档与信息
+      // 提交文档（SET_DOCUMENT 内已同步 numPages/fingerprint）
       commit("SET_DOCUMENT", pdfDocument);
-      commit("SET_DOCUMENT_INFO", {
-        numPages: pdfDocument?.numPages || 0,
-        fingerprint:
-          pdfDocument?.fingerprints?.[0] || pdfDocument?.fingerprint || null,
-      });
 
       if (metadata) {
         commit("SET_METADATA", metadata);
@@ -269,6 +264,21 @@ const getters = {
   linkService: state => state.services.linkService,
 
   metadata: state => state.metadata,
+
+  // 统一 loadedEvent payload（供组件使用，避免重复拼装）
+  loadedEvent: state => ({
+    document: state.pdfDocument,
+    info: {
+      numPages:
+        state.documentInfo?.numPages || state.pdfDocument?.numPages || 0,
+      fingerprint:
+        state.documentInfo?.fingerprint ||
+        state.pdfDocument?.fingerprints?.[0] ||
+        state.pdfDocument?.fingerprint ||
+        null,
+      metadata: state.metadata || null,
+    },
+  }),
 };
 
 export default {
