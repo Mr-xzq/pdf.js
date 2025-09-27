@@ -31,13 +31,11 @@ const mutations = {
     }
   },
 
-  // 重置查看器状态（精简版）
+  // 重置查看器状态
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
   },
-
-  // 统一显示层 loading（集中式）
 };
 
 const actions = {
@@ -112,7 +110,7 @@ const actions = {
     if (!doc) {
       throw new Error("PDF 文档未加载");
     }
-    const pageNumber = await resolveDestToPage(doc, dest);
+    const pageNumber = await resolveDestToPage({ pdfDocument: doc, dest });
     if (!pageNumber) {
       throw new Error("无法解析目的地页码");
     }
@@ -122,7 +120,7 @@ const actions = {
   async resolveDestinationToPage({ rootState }, dest) {
     const doc = rootState?.pdfReader?.document?.pdfDocument;
     try {
-      return await resolveDestToPage(doc, dest);
+      return await resolveDestToPage({ pdfDocument: doc, dest });
     } catch (error) {
       return null;
     }

@@ -1,9 +1,5 @@
 <template>
-  <div
-    class="pdf-page-container"
-    :class="{ 'pdf-page-container--loading': rendering }"
-    ref="container"
-  >
+  <div class="pdf-page-container" ref="container">
     <!-- 页面画布 -->
     <canvas
       ref="pageCanvas"
@@ -24,21 +20,14 @@
 
 <script>
 import {
-  cancelRenderTask,
   cancelAllRenderTasks,
   renderPageToCanvasCore,
 } from "../utils/pdf-utils.js";
 
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
-import {
-  createLayer,
-  updateAndRenderLayer,
-  cancelLayer,
-  destroyLayer,
-} from "../utils/layers/lifecycle.js";
 
 // 引入第三方库
-import { mapState, mapGetters, mapActions } from "vuex";
+import { mapState, mapActions } from "vuex";
 
 export default {
   name: "PdfPage",
@@ -86,42 +75,27 @@ export default {
   },
   computed: {
     ...mapState("pdfReader/document", ["pdfDocument"]),
-    ...mapGetters("pdfReader/document", ["services"]),
   },
   mounted() {
     this.renderPage();
   },
   beforeDestroy() {
-    cancelAllRenderTasks(this.renderTasks);
+    cancelAllRenderTasks({ tasks: this.renderTasks });
     this.destroyLayers();
     this.cleanup();
   },
   watch: {
-    pageNumber: {
-      handler: "onPageNumberChange",
-      immediate: false,
-    },
-    scale: {
-      handler: "onScaleChange",
-      immediate: false,
-    },
+    pageNumber: "onPageNumberChange",
+    scale: "onScaleChange",
   },
-
   methods: {
     ...mapActions("pdfReader/document", ["getPage"]),
     ...mapActions("pdfReader/viewer", ["goToDestination"]),
-    getPdfServices() {
-      return {
-        getPage: this.getPage,
-        goToDestination: this.goToDestination,
-      };
-    },
     // 渲染页面
     async renderPage() {
       const doc = this.pdfDocument;
       if (!doc) return;
-      // 若存在在途渲染，先取消之，避免重叠
-      cancelRenderTask(this.renderTasks, this.pageNumber);
+
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
 
@@ -140,13 +114,13 @@ export default {
         }
 
         // 渲染页面到 Canvas
-        const result = await renderPageToCanvasCore(
-          this.getPdfServices(),
-          this.renderTasks,
-          this.pageNumber,
+        const result = await renderPageToCanvasCore({
+          getPage: this.getPage,
+          tasks: this.renderTasks,
+          pageNumber: this.pageNumber,
           canvas,
-          { scale: this.scale }
-        );
+          scale: this.scale,
+        });
 
         // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
         if (token !== this.renderRequestId) {
@@ -203,53 +177,44 @@ export default {
 
     // 取消进行中的 Layer 任务
     cancelLayers() {
-      cancelLayer(this.layers?.annotation);
+      this.layers?.annotation?.cancel?.();
     },
 
     // 初始化 Layer builders
     initializeLayers() {
-      const servicesGetter = () => {
-        return (
-          this.services || {
-            eventBus: null,
-            linkService: null,
-          }
-        );
-      };
-
       // Annotation Layer
       if (
         this.annotationsEnabled &&
         !this.layers.annotation &&
         this.$refs.annotationLayer
       ) {
-        this.layers.annotation = createLayer(AnnotationLayerBuilder, {
+        this.layers.annotation = new AnnotationLayerBuilder({
           container: this.$refs.annotationLayer,
-          pdfServices: this.getPdfServices(),
-          getServices: servicesGetter,
-          setup: { pageNumber: this.pageNumber, viewport: this.viewport },
+          getPage: this.getPage,
+          goToDestination: this.goToDestination,
+        });
+        this.layers.annotation.setup({
+          pageNumber: this.pageNumber,
+          viewport: this.viewport,
         });
       }
     },
 
     // 渲染所有启用的 Layer
     async renderLayers() {
-      const tasks = [];
       if (this.layers.annotation) {
-        tasks.push(
-          updateAndRenderLayer(this.layers.annotation, {
-            pageNumber: this.pageNumber,
-            viewport: this.viewport,
-          })
-        );
+        this.layers.annotation.setup({
+          pageNumber: this.pageNumber,
+          viewport: this.viewport,
+        });
+        await this.layers.annotation.render();
       }
-      await Promise.all(tasks);
     },
 
     // 销毁所有 Layer
     destroyLayers() {
       if (this.layers.annotation) {
-        destroyLayer(this.layers.annotation);
+        this.layers.annotation.destroy?.();
         this.layers.annotation = null;
       }
     },
@@ -297,15 +262,11 @@ export default {
 
     // 处理页码变化
     async onPageNumberChange() {
-      cancelRenderTask(this.renderTasks, this.pageNumber);
-      this.cancelLayers?.();
       await this.renderPage();
     },
 
     // 处理缩放变化
     async onScaleChange() {
-      cancelRenderTask(this.renderTasks, this.pageNumber);
-      this.cancelLayers?.();
       await this.renderPage();
     },
 

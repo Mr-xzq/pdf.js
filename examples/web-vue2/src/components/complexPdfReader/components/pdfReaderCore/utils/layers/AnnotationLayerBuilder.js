@@ -1,123 +1,117 @@
-// AnnotationLayerBuilder（官方构建器封装版）：渲染表单与链接等注释，行为与官方一致
-import { BaseLayerBuilder } from "./BaseLayerBuilder";
-import { AnnotationLayerBuilder as PdfjsAnnotationLayerBuilder } from "pdfjs-dist/legacy/web/pdf_viewer.mjs";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
-export class AnnotationLayerBuilder extends BaseLayerBuilder {
-  constructor(ctx) {
-    super(ctx);
-    this._builder = null; // pdfjsViewer.AnnotationLayerBuilder 实例
+/**
+ * 注释层渲染器，这里我们用来处理点击目录
+ * 参考源码：
+ * pdfjs/web/annotation_layer_builder.js 对 pdfjs/src/display/annotation_layer.js 的封装
+ * pdfjs/web/pdf_page_view.js 对 AnnotationLayerBuilder 的使用
+ */
+export class AnnotationLayerBuilder {
+  constructor({ container, getPage, goToDestination }) {
+    this.container = container;
+    this.getPage = getPage;
+    this.goToDestination = goToDestination;
+    this.annotationLayer = null; // pdfjsLib.AnnotationLayer 实例
+    this.div = null; // 注释层容器 div（与官方保持一致）
+    this.pageNumber = 1;
+    this.viewport = null;
+    this.cancelled = false;
+    this._isRendered = false; // 标识上一次是否完成过渲染（用于判断能否只走 update）
+  }
+
+  setup({ pageNumber, viewport }) {
+    this.pageNumber = pageNumber;
+    this.viewport = viewport;
   }
 
   async render() {
-    if (!this.initialized || this.cancelled) return;
+    console.log("AnnotationLayerBuilder 开始渲染");
 
-    // 清空容器
-    this.layer.innerHTML = "";
+    // 重置取消标记，开始新一轮渲染
+    this.cancelled = false;
 
     try {
-      const page = await this.pdfServices?.getPage?.(this.pageNumber);
+      const page = await this.getPage?.(this.pageNumber);
       if (!page) return;
 
-      const services =
-        (this.getServices && this.getServices()) ||
-        this.pdfServices?.getApplicationServices?.() ||
-        {};
-      const appLinkService = services.linkService;
+      // 统一按官方实现克隆 viewport（dontFlip: true）
+      const viewport =
+        this.viewport?.clone?.({ dontFlip: true }) || this.viewport;
 
-      // 适配器：将注释层中的“内部链接”跳转，统一委托给我们自己的 PdfServices.goToDestination，
+      // 若已有注释层，优先走 update 流程（避免重建，和 web/annotation_layer_builder.js 一致）
+      if (this.annotationLayer && this.div && this._isRendered) {
+        this.annotationLayer.update({ viewport });
+        // 同步容器尺寸（防止缩放后尺寸不同步）
+        if (this.viewport) {
+          const w = `${this.viewport.width}px`;
+          const h = `${this.viewport.height}px`;
+          this.container.style.width = w;
+          this.container.style.height = h;
+          this.div.style.width = w;
+          this.div.style.height = h;
+        }
+        return;
+      }
+
+      // 首次渲染：清空容器并创建 annotationLayer div
+      this.container.innerHTML = "";
+
+      // 我们自己实现的 goToDestination（闭包捕获）
+      const customGoToDestination = this.goToDestination;
       const linkService = {
-        // 外部链接：直接设置 a 标签属性
-        addLinkAttributes(el, url, newWindow = true) {
-          el.href = url;
-          el.rel = "noopener noreferrer nofollow";
-          el.target = newWindow ? "_blank" : "_self";
+        // 外部链接：不处理，避免跳出;
+        addLinkAttributes(el, _url, _newWindow = true) {
+          el.href = "#";
+          el.rel = "noopener";
+          el.target = "_self";
         },
-        // 供 AnnotationLayer 设定锚点（内部链接也会调用），返回一个 hash
+        // 内部链接：供注释层生成锚点
         getDestinationHash(dest) {
-          if (typeof dest === "string") {
-            return "#" + encodeURIComponent(dest);
-          }
-          if (Array.isArray(dest)) {
+          if (typeof dest === "string") return "#" + encodeURIComponent(dest);
+          if (Array.isArray(dest))
             return "#" + encodeURIComponent(JSON.stringify(dest));
-          }
           return "#";
         },
-        // 兼容接口：返回带 baseUrl 的锚点（我们不使用 baseUrl，直接回传）
         getAnchorUrl(anchor) {
           return typeof anchor === "string" ? anchor : "#";
         },
-        // 内部目的地跳转（dest 可为 name 或 explicitDest 数组）
+        // 重写内部链接跳转方法
         async goToDestination(dest) {
-          try {
-            console.debug("[AnnotationLinkService] goToDestination ->", dest);
-            if (thisPdfServices) {
-              await thisPdfServices.goToDestination(dest);
-            } else if (appLinkService?.goToDestination) {
-              // 退回官方服务（不建议，可能因缺少 PDFViewer 而无效）
-              await appLinkService.goToDestination(dest);
-            }
-          } catch (e) {
-            console.warn("linkService.goToDestination 失败:", e);
-          }
-        },
-        // 一些注释可能使用 hash 形式（如 #page=3 或命名目的地）
-        async setHash(hash) {
-          try {
-            console.debug("[AnnotationLinkService] setHash ->", hash);
-            if (typeof hash === "string" && hash) {
-              const m = hash.match(/page=(\d+)/i);
-              if (m && m[1]) {
-                const n = parseInt(m[1], 10);
-                if (Number.isFinite(n) && thisPdfServices) {
-                  await thisPdfServices.goToDestination([n - 1]);
-                  return;
-                }
-              }
-              // 尝试将 hash 当作命名目的地处理
-              if (thisPdfServices) {
-                await thisPdfServices.goToDestination(hash);
-                return;
-              }
-            }
-            // 最后退回官方实现
-            appLinkService?.setHash?.(hash);
-          } catch (e) {
-            console.warn("linkService.setHash 失败:", e);
-          }
+          if (typeof customGoToDestination !== "function") return;
+          await customGoToDestination(dest);
         },
       };
-      // 通过闭包捕获 PdfServices，供适配器使用
-      const thisPdfServices = this.pdfServices;
-      // 为了兼容官方 AnnotationLayerBuilder 的演示模式事件监听，这里补充 eventBus
-      linkService.eventBus = services.eventBus || null;
 
-      this._builder = new PdfjsAnnotationLayerBuilder({
-        pdfPage: page,
-        linkService,
-        renderForms: true,
-        enableScripting: false,
-        onAppend: div => {
-          // div.className === 'annotationLayer'
-          this.layer.appendChild(div);
-        },
+      const annotations = await page.getAnnotations({ intent: "display" });
+
+      // 创建 annotationLayer 容器并附加
+      const div = document.createElement("div");
+      div.className = "annotationLayer";
+      this.container.appendChild(div);
+      this.div = div;
+
+      // 创建 AnnotationLayer 实例
+      this.annotationLayer = new pdfjsLib.AnnotationLayer({
+        div,
+        page,
+        viewport,
       });
 
-      // 渲染注释层
-      await this._builder.render(this.viewport, "display");
+      // 渲染（仅依赖我们提供的最小 linkService；外链 inert）
+      await this.annotationLayer.render({
+        annotations,
+        linkService,
+      });
+      this._isRendered = true;
 
-      // 尺寸同步：不仅同步容器（this.layer），也同步内部 annotationLayer div
+      // 同步容器尺寸
       if (this.viewport) {
         const w = `${this.viewport.width}px`;
         const h = `${this.viewport.height}px`;
-        this.layer.style.width = w;
-        this.layer.style.height = h;
-        const inner = this._builder?.div; // pdfjs web 内部 AnnotationLayerBuilder 创建的 div.annotationLayer
-        if (inner) {
-          inner.style.width = w;
-          inner.style.height = h;
-          inner.style.left = "0px";
-          inner.style.top = "0px";
-        }
+        this.container.style.width = w;
+        this.container.style.height = h;
+        div.style.width = w;
+        div.style.height = h;
       }
     } catch (e) {
       console.warn("AnnotationLayerBuilder 渲染失败（忽略）:", e);
@@ -125,13 +119,17 @@ export class AnnotationLayerBuilder extends BaseLayerBuilder {
   }
 
   cancel() {
-    super.cancel();
-    this._builder?.cancel?.();
+    console.log("AnnotationLayerBuilder 取消渲染任务");
+    this.cancelled = true;
+    this._isRendered = false;
+    this.annotationLayer?.cancel?.();
   }
 
   destroy() {
     this.cancel();
-    this._builder = null;
-    super.destroy();
+    this.container.innerHTML = "";
+    this.annotationLayer = null;
+    this.div = null;
+    this._isRendered = false;
   }
 }

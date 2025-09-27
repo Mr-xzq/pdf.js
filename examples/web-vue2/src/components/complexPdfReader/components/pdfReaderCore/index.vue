@@ -96,7 +96,6 @@ export default {
 
   async mounted() {
     if (this.src) {
-      await this.initializeServicesAction();
       try {
         await this.loadDocumentAction({ src: this.src });
         this.onDocumentLoaded(this.loadedEvent);
@@ -114,15 +113,15 @@ export default {
       "error",
     ]),
     ...mapState("pdfReader/document", {
-      storePdfDocument: state => state.pdfDocument,
+      storePdfDocument: "pdfDocument",
     }),
-    ...mapGetters({
-      storeMetadata: "pdfReader/document/metadata",
-      loadedEvent: "pdfReader/document/loadedEvent",
+    ...mapGetters("pdfReader/document", {
+      storeMetadata: "metadata",
+      loadedEvent: "loadedEvent",
     }),
     ...mapState("pdfReader/viewer", {
-      storeCurrentPage: state => state.currentPage,
-      storeScale: state => state.scale,
+      storeCurrentPage: "currentPage",
+      storeScale: "scale",
     }),
     ...mapGetters("pdfReader/viewer", ["navigationState", "zoomState"]),
     scale: {
@@ -173,7 +172,6 @@ export default {
         if (!this.src) {
           return;
         }
-        await this.initializeServicesAction();
         try {
           await this.loadDocumentAction({ src: this.src });
           this.onDocumentLoaded(this.loadedEvent);
@@ -218,7 +216,6 @@ export default {
       loadDocumentAction: "loadDocument",
       setLoadProgress: "setLoadProgress",
       setDocumentError: "setDocumentError",
-      initializeServicesAction: "initializeServices",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
     }),
@@ -236,7 +233,6 @@ export default {
       if (!this.src) {
         return;
       }
-      await this.initializeServicesAction();
       try {
         await this.loadDocumentAction({ src: this.src });
         this.onDocumentLoaded(this.loadedEvent);
@@ -350,16 +346,15 @@ export default {
           return;
         }
         const opts = { scale: options.scale || 0.2, ...options };
-        const services = {
+        const { scale, ...rest } = opts;
+        await renderPageToCanvasCore({
           getPage: n => this.getPageAction(n),
-        };
-        await renderPageToCanvasCore(
-          services,
-          this.thumbnailTasks,
+          tasks: this.thumbnailTasks,
           pageNumber,
-          canvasEl,
-          opts
-        );
+          canvas: canvasEl,
+          scale,
+          renderOptions: rest,
+        });
       } catch (e) {
         console.warn("renderThumbnail 失败:", e);
       }
@@ -454,7 +449,7 @@ export default {
 
   &__content {
     flex: 1;
-    overflow: hidden; // 不出现滚动条
+    overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: flex-start;

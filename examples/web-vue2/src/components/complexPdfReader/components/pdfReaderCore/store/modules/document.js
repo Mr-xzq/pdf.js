@@ -27,12 +27,6 @@ const state = {
   // 加载控制
   loadToken: 0,
   abortController: null,
-
-  // 应用服务
-  services: {
-    eventBus: null,
-    linkService: null,
-  },
 };
 
 const mutations = {
@@ -104,13 +98,6 @@ const mutations = {
     state.abortController?.abort?.();
     state.abortController = null;
   },
-
-  // 应用服务（EventBus/LinkService）
-  SET_SERVICES(state, services) {
-    const { eventBus = null, linkService = null } = services || {};
-    state.services.eventBus = eventBus;
-    state.services.linkService = linkService;
-  },
 };
 
 const actions = {
@@ -132,28 +119,6 @@ const actions = {
     }
   },
 
-  // 初始化 PDF.js 与核心服务（EventBus/LinkService）
-  async initializeServices({ state, commit }) {
-    try {
-      const { initializePdfJs } = await import("../../utils/pdf-config.js");
-      initializePdfJs();
-      if (!state.services.eventBus || !state.services.linkService) {
-        const { EventBus, PDFLinkService } = await import(
-          "pdfjs-dist/legacy/web/pdf_viewer.mjs"
-        );
-        const eventBus = new EventBus();
-        const linkService = new PDFLinkService({ eventBus });
-        commit("SET_SERVICES", { eventBus, linkService });
-      }
-      // 若已有文档，确保 linkService 关联文档
-      if (state.pdfDocument && state.services.linkService) {
-        state.services.linkService?.setDocument?.(state.pdfDocument);
-      }
-    } catch (e) {
-      console.warn("initializeServices 失败:", e);
-    }
-  },
-
   // 加载文档
   async loadDocument({ state, commit, dispatch }, { src }) {
     try {
@@ -166,9 +131,6 @@ const actions = {
       // 置状态
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
-
-      // 确保核心服务就绪
-      await dispatch("initializeServices");
 
       const { loadPdfDocument } = await import("../../utils/pdf-config.js");
 
@@ -205,9 +167,6 @@ const actions = {
       if (metadata) {
         commit("SET_METADATA", metadata);
       }
-
-      // 将文档关联到 LinkService
-      state.services.linkService?.setDocument?.(pdfDocument);
 
       // 加载完成
       commit("SET_LOADING", false);
@@ -257,11 +216,6 @@ const getters = {
 
   // 总页数
   totalPages: state => state.documentInfo.numPages,
-
-  // 应用服务（EventBus/LinkService）
-  services: state => state.services,
-  eventBus: state => state.services.eventBus,
-  linkService: state => state.services.linkService,
 
   metadata: state => state.metadata,
 
