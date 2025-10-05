@@ -16,9 +16,8 @@
 export default {
   name: "GestureContainer",
   props: {
-    // 外部驱动的缩放值
     scale: { type: Number, default: 1 },
-    // 手势开关（默认启用）
+    // 手势开关
     gesturesEnabled: { type: Boolean, default: true },
   },
   data() {
@@ -60,12 +59,6 @@ export default {
       return {
         transform: `translate(${this.panX}px, ${this.panY}px)`,
         willChange: "transform",
-        cursor:
-          this.currentScale > 1
-            ? this.isPanning
-              ? "grabbing"
-              : "grab"
-            : "default",
       };
     },
   },
@@ -105,8 +98,8 @@ export default {
       const ph = this.contentHeight || 0;
 
       // X 轴：内容超出容器则可左右拖动（中心对齐）
-      let minX = 0,
-        maxX = 0;
+      let minX = 0;
+      let maxX = 0;
       if (pw > cw) {
         const cx = (pw - cw) / 2;
         minX = -cx;
@@ -114,8 +107,8 @@ export default {
       }
 
       // Y 轴：内容超出容器则可上下拖动（顶部对齐）
-      let minY = 0,
-        maxY = 0;
+      let minY = 0;
+      let maxY = 0;
       if (ph > ch) {
         const cy = (ph - ch) / 2;
         minY = -cy;
@@ -204,12 +197,13 @@ export default {
       const dy = point.clientY - this.panStartY;
       const moved = Math.hypot(dx, dy) > (this.panThreshold || 6);
 
-      // 当放大且移动超过阈值时，才进入拖拽模式并阻止默认事件
-      if (
-        !this.isPanning &&
-        this.currentScale > this.getBaselineScale() + 0.001 &&
-        moved
-      ) {
+      // 当内容实际溢出容器且移动超过阈值时，才进入拖拽模式并阻止默认事件
+      const overflowX =
+        (this.contentWidth || 0) > (this.containerWidth || 0) + 1;
+      const overflowY =
+        (this.contentHeight || 0) > (this.containerHeight || 0) + 1;
+      const overflow = overflowX || overflowY;
+      if (!this.isPanning && overflow && moved) {
         this.isPanning = true;
         if (e?.cancelable) {
           e.preventDefault();

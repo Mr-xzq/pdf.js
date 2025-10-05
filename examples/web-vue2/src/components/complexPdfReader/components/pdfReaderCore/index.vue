@@ -20,7 +20,6 @@
         ref="gesture"
         :scale.sync="scale"
         :gestures-enabled="gesturesEnabled"
-        :zoom-target="zoomTarget"
         @update:scale="setScaleAction"
         @request-prev-page="prevPageAction"
         @request-next-page="nextPageAction"
@@ -49,7 +48,7 @@ import PdfPage from "./components/PdfPage.vue";
 import GestureContainer from "./components/GestureContainer.vue";
 
 // 引入自己项目里的工具函数
-import { renderPageToCanvasCore } from "./utils/pdf-utils.js";
+import { renderPageToCanvas } from "./utils/pdf-utils.js";
 
 // 引入第三方库
 import { mapState, mapGetters, mapActions } from "vuex";
@@ -77,8 +76,6 @@ export default {
     },
     // 手势开关（默认启用）
     gesturesEnabled: { type: Boolean, default: true },
-    // 双击放大目标（优先使用外部传入；未传则使用 baseline*1.5）
-    zoomTarget: { type: Number, default: null },
     // 自动播放控制
     autoPlayEnabled: { type: Boolean, default: false },
     autoPlayIntervalMs: { type: Number, default: 3000 },
@@ -278,7 +275,7 @@ export default {
 
     // 处理页面渲染完成
     onPageRendered(event) {
-      const vp = event && event.viewport;
+      const vp = event?.viewport;
       if (vp) {
         this.$refs.gesture?.setContentSize(vp.width, vp.height);
       }
@@ -308,7 +305,7 @@ export default {
 
       // 初次加载按容器宽度适配一次
       this.$nextTick(() => {
-        this.fitWidthOnce && this.fitWidthOnce();
+        this.fitWidthOnce();
       });
 
       console.log(
@@ -318,7 +315,7 @@ export default {
       );
     },
 
-    // 对外提供 API，获取目录
+    // 对外提供方法，获取目录
     async getOutline() {
       try {
         return (await this.getOutlineAction()) ?? [];
@@ -328,7 +325,7 @@ export default {
       }
     },
 
-    // 对外提供 API，渲染缩略图
+    // 对外提供方法，渲染缩略图
     async renderThumbnail(pageNumber, canvasEl, options = {}) {
       try {
         const isCanvas =
@@ -347,7 +344,7 @@ export default {
         }
         const opts = { scale: options.scale || 0.2, ...options };
         const { scale, ...rest } = opts;
-        await renderPageToCanvasCore({
+        await renderPageToCanvas({
           getPage: n => this.getPageAction(n),
           tasks: this.thumbnailTasks,
           pageNumber,
@@ -456,10 +453,6 @@ export default {
     padding: 0; // 由外层控制留白
     min-height: 0; // 确保 flex 子元素能够正确缩放
     touch-action: none; // 允许自定义手势（禁用浏览器默认手势）
-  }
-
-  &__pan {
-    will-change: transform;
   }
 }
 </style>

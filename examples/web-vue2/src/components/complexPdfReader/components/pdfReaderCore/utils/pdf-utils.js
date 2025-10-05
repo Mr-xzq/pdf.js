@@ -29,19 +29,8 @@ export async function resolveDestToPage({ pdfDocument, dest } = {}) {
   }
 }
 
-// 根据 viewport 与设备像素比计算 Canvas 尺寸参数
-export function computeCanvasSizing({ viewport, devicePixelRatio = 1 }) {
-  const dpr = Number(devicePixelRatio) || 1;
-  const outputScale = { sx: dpr, sy: dpr, scaled: dpr !== 1 };
-  const canvasWidth = Math.floor(viewport.width * dpr);
-  const canvasHeight = Math.floor(viewport.height * dpr);
-  const cssWidth = `${viewport.width}px`;
-  const cssHeight = `${viewport.height}px`;
-  return { canvasWidth, canvasHeight, cssWidth, cssHeight, outputScale };
-}
-
-// 取消指定页的当前正在渲染的任务
-export function cancelRenderTask({ tasks, pageNumber }) {
+// 取消指定页的当前正在渲染的任务（内部使用，不导出）
+function cancelRenderTask({ tasks, pageNumber }) {
   if (!tasks) return;
   console.log(`cancelRenderTask - 取消第 ${pageNumber} 页的渲染任务: `);
   const task = tasks[pageNumber];
@@ -60,49 +49,77 @@ export function cancelAllRenderTasks({ tasks }) {
   }
 }
 
-// 渲染页面到 Canvas
-export async function renderPageToCanvasCore({
+// 渲染 pdf page 到 Canvas
+export async function renderPageToCanvas({
   getPage,
   tasks,
   pageNumber,
   canvas,
-  scale = 1.0,
+  scale = 1,
   renderOptions = {},
 } = {}) {
+  // 取消同页已有渲染任务
   cancelRenderTask({ tasks, pageNumber });
 
+  // 获取页面与渲染视口（尺寸信息之类的）
   const page = await getPage(pageNumber);
+  const renderViewport = page.getViewport({ scale });
 
+  // 使用 devicePixelRatio 提升清晰度(考虑到多倍屏的情况，物理像素和逻辑像素的像素比)
   const devicePixelRatio = window.devicePixelRatio || 1;
-  const baseViewport = page.getViewport({ scale });
-  const { canvasWidth, canvasHeight, cssWidth, cssHeight, outputScale } =
-    computeCanvasSizing({ viewport: baseViewport, devicePixelRatio });
+  // 渲染一页 PDF 所需的像素数（CSS 尺寸）
+  const viewportPixels = Math.max(
+    1,
+    renderViewport.width * renderViewport.height
+  );
+  // 限制最大 canvas 像素数，防止内存溢出（可配）
+  const MAX_CANVAS_PIXELS =
+    Number(renderOptions.maxCanvasPixels) || 5 * 1024 * 1024;
+  // 实际渲染时的像素比
+  let renderPixelRatio = devicePixelRatio;
+  // 如果超出最大像素限制，按照 MAX_CANVAS_PIXELS 来降低渲染像素比
+  if (
+    viewportPixels * (devicePixelRatio * devicePixelRatio) >
+    MAX_CANVAS_PIXELS
+  ) {
+    renderPixelRatio = Math.sqrt(MAX_CANVAS_PIXELS / viewportPixels);
+  }
 
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
+  // 物理像素（影响绘制清晰度）
+  const pixelWidth = Math.floor(renderViewport.width * renderPixelRatio);
+  const pixelHeight = Math.floor(renderViewport.height * renderPixelRatio);
+  canvas.width = pixelWidth;
+  canvas.height = pixelHeight;
+
+  // 逻辑像素（影响布局与占位）
+  const cssWidth = `${Math.floor(renderViewport.width)}px`;
+  const cssHeight = `${Math.floor(renderViewport.height)}px`;
   canvas.style.width = cssWidth;
   canvas.style.height = cssHeight;
 
-  const context = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
 
   const renderContext = {
-    canvasContext: context,
-    viewport: baseViewport,
-    intent: "display",
+    canvasContext: ctx,
+    viewport: renderViewport,
+    // 根据 DPR 进行缩放
+    // CanvasRenderingContext2D transform(a, b, c, d, e, f)
+    // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
+    transform:
+      renderPixelRatio !== 1
+        ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0]
+        : null,
     ...renderOptions,
   };
 
-  if (outputScale.scaled) {
-    context.save();
-    context.scale(outputScale.sx, outputScale.sy);
-  }
-
+  // 发起渲染并记录任务，方便取消
   const renderTask = page.render(renderContext);
   tasks[pageNumber] = renderTask;
 
   try {
     await renderTask.promise;
   } catch (error) {
+    // 转换取消异常，便于上层统一处理
     if (
       error?.name === "RenderingCancelledException" ||
       /cancel/i.test(String(error.message || ""))
@@ -113,14 +130,11 @@ export async function renderPageToCanvasCore({
     }
     throw error;
   } finally {
+    // 只清理当前任务引用，避免覆盖并发中的新任务
     if (tasks[pageNumber] === renderTask) {
       delete tasks[pageNumber];
     }
   }
 
-  if (outputScale.scaled) {
-    context.restore();
-  }
-
-  return { canvas, viewport: baseViewport, pageNumber, outputScale };
+  return { canvas, viewport: renderViewport, pageNumber };
 }

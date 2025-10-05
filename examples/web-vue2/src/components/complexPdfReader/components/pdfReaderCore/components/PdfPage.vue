@@ -21,7 +21,7 @@
 <script>
 import {
   cancelAllRenderTasks,
-  renderPageToCanvasCore,
+  renderPageToCanvas,
 } from "../utils/pdf-utils.js";
 
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
@@ -113,7 +113,7 @@ export default {
         }
 
         // 渲染页面到 Canvas
-        const result = await renderPageToCanvasCore({
+        const result = await renderPageToCanvas({
           getPage: this.getPage,
           tasks: this.renderTasks,
           pageNumber: this.pageNumber,
@@ -229,18 +229,9 @@ export default {
     },
 
     updateStyles() {
-      if (!this.viewport) {
-        return;
-      }
-
+      if (!this.viewport) return;
       const { width, height } = this.viewport;
-
-      // Canvas 样式 - 现在由渲染服务直接设置尺寸，这里不再干预
-      this.canvasStyle = {
-        display: "block",
-      };
-
-      // 注释层样式
+      this.canvasStyle = { display: "block" };
       this.annotationLayerStyle = {
         width: `${width}px`,
         height: `${height}px`,

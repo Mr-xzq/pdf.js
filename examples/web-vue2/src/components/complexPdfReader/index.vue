@@ -15,7 +15,6 @@
         :src="src"
         :initial-page="initialPage"
         :initial-scale="initialScale"
-        :zoom-target="zoomTarget"
         :auto-play-enabled="autoPlay"
         :auto-play-interval-ms="autoPlayIntervalMs"
         @document-loaded="onPdfLoaded"
