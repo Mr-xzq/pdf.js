@@ -16,7 +16,7 @@
 export default {
   name: "GestureContainer",
   props: {
-    // 外部驱动的缩放值（来自父组件/Store）
+    // 外部驱动的缩放值
     scale: { type: Number, default: 1 },
     // 手势开关（默认启用）
     gesturesEnabled: { type: Boolean, default: true },
@@ -173,17 +173,13 @@ export default {
 
       // 记录起始目标；若起点在注释链接上，延后到 touchend 决定是否触发点击
       this.maybeTapTarget = e.target || null;
-      this.maybeLinkTap = !!(
-        this.maybeTapTarget &&
-        this.maybeTapTarget.closest &&
-        this.maybeTapTarget.closest(
-          ".annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a"
-        )
+      this.maybeLinkTap = !!this.maybeTapTarget?.closest(
+        ".annotationLayer a, .annotationLayer .linkAnnotation, .pdf-page-container__annotation-layer a"
       );
       this.panMoved = false;
       this._synthClickNeeded = false;
 
-      if (touches && touches.length >= 2) {
+      if (touches?.length >= 2) {
         // 多指操作时，不处理（已移除捏合缩放）
         return;
       }
@@ -215,7 +211,7 @@ export default {
         moved
       ) {
         this.isPanning = true;
-        if (e && e.cancelable) {
+        if (e?.cancelable) {
           e.preventDefault();
           this._synthClickNeeded = true; // 原生点击可能不会触发，稍后合成
         }
@@ -238,7 +234,7 @@ export default {
       if (this.maybeLinkTap && !this.panMoved && this.maybeTapTarget) {
         if (this._synthClickNeeded) {
           // 在拖拽中曾阻止默认行为，补发一次点击
-          this.maybeTapTarget.click && this.maybeTapTarget.click();
+          this.maybeTapTarget?.click();
         } // 否则交由浏览器的原生点击/高亮处理
       }
 

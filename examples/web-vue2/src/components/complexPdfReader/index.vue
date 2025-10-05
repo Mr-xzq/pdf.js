@@ -454,13 +454,13 @@ export default {
       this.lastScaleBeforeZoom = null;
     },
 
-    // 自动播放：交由 PdfReader 内部实现，这里仅切换 props，并向外同步（.sync）
+    // 切换自动播放
     handleToggleAutoPlay() {
       this.autoPlay = !this.autoPlay;
       this.$emit("update:autoPlayEnabled", this.autoPlay);
     },
     onAutoPlayEnded() {
-      // 子组件自动播放到达最后一页后，重置本地与对外同步状态
+      // 子组件自动播放到达最后一页
       this.autoPlay = false;
       this.$emit("update:autoPlayEnabled", false);
     },

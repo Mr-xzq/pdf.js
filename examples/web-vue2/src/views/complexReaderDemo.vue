@@ -1,17 +1,16 @@
 <template>
   <div class="page">
-    <!-- <van-nav-bar
+    <van-nav-bar
       title="Complex PDF Reader"
-      left-text="返回"
       left-arrow
       @click-left="$router.back()"
     />
 
-    <van-field v-model="localPdfUrl" label="PDF地址" placeholder="输入PDF文件URL">
-      <template #button>
-        <van-button size="small" type="primary" @click="confirmUrl">确认</van-button>
-      </template>
-    </van-field> -->
+    <!--<van-field v-model="localPdfUrl" label="PDF地址" placeholder="输入PDF文件URL">-->
+    <!--  <template #button>-->
+    <!--    <van-button size="small" type="primary" @click="confirmUrl">确认</van-button>-->
+    <!--  </template>-->
+    <!--</van-field>-->
 
     <div class="content">
       <complex-pdf-reader
@@ -74,7 +73,15 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.content {
+.page {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  .content {
+    flex: 1;
+    //overflow-y: auto;
+    min-height: 0;
+  }
 }
 </style>

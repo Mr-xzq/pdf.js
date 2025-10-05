@@ -1,43 +1,42 @@
 <template>
   <div class="route-test">
-    <van-nav-bar
-      title="路由测试"
-      left-text="返回"
-      left-arrow
-      @click-left="$router.back()"
-    />
+    <van-nav-bar title="Demo" />
 
     <div class="content">
-      <van-cell-group inset title="PDF.js 迁移测试">
-        <van-cell center>
+      <template v-for="demoConfigListItem in demoConfigList">
+        <van-cell :key="demoConfigListItem.title" center>
           <template #title>
-            <div class="cell-title">complexReaderDemo</div>
+            <div class="cell-title">{{ demoConfigListItem.title }}</div>
           </template>
           <template #right-icon>
             <van-button
               type="primary"
               size="small"
-              icon="description"
-              @click="goToComplexReaderDemo"
-              >complexReaderDemo</van-button
-            >
+              icon="arrow"
+              @click="$router.push(demoConfigListItem.path)"
+            ></van-button>
           </template>
         </van-cell>
-      </van-cell-group>
+      </template>
     </div>
   </div>
 </template>
 
 <script>
-export default {
-  methods: {
-    goToComplexReaderDemo() {
-      this.$router.push({
-        path: "/complex-pdf-reader-demo",
-      });
-    },
+import { defineComponent } from "vue";
+
+export default defineComponent({
+  data() {
+    return {
+      demoConfigList: [
+        { title: "simpleReaderDemo", path: "/simple-pdf-reader-demo" },
+        { title: "treeDemo", path: "/tree-demo" },
+        { title: "complexReaderDemo", path: "/complex-pdf-reader-demo" },
+      ],
+    };
   },
-};
+  methods: {},
+});
 </script>
 
 <style lang="less" scoped>
@@ -47,12 +46,18 @@ export default {
 
   .content {
     padding: 12px;
-  }
 
-  .cell-title {
-    display: flex;
-    align-items: center;
-    margin-right: 8px;
+    .van-cell {
+      &:not(:last-child) {
+        margin-bottom: 8px;
+      }
+
+      .cell-title {
+        display: flex;
+        align-items: center;
+        margin-right: 8px;
+      }
+    }
   }
 }
 </style>

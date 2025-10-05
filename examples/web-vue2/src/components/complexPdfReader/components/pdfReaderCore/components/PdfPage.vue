@@ -50,7 +50,7 @@ export default {
 
   data() {
     return {
-      // 渲染任务表（函数式）
+      // 渲染任务表
       renderTasks: {},
 
       // 渲染状态
@@ -64,8 +64,7 @@ export default {
       // 样式
       canvasStyle: {},
       annotationLayerStyle: {},
-
-      // Layer builders 注册表
+      // 不同的 layer
       layers: {
         annotation: null,
       },
