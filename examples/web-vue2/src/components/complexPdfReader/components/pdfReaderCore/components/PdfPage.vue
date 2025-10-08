@@ -300,7 +300,7 @@ export default {
     right: 0;
     bottom: 0;
     pointer-events: auto;
-    // 明确置于文本层之上，保证点击
+    // 明确置于文本层之上，确保能点击
     z-index: var(--z-annot);
   }
 }

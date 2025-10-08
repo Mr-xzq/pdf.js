@@ -141,6 +141,7 @@
       @opened="onOutlineOpened"
     >
       <outline-panel
+        :key="pdfDocKey"
         ref="outlinePanel"
         :current-page="currentPage"
         :get-outline="getOutline"
@@ -158,6 +159,7 @@
       @opened="onThumbnailOpened"
     >
       <thumbnail-panel
+        :key="pdfDocKey"
         ref="thumbPanel"
         :current-page="currentPage"
         :total-pages="totalPages"
@@ -284,6 +286,8 @@ export default {
       lastScaleBeforeZoom: null,
       // 显示层统一 loading（只在点击翻页/打开面板等需要时触发）
       isDisplayLoading: false,
+      // 当前已加载文档的指纹，用于触发子组件重新挂载
+      docFingerprint: null,
     };
   },
   watch: {
@@ -309,6 +313,12 @@ export default {
     },
     pageFieldDisplay() {
       return `${this.sliderValue}/${this.totalPages}`;
+    },
+    // 用于强制子面板在文档切换/加载完成时重新挂载：src + 指纹
+    pdfDocKey() {
+      const s = this.src || "";
+      const f = this.docFingerprint || "";
+      return `${s}|${f}`;
     },
   },
   methods: {
@@ -504,11 +514,15 @@ export default {
       // 输入框 & slider 的初始值回显
       this.gotoPageInput = this.currentPage;
       this.sliderValue = this.currentPage;
+      // 记录文档指纹（若缺失则兜底一个唯一值）
+      this.docFingerprint = e?.info?.fingerprint || String(Date.now());
       this.$emit("document-loaded", e);
       // 注意：初始化时不触发翻页 loading，避免与文档级 loading 冲突
     },
     onPdfError(e) {
       console.error("PDF 加载失败", e);
+      // 标记为错误态，强制 Outline/Thumb 以空态重新挂载
+      this.docFingerprint = `error:${Date.now()}`;
       this.$emit("document-error", e);
     },
     onPdfPageChanged(e) {

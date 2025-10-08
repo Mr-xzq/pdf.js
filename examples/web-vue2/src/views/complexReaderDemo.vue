@@ -42,6 +42,7 @@ export default {
   data() {
     return {
       localPdfUrl: "",
+      // pdfUrl: http://127.0.0.1:5678/pdfs/compressed.tracemonkey-pldi-09.pdf
       pdfUrl: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
       // 控件
       autoPlay: false,

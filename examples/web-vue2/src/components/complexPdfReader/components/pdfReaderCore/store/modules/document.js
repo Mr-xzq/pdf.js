@@ -124,6 +124,12 @@ const actions = {
     try {
       // 取消上一轮
       state.abortController?.abort?.();
+
+      // 每次开始新加载前，清空上一次文档与查看器状态，避免遗留旧数据
+      commit("RESET_DOCUMENT");
+      await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
+
+      // 初始化新一轮加载控制
       const currentToken = (state.loadToken || 0) + 1;
       state.loadToken = currentToken;
       state.abortController = new AbortController();
@@ -181,6 +187,11 @@ const actions = {
     } catch (error) {
       // 忽略因取消导致的错误
       if (error?.name === "AbortError") return null;
+
+      // 失败时也要清空文档，避免遗留旧数据
+      commit("RESET_DOCUMENT");
+      await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
+
       commit("SET_ERROR", { error: error.message, type: "load" });
       commit("SET_LOADING", false);
       throw error;

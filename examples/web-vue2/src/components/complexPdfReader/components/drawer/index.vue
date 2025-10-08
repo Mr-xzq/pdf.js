@@ -1,11 +1,11 @@
 <template>
   <van-popup
-    :value="isShow"
-    @input="$emit('update:is-show', $event)"
-    position="left"
     style="height: 100%; width: 100%"
+    :value="isShow"
     :closeable="false"
-    :close-on-click-overlay="true"
+    position="left"
+    close-on-click-overlay
+    @input="$emit('update:is-show', $event)"
     @opened="$emit('opened')"
     @closed="$emit('closed')"
   >
