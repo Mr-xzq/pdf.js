@@ -6,11 +6,17 @@
       @click-left="$router.back()"
     />
 
-    <!--<van-field v-model="localPdfUrl" label="PDF地址" placeholder="输入PDF文件URL">-->
-    <!--  <template #button>-->
-    <!--    <van-button size="small" type="primary" @click="confirmUrl">确认</van-button>-->
-    <!--  </template>-->
-    <!--</van-field>-->
+    <van-field
+      v-model="localPdfUrl"
+      label="PDF地址"
+      placeholder="输入PDF文件URL"
+    >
+      <template #button>
+        <van-button size="small" type="primary" @click="confirmUrl"
+          >确认
+        </van-button>
+      </template>
+    </van-field>
 
     <div class="content">
       <complex-pdf-reader
@@ -46,8 +52,8 @@ export default {
 
   methods: {
     confirmUrl() {
-      // 设置 URL 即触发内部加载；loading 动画通过组件事件托管
-      this.pdfUrl = this.localPdfUrl || this.pdfUrl;
+      this.pdfUrl = this.localPdfUrl;
+      console.log("confirmUrl: ", this.pdfUrl);
     },
 
     onLoaded({ info }) {
@@ -55,8 +61,9 @@ export default {
       // this.$toast.success(`加载完成`);
     },
     onError(err) {
-      const msg = err?.message || err?.error || "文件加载失败";
-      this.$toast.fail(msg);
+      const msg = err?.message || "文件加载失败";
+      console.log("加载失败: ", msg);
+      this.$toast.fail("文件加载失败");
     },
     onLoadingStart() {
       this.$toast.loading({

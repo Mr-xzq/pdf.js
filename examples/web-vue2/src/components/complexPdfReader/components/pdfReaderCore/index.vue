@@ -17,12 +17,8 @@
       ref="content"
     >
       <gesture-container
-        ref="gesture"
-        :scale.sync="scale"
         :gestures-enabled="gesturesEnabled"
-        @update:scale="setScaleAction"
-        @request-prev-page="prevPageAction"
-        @request-next-page="nextPageAction"
+        content-selector=".pdf-page-container"
       >
         <pdf-page
           :page-number="page"
@@ -30,7 +26,6 @@
           :annotations-enabled="true"
           @page-rendered="onPageRendered"
           @render-error="onRenderError"
-          @canvas-click="onCanvasClick"
         />
       </gesture-container>
     </div>
@@ -92,13 +87,11 @@ export default {
   },
 
   async mounted() {
-    if (this.src) {
-      try {
-        await this.loadDocumentAction({ src: this.src });
-        this.onDocumentLoaded(this.loadedEvent);
-      } catch (error) {
-        this.onDocumentError({ error: error.message, type: "load" });
-      }
+    try {
+      await this.loadDocumentAction({ src: this.src });
+      this.onDocumentLoaded(this.loadedEvent);
+    } catch (error) {
+      this.onDocumentError({ message: error.message, type: "load" });
     }
   },
 
@@ -166,20 +159,17 @@ export default {
   watch: {
     async src(newSrc, oldSrc) {
       if (newSrc !== oldSrc) {
-        if (!this.src) {
-          return;
-        }
         try {
           await this.loadDocumentAction({ src: this.src });
           this.onDocumentLoaded(this.loadedEvent);
         } catch (error) {
-          this.onDocumentError({ error: error.message, type: "load" });
+          this.onDocumentError({ message: error.message, type: "load" });
         }
       }
     },
 
-    docLoading(n) {
-      if (n) {
+    docLoading(val) {
+      if (val) {
         this.$emit("loading-start", {
           source: "core",
           message: this.docMessage,
@@ -227,14 +217,11 @@ export default {
 
     // 重试加载
     async retry() {
-      if (!this.src) {
-        return;
-      }
       try {
         await this.loadDocumentAction({ src: this.src });
         this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
-        this.onDocumentError({ error: error.message, type: "load" });
+        this.onDocumentError({ message: error.message, type: "load" });
       }
     },
 
@@ -275,14 +262,6 @@ export default {
 
     // 处理页面渲染完成
     onPageRendered(event) {
-      const vp = event?.viewport;
-      if (vp) {
-        this.$refs.gesture?.setContentSize(vp.width, vp.height);
-      }
-      this.$nextTick(() => {
-        this.$refs.gesture?.updateContainerSize();
-        this.$refs.gesture?.clampPan();
-      });
       this.$emit("page-rendered", event);
     },
 
@@ -290,11 +269,6 @@ export default {
     onRenderError(event) {
       console.error("页面渲染错误:", event);
       this.$emit("render-error", event);
-    },
-
-    // 转发 PdfPage 的 canvas 点击事件给手势容器
-    onCanvasClick(payload) {
-      this.$refs.gesture?.onCanvasClick(payload);
     },
 
     // 初始化文档的缩放比例
@@ -401,15 +375,6 @@ export default {
       }
     },
 
-    getBaselineScale() {
-      const val = this.$refs.gesture?.getBaselineScale();
-      return typeof val === "number"
-        ? val
-        : typeof this.scale === "number"
-        ? this.scale
-        : 1;
-    },
-
     // 按容器宽度适配一次（无监听、无后续自动调整）
     async fitWidthOnce() {
       try {
@@ -423,7 +388,6 @@ export default {
         const viewport = page.getViewport({ scale: 1.0 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
-          this.$refs.gesture?.setInitialFitScale(computed);
           this.setScaleAction(computed);
         }
       } catch (e) {

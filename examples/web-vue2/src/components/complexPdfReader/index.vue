@@ -208,10 +208,9 @@ export default {
     ThumbnailPanel,
   },
   props: {
-    // 文档地址（对外暴露，默认指向示例文件）
     src: {
       type: String,
-      default: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
+      default: "",
     },
     // 初始页
     initialPage: {
