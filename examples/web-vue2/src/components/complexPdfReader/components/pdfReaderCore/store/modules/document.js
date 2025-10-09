@@ -20,10 +20,6 @@ const state = {
 
   // 错误状态
   error: null,
-
-  // 加载控制
-  loadToken: 0,
-  abortController: null,
 };
 
 const mutations = {
@@ -79,10 +75,6 @@ const mutations = {
     state.loadProgress = 0;
     state.loadMessage = "";
     state.error = null;
-    // 取消控制
-    state.loadToken = 0;
-    state.abortController?.abort?.();
-    state.abortController = null;
   },
 };
 
@@ -108,30 +100,18 @@ const actions = {
   // 加载文档
   async loadDocument({ state, commit, dispatch }, { src }) {
     try {
-      // 取消上一轮
-      state.abortController?.abort?.();
-
       // 每次开始新加载前，清空上一次文档与查看器状态，避免遗留旧数据
       commit("RESET_DOCUMENT");
       await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
 
-      // 初始化新一轮加载控制
-      const currentToken = (state.loadToken || 0) + 1;
-      state.loadToken = currentToken;
-      state.abortController = new AbortController();
-
-      // 置状态
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
 
       let lastProgress = 0;
       const { pdfDocument } = await loadPdfDocument({
         src,
-        signal: state.abortController.signal,
         onProgress: ({ percentage }) => {
-          // 陈旧任务丢弃
-          if (state.loadToken !== currentToken) return;
-          // 去抖：避免过于频繁的提交
+          // 避免过于频繁的提交
           if (percentage !== lastProgress) {
             lastProgress = percentage;
             commit("SET_LOAD_PROGRESS", {
@@ -144,12 +124,6 @@ const actions = {
 
       let metadata = null;
       metadata = await pdfDocument.getMetadata();
-
-      // 若已被新任务取代，直接丢弃
-      if (state.loadToken !== currentToken) {
-        pdfDocument?.destroy?.();
-        return null;
-      }
 
       commit("SET_DOCUMENT", pdfDocument);
 
@@ -168,9 +142,6 @@ const actions = {
 
       return { pdfDocument };
     } catch (error) {
-      // 忽略因取消导致的错误
-      if (error?.name === "AbortError") return null;
-
       // 失败时也要清空文档，避免遗留旧数据
       commit("RESET_DOCUMENT");
       await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
@@ -190,11 +161,6 @@ const actions = {
   setDocumentError({ commit }, { error, type = "load" }) {
     commit("SET_ERROR", { error, type });
     commit("SET_LOADING", false);
-  },
-
-  // 重置文档状态
-  resetDocument({ commit }) {
-    commit("RESET_DOCUMENT");
   },
 };
 

@@ -26,13 +26,11 @@ export function round2(value) {
  * @param {Object} params
  * @param {string} params.src 文档地址
  * @param {(progress:{loaded:number,total:number,percentage:number})=>void} [params.onProgress]
- * @param {AbortSignal} [params.signal]
  * @param {Object} [params.getDocumentOptions] 其它传给 getDocument 的参数（headers、withCredentials 等）
  */
 export async function loadPdfDocument({
   src,
   onProgress,
-  signal,
   ...getDocumentOptions
 } = {}) {
   if (!src) throw new Error("loadPdfDocument 需要 src");
@@ -51,37 +49,6 @@ export async function loadPdfDocument({
     };
   }
 
-  let aborted = false;
-  let destroyPromise = null;
-
-  // 取消支持（确保在抛出前等待 destroy 完成）
-  const onAbort = () => {
-    aborted = true;
-    try {
-      const p = loadingTask.destroy();
-      destroyPromise = typeof p?.then === "function" ? p : Promise.resolve();
-    } catch (error) {
-      destroyPromise = Promise.resolve();
-    }
-  };
-  if (signal) {
-    signal.addEventListener("abort", onAbort, { once: true });
-  }
-
-  try {
-    const pdfDocument = await loadingTask.promise;
-    return { pdfDocument };
-  } catch (err) {
-    if (aborted) {
-      await destroyPromise;
-      // 标准化为 AbortError
-      const abortError = new DOMException("Aborted", "AbortError");
-      throw abortError;
-    }
-    throw err;
-  } finally {
-    if (signal) {
-      signal.removeEventListener("abort", onAbort);
-    }
-  }
+  const pdfDocument = await loadingTask.promise;
+  return { pdfDocument };
 }
