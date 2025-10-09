@@ -41,8 +41,7 @@ const mutations = {
 const actions = {
   // 跳转到指定页面
   goToPage({ commit, rootGetters }, pageNumber) {
-    const totalPages = rootGetters["pdfReader/document/totalPages"];
-
+    const totalPages = rootGetters["complexPdfReader/document/totalPages"];
     if (pageNumber < 1 || pageNumber > totalPages) {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
@@ -53,7 +52,7 @@ const actions = {
 
   // 下一页
   nextPage({ state, dispatch, rootGetters }) {
-    const totalPages = rootGetters["pdfReader/document/totalPages"];
+    const totalPages = rootGetters["complexPdfReader/document/totalPages"];
     if (state.currentPage < totalPages) {
       return dispatch("goToPage", state.currentPage + 1);
     }
@@ -91,7 +90,7 @@ const actions = {
 
   // PDF 内部跳转
   async goToDestination({ dispatch, rootState }, dest) {
-    const doc = rootState?.pdfReader?.document?.pdfDocument;
+    const doc = rootState.complexPdfReader?.document?.pdfDocument;
     if (!doc) {
       throw new Error("PDF 文档未加载");
     }
@@ -103,7 +102,7 @@ const actions = {
   },
 
   async resolveDestinationToPage({ rootState }, dest) {
-    const doc = rootState?.pdfReader?.document?.pdfDocument;
+    const doc = rootState.complexPdfReader?.document?.pdfDocument;
     try {
       return await resolveDestToPage({ pdfDocument: doc, dest });
     } catch (error) {
@@ -120,7 +119,7 @@ const actions = {
 const getters = {
   // 导航状态
   navigationState: (state, _getters, _rootState, rootGetters) => {
-    const totalPages = rootGetters["pdfReader/document/totalPages"];
+    const totalPages = rootGetters["complexPdfReader/document/totalPages"];
     const currentPage = state.currentPage;
 
     return {

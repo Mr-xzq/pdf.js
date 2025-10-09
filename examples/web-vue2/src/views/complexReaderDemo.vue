@@ -21,9 +21,6 @@
     <div class="content">
       <complex-pdf-reader
         :src="pdfUrl"
-        :auto-play-enabled.sync="autoPlay"
-        :auto-play-interval-ms="autoPlayIntervalMs"
-        :zoom-target="zoomTarget"
         @document-loaded="onLoaded"
         @document-error="onError"
         @loading-start="onLoadingStart"
@@ -44,10 +41,6 @@ export default {
       localPdfUrl: "",
       // pdfUrl: http://127.0.0.1:5678/pdfs/compressed.tracemonkey-pldi-09.pdf
       pdfUrl: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
-      // 控件
-      autoPlay: false,
-      autoPlayIntervalMs: 1500,
-      zoomTarget: 1.5,
     };
   },
 

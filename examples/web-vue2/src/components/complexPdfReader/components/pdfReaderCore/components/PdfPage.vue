@@ -70,7 +70,7 @@ export default {
     };
   },
   computed: {
-    ...mapState("pdfReader/document", ["pdfDocument"]),
+    ...mapState("complexPdfReader/document", ["pdfDocument"]),
   },
   mounted() {
     this.renderPage();
@@ -85,8 +85,8 @@ export default {
     scale: "onScaleChange",
   },
   methods: {
-    ...mapActions("pdfReader/document", ["getPage"]),
-    ...mapActions("pdfReader/viewer", ["goToDestination"]),
+    ...mapActions("complexPdfReader/document", ["getPage"]),
+    ...mapActions("complexPdfReader/viewer", ["goToDestination"]),
     // 渲染页面
     async renderPage() {
       const doc = this.pdfDocument;

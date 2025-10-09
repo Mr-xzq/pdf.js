@@ -87,33 +87,28 @@ export default {
   },
 
   async mounted() {
-    try {
-      await this.loadDocumentAction({ src: this.src });
-      this.onDocumentLoaded(this.loadedEvent);
-    } catch (error) {
-      this.onDocumentError({ message: error.message, type: "load" });
-    }
+    await this.handleLoadDocument()
   },
 
   computed: {
-    ...mapState("pdfReader/document", [
+    ...mapState("complexPdfReader/document", [
       "loading",
       "loadProgress",
       "loadMessage",
       "error",
     ]),
-    ...mapState("pdfReader/document", {
+    ...mapState("complexPdfReader/document", {
       storePdfDocument: "pdfDocument",
     }),
-    ...mapGetters("pdfReader/document", {
+    ...mapGetters("complexPdfReader/document", {
       storeMetadata: "metadata",
       loadedEvent: "loadedEvent",
     }),
-    ...mapState("pdfReader/viewer", {
+    ...mapState("complexPdfReader/viewer", {
       storeCurrentPage: "currentPage",
       storeScale: "scale",
     }),
-    ...mapGetters("pdfReader/viewer", ["navigationState", "zoomState"]),
+    ...mapGetters("complexPdfReader/viewer", ["navigationState", "zoomState"]),
     scale: {
       get() {
         return this.storeScale;
@@ -159,12 +154,7 @@ export default {
   watch: {
     async src(newSrc, oldSrc) {
       if (newSrc !== oldSrc) {
-        try {
-          await this.loadDocumentAction({ src: this.src });
-          this.onDocumentLoaded(this.loadedEvent);
-        } catch (error) {
-          this.onDocumentError({ message: error.message, type: "load" });
-        }
+        await this.handleLoadDocument(newSrc);
       }
     },
 
@@ -199,14 +189,14 @@ export default {
   },
 
   methods: {
-    ...mapActions("pdfReader/document", {
+    ...mapActions("complexPdfReader/document", {
       loadDocumentAction: "loadDocument",
       setLoadProgress: "setLoadProgress",
       setDocumentError: "setDocumentError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
     }),
-    ...mapActions("pdfReader/viewer", {
+    ...mapActions("complexPdfReader/viewer", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
@@ -215,14 +205,18 @@ export default {
       resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
 
-    // 重试加载
-    async retry() {
+    async handleLoadDocument() {
       try {
-        await this.loadDocumentAction({ src: this.src });
+        await this.loadDocumentAction({ url: this.src });
         this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
         this.onDocumentError({ message: error.message, type: "load" });
       }
+    },
+
+    // 重试加载
+    async retry() {
+      await this.handleLoadDocument()
     },
 
     // 处理文档加载完成

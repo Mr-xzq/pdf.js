@@ -24,21 +24,17 @@ export function round2(value) {
 
 /**
  * @param {Object} params
- * @param {string} params.src 文档地址
  * @param {(progress:{loaded:number,total:number,percentage:number})=>void} [params.onProgress]
- * @param {Object} [params.getDocumentOptions] 其它传给 getDocument 的参数（headers、withCredentials 等）
+ * @param {Object} [params.getDocumentOptions] 其它传给 getDocument 的参数（url, data, headers、withCredentials 等）
  */
 export async function loadPdfDocument({
-  src,
   onProgress,
-  ...getDocumentOptions
+  getDocumentOptions = {}
 } = {}) {
-  if (!src) throw new Error("loadPdfDocument 需要 src");
-
   const pdfjsLib = initializePdfJs();
 
   // 合并默认阅读器配置，保持与应用层一致
-  const params = { url: src, ...getDocumentOptions };
+  const params = { ...getDocumentOptions };
   const loadingTask = pdfjsLib.getDocument(params);
 
   // 进度回调

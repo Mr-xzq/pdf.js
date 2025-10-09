@@ -98,18 +98,20 @@ const actions = {
   },
 
   // 加载文档
-  async loadDocument({ state, commit, dispatch }, { src }) {
+  async loadDocument({ state, commit, dispatch }, getDocumentOptions = {}) {
     try {
       // 每次开始新加载前，清空上一次文档与查看器状态，避免遗留旧数据
       commit("RESET_DOCUMENT");
-      await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
+      await dispatch("complexPdfReader/viewer/resetViewer", null, {
+        root: true,
+      });
 
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
 
       let lastProgress = 0;
       const { pdfDocument } = await loadPdfDocument({
-        src,
+        getDocumentOptions,
         onProgress: ({ percentage }) => {
           // 避免过于频繁的提交
           if (percentage !== lastProgress) {
@@ -137,14 +139,16 @@ const actions = {
 
       // 初始化到第 1 页
       if (pdfDocument?.numPages > 0) {
-        dispatch("pdfReader/viewer/goToPage", 1, { root: true });
+        dispatch("complexPdfReader/viewer/goToPage", 1, { root: true });
       }
 
       return { pdfDocument };
     } catch (error) {
       // 失败时也要清空文档，避免遗留旧数据
       commit("RESET_DOCUMENT");
-      await dispatch("pdfReader/viewer/resetViewer", null, { root: true });
+      await dispatch("complexPdfReader/viewer/resetViewer", null, {
+        root: true,
+      });
 
       commit("SET_ERROR", { error: error.message, type: "load" });
       commit("SET_LOADING", false);

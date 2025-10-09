@@ -222,7 +222,7 @@ export default {
       type: Number,
       default: 1,
     },
-    // 双击放大目标倍数
+    // 点击放大目标倍数
     zoomTarget: {
       type: Number,
       default: 1.5,
@@ -301,7 +301,7 @@ export default {
     },
   },
   computed: {
-    ...mapGetters("pdfReader/viewer", ["navigationState", "zoomState"]),
+    ...mapGetters("complexPdfReader/viewer", ["navigationState", "zoomState"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -319,7 +319,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions("pdfReader/viewer", {
+    ...mapActions("complexPdfReader/viewer", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",

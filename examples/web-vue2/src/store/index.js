@@ -10,7 +10,7 @@ const store = new Vuex.Store({
   mutations: {},
   actions: {},
   modules: {
-    pdfReader: pdfReaderModule,
+    complexPdfReader: pdfReaderModule,
   },
 });
 
