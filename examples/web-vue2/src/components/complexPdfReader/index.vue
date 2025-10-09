@@ -175,7 +175,7 @@
 
 <script>
 // 引入组件
-import Index from "./components/pdfReaderCore/index.vue";
+import PdfViewport from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/drawer/index.vue";
 import OutlinePanel from "./components/outlinePanel/index.vue";
 import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
@@ -197,15 +197,13 @@ import autoPlayIconUrl from "@/assets/images/complexPdfReader/auto-play-2x.png";
 import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
 
 // 引入第三方库
-import { createNamespacedHelpers } from "vuex";
-const { mapGetters: mapViewerGetters, mapActions: mapViewerActions } =
-  createNamespacedHelpers("pdfReader/viewer");
+import { mapActions, mapGetters } from "vuex";
 
 export default {
   name: "ComplexPdfReader",
   components: {
     Drawer,
-    PdfViewport: Index,
+    PdfViewport,
     OutlinePanel,
     ThumbnailPanel,
   },
@@ -277,7 +275,6 @@ export default {
       isEditingPageInput: false,
       // 自动播放相关（由 PdfReader 内部驱动）
       autoPlay: this.autoPlayEnabled,
-      // Drawer/导航相关
       isShowPageNav: false,
       gotoPageInput: 1,
       // 用于 slider 展示与拖动中的临时值（实际跳转由 @change 触发）
@@ -295,7 +292,7 @@ export default {
     autoPlayEnabled(val) {
       this.autoPlay = !!val;
     },
-    // 监听真实页码（来自 Vuex）：用于同步 slider 显示与输入框
+    // 监听真实页码：用于同步 slider 显示与输入框
     currentPage(n) {
       if (Number.isFinite(n)) {
         this.sliderValue = n;
@@ -304,7 +301,7 @@ export default {
     },
   },
   computed: {
-    ...mapViewerGetters(["navigationState", "zoomState"]),
+    ...mapGetters("pdfReader/viewer", ["navigationState", "zoomState"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -322,7 +319,7 @@ export default {
     },
   },
   methods: {
-    ...mapViewerActions({
+    ...mapActions("pdfReader/viewer", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
@@ -452,11 +449,7 @@ export default {
 
     // 缩小：恢复到最近一次“放大前”的倍数，若没有记录则退回基础倍数
     handleResetZoom() {
-      const fallback = this.pdfReaderRef?.getBaselineScale?.();
-      const target =
-        typeof this.lastScaleBeforeZoom === "number"
-          ? this.lastScaleBeforeZoom
-          : fallback;
+      const target = this.lastScaleBeforeZoom;
       if (typeof target === "number") this.setScale(target);
       // 恢复后清除记录
       this.lastScaleBeforeZoom = null;
@@ -521,7 +514,7 @@ export default {
     },
     onPdfError(e) {
       console.error("PDF 加载失败", e);
-      // 标记为错误态，强制 Outline/Thumb 以空态重新挂载
+      // 强制 Outline/Thumb 重新挂载
       this.docFingerprint = `error:${Date.now()}`;
       this.$emit("document-error", e);
     },
@@ -559,9 +552,7 @@ export default {
   --top-toolbar-height: 2.73rem;
   --bottom-toolbar-height: 4.14rem;
 
-  // z-index
-  --z-canvas: 0;
-  --z-text: 1;
+  // z-index 不同层的渲染
   --z-annot: 2;
   --z-bottom-toolbar-tool-list: 10;
 
@@ -637,7 +628,6 @@ export default {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
       padding: 0.8rem 2.39rem;
       background: #fff;
       border-radius: 0.43rem 0.43rem 0 0;
@@ -657,6 +647,7 @@ export default {
         justify-content: space-between;
         width: 100%;
         flex-wrap: wrap;
+        margin-bottom: 8px;
 
         .nav-row-item {
           width: 0.7rem;

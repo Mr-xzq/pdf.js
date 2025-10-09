@@ -59,8 +59,7 @@ export async function loadPdfDocument({
     aborted = true;
     try {
       const p = loadingTask.destroy();
-      destroyPromise =
-        p && typeof p.then === "function" ? p : Promise.resolve();
+      destroyPromise = typeof p?.then === "function" ? p : Promise.resolve();
     } catch (error) {
       destroyPromise = Promise.resolve();
     }
@@ -71,8 +70,6 @@ export async function loadPdfDocument({
 
   try {
     const pdfDocument = await loadingTask.promise;
-
-    // 仅返回 pdfDocument；元信息读取上移到调用方（如 Vuex store）
     return { pdfDocument };
   } catch (err) {
     if (aborted) {

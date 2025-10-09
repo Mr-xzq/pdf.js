@@ -4,7 +4,7 @@
       title="Simple PDF Reader"
       left-text="返回"
       left-arrow
-      @click-left="$router.back"
+      @click-left="$router.back()"
     />
     <van-field
       v-model="localPdfUrl"

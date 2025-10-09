@@ -67,7 +67,7 @@ export default {
     },
     initialScale: {
       type: Number,
-      default: 1.0,
+      default: 1,
     },
     // 手势开关（默认启用）
     gesturesEnabled: { type: Boolean, default: true },
@@ -250,16 +250,6 @@ export default {
       this.$emit("document-error", event);
     },
 
-    // 处理加载进度
-    onLoadProgress(event) {
-      this.setLoadProgress({
-        progress: event.percentage,
-        message: "",
-      });
-
-      this.$emit("load-progress", event);
-    },
-
     // 处理页面渲染完成
     onPageRendered(event) {
       this.$emit("page-rendered", event);
@@ -273,7 +263,7 @@ export default {
 
     // 初始化文档的缩放比例
     initializeScaleForDocument(event) {
-      // 通过 Store 初始化页码与缩放
+      // 初始化页码与缩放
       this.setScaleAction(this.initialScale);
       this.goToPageAction(this.initialPage);
 
@@ -385,7 +375,7 @@ export default {
         if (!rect || rect.width === 0) return;
 
         const page = await this.getPageAction(1);
-        const viewport = page.getViewport({ scale: 1.0 });
+        const viewport = page.getViewport({ scale: 1 });
         const computed = rect.width / viewport.width;
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
           this.setScaleAction(computed);
@@ -414,9 +404,10 @@ export default {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 0; // 由外层控制留白
-    min-height: 0; // 确保 flex 子元素能够正确缩放
-    touch-action: none; // 允许自定义手势（禁用浏览器默认手势）
+    // 确保 flex 子元素能够正确缩放
+    min-height: 0;
+    // 允许自定义手势（禁用浏览器默认手势）
+    touch-action: none;
   }
 }
 </style>

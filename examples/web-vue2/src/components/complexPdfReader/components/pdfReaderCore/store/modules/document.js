@@ -1,7 +1,4 @@
-/**
- * PDF 文档状态管理模块
- * 管理文档加载、信息、元数据等状态
- */
+import { loadPdfDocument } from "../../utils/pdf-config.js";
 
 const state = {
   // 文档实例
@@ -35,20 +32,9 @@ const mutations = {
     state.pdfDocument = document;
     if (document) {
       state.documentInfo.numPages = document.numPages || 0;
-      // pdf.js 推荐使用 `fingerprints[0]`；旧版本可能有 `fingerprint`
       state.documentInfo.fingerprint =
-        (document.fingerprints && document.fingerprints[0]) ||
-        document.fingerprint ||
-        null;
+        document.fingerprints?.[0] || document.fingerprint || null;
     }
-  },
-
-  // 设置文档信息
-  SET_DOCUMENT_INFO(state, info) {
-    state.documentInfo = {
-      ...state.documentInfo,
-      ...info,
-    };
   },
 
   // 设置文档元数据
@@ -138,8 +124,6 @@ const actions = {
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
 
-      const { loadPdfDocument } = await import("../../utils/pdf-config.js");
-
       let lastProgress = 0;
       const { pdfDocument } = await loadPdfDocument({
         src,
@@ -167,7 +151,6 @@ const actions = {
         return null;
       }
 
-      // 提交文档（SET_DOCUMENT 内已同步 numPages/fingerprint）
       commit("SET_DOCUMENT", pdfDocument);
 
       if (metadata) {
@@ -198,24 +181,18 @@ const actions = {
     }
   },
 
-  /**
-   * 设置文档加载进度
-   */
+  // 设置文档加载进度
   setLoadProgress({ commit }, progressData) {
     commit("SET_LOAD_PROGRESS", progressData);
   },
 
-  /**
-   * 设置文档加载错误
-   */
+  // 设置文档加载错误
   setDocumentError({ commit }, { error, type = "load" }) {
     commit("SET_ERROR", { error, type });
     commit("SET_LOADING", false);
   },
 
-  /**
-   * 重置文档状态
-   */
+  // 重置文档状态
   resetDocument({ commit }) {
     commit("RESET_DOCUMENT");
   },

@@ -55,7 +55,7 @@ export default {
       pendingActiveKey: null,
       // 当前展开的节点 key 列表
       expandedKeys: [],
-      // 页码到最佳节点 key 的映射
+      // 页码到节点 key 的映射
       pageToKeyMap: {},
       // 映射是否已构建完成
       pageMapReady: false,
@@ -78,23 +78,23 @@ export default {
   },
   watch: {
     // 监听 activeKey 变化，根据 popup 可见性决定是立即滚动还是延迟处理
-    activeKey(n) {
-      if (n == null) return;
+    activeKey(newVal) {
+      if (newVal == null) return;
       if (!this.visible) {
         // popup 不可见时，先缓存 key
-        this.pendingActiveKey = n;
+        this.pendingActiveKey = newVal;
       } else {
-        // popup 可见时，下一个tick执行滚动
+        // popup 可见时，执行滚动
         this.$nextTick(async () => {
-          await this.activateAndScroll(n);
+          await this.activateAndScroll(newVal);
         });
       }
     },
     // 监听 currentPage 变化，自动匹配对应的目录节点
-    async currentPage(n) {
-      if (!Number.isFinite(n)) return;
+    async currentPage(newVal) {
+      if (!Number.isFinite(newVal)) return;
       await this.ensurePageMapOnce();
-      const key = this.pickKeyForPageSafe(n);
+      const key = this.pickKeyForPageSafe(newVal);
       if (!key) return;
       if (!this.visible) {
         // popup 不可见时，只记录，等打开时再统一滚动
@@ -116,11 +116,11 @@ export default {
         node && {
           key: node.key,
           title: node.title,
-          hasDest: !!(node && node.dest),
+          hasDest: !!node?.dest,
         }
       );
       if (node) this.activeKey = node.key;
-      if (node && node.dest) {
+      if (node?.dest) {
         // 导航到 PDF 指定位置
         await this.navigateToDestination(node.dest);
         this.$emit("selected", node);
@@ -153,30 +153,30 @@ export default {
     onParentClosed() {
       this.visible = false;
     },
-    // 构建页码到节点 key 的映射（只执行一次）
+    // 构建页码到节点 key 的映射
     async ensurePageMapOnce() {
       if (this.pageMapReady) return;
       const map = {};
       const depthMap = {};
       const resolver = this.resolveDestToPageNumber;
       const walk = async (nodes, depth = 0) => {
-        for (const n of nodes || []) {
+        for (const node of nodes || []) {
           // 解析当前节点的页码
           let page = null;
 
-          if (n && n.dest) page = await resolver(n.dest);
+          if (node?.dest) page = await resolver(node.dest);
 
           if (Number.isInteger(page) && page > 0) {
             const prevDepth = depthMap[page] ?? -1;
             // 优先选择更深层次的节点作为最佳匹配
             if (depth > prevDepth) {
-              map[page] = n.key;
+              map[page] = node.key;
               depthMap[page] = depth;
             }
           }
           // 递归处理子节点
-          if (n && n.items && n.items.length) {
-            await walk(n.items, depth + 1);
+          if (node?.items?.length) {
+            await walk(node.items, depth + 1);
           }
         }
       };
@@ -186,8 +186,9 @@ export default {
     },
     // 根据页码找到对应的最佳节点 key（支持“就近前驱”回退）
     pickKeyForPageSafe(pageNumber) {
-      if (!this.pageMapReady) return null;
+      if (!this.pageMapReady) return;
       const map = this.pageToKeyMap || {};
+      // 页码对应的节点 key
       const direct = map[pageNumber];
       // 如果有直接匹配，直接返回
       if (direct) return direct;
@@ -209,17 +210,17 @@ export default {
     },
     // 递归构建树形数据
     buildTreeData(list, parentKey = "") {
-      const out = [];
+      const resTreeData = [];
       (list || []).forEach((item, idx) => {
         const key = parentKey ? parentKey + "-" + (idx + 1) : String(idx + 1);
-        out.push({
+        resTreeData.push({
           key,
-          title: item && item.title != null ? item.title : "无标题",
-          dest: item && item.dest,
-          items: this.buildTreeData(item && item.items, key),
+          title: item?.title != null ? item.title : "无标题",
+          dest: item?.dest,
+          items: this.buildTreeData(item?.items, key),
         });
       });
-      return out;
+      return resTreeData;
     },
   },
 };

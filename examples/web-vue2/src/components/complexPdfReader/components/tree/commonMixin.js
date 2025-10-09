@@ -19,22 +19,22 @@ export default {
     },
   },
   methods: {
-    getKey(n) {
+    getKey(node) {
       const kf = this.props?.key || "key";
-      return n && n[kf];
+      return node?.[kf];
     },
-    getChildren(n) {
+    getChildren(node) {
       const cf = this.props?.children || "children";
-      return (n && n[cf]) || [];
+      return node?.[cf] || [];
     },
-    getLabel(n) {
+    getLabel(node) {
       const lf = this.props?.label || "label";
-      return n ? n[lf] : undefined;
+      return node?.[lf];
     },
-    isLeafNode(n) {
+    isLeafNode(node) {
       const lf = this.props?.isLeaf || "isLeaf";
-      const children = this.getChildren(n);
-      return !!(n && (n[lf] || !children || children.length === 0));
+      const children = this.getChildren(node);
+      return !!(node && (node[lf] || !children || children.length === 0));
     },
   },
 };

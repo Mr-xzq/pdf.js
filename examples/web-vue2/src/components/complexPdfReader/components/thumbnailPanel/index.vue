@@ -50,7 +50,6 @@ export default {
     };
   },
   async mounted() {
-    // 通过事件向上抛出 loading
     this.$emit("loading-start", { source: "viewer", message: "加载中" });
     try {
       await this.ensureRenderThumbnails();
@@ -87,7 +86,7 @@ export default {
   methods: {
     // 计算第一个缩略图的实际 CSS 宽度（与列数/容器宽度相关）
     getCssThumbWidth() {
-      const list = this.$el && this.$el.querySelector(".thumb-list");
+      const list = this.$el?.querySelector(".thumb-list");
       if (!list) return 0;
       const item = list.querySelector(".thumb-item");
       const w = item ? item.clientWidth : 0;
@@ -163,12 +162,10 @@ export default {
     },
     // 滚动到指定页的缩略图
     async scrollToPage(page) {
-      const item =
-        this.$el &&
-        this.$el.querySelector('.thumb-item[data-page="' + page + '"]');
-      if (item && typeof item.scrollIntoView === "function") {
-        item.scrollIntoView({ behavior: "smooth" });
-      }
+      const item = this.$el?.querySelector(
+        '.thumb-item[data-page="' + page + '"]'
+      );
+      item?.scrollIntoView({ behavior: "smooth" });
     },
     // 滚动到当前页的缩略图
     scrollCurrentIntoView() {

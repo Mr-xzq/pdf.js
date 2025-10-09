@@ -58,7 +58,6 @@ export default {
       rendered: false,
 
       // 页面信息
-      pageInfo: null,
       viewport: null,
 
       // 样式
@@ -68,8 +67,6 @@ export default {
       layers: {
         annotation: null,
       },
-      // 渲染请求并发保护：仅接受最后一次请求的结果
-      renderRequestId: 0,
     };
   },
   computed: {
@@ -98,9 +95,6 @@ export default {
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
 
-      // 并发保护：为本次渲染生成 token，仅接受最后一次结果
-      const token = ++this.renderRequestId;
-
       try {
         this.rendering = true;
         this.rendered = false;
@@ -121,18 +115,13 @@ export default {
           scale: this.scale,
         });
 
-        // 若在等待期间发起了更新的渲染请求，则丢弃本次结果
-        if (token !== this.renderRequestId) {
-          return;
-        }
-
-        this.pageInfo = result;
+        // pdf 渲染视口，尺寸信息
         this.viewport = result.viewport;
 
         // 更新样式
         this.updateStyles();
 
-        // 初始化并渲染各 Layer
+        // 初始化并渲染不同的 Layer
         this.initializeLayers();
         await this.renderLayers();
 
@@ -155,13 +144,10 @@ export default {
         console.log(`页面 ${this.pageNumber} 渲染完成`);
       } catch (error) {
         // 忽略因取消导致的异常
-        if (error && error.code === "RENDER_CANCELLED") {
+        if (error?.code === "RENDER_CANCELLED") {
           return;
         }
-        // 若已有更新的渲染请求，不处理旧结果
-        if (token !== this.renderRequestId) {
-          return;
-        }
+
         this.rendering = false;
         // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
         this.$nextTick(() => this.syncContainerSize());

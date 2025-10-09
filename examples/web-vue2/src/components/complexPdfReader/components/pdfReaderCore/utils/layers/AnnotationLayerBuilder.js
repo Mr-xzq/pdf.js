@@ -11,12 +11,15 @@ export class AnnotationLayerBuilder {
     this.container = container;
     this.getPage = getPage;
     this.goToDestination = goToDestination;
-    this.annotationLayer = null; // pdfjsLib.AnnotationLayer 实例
-    this.div = null; // 注释层容器 div（与官方保持一致）
+    // pdfjsLib.AnnotationLayer 实例
+    this.annotationLayer = null;
+    // 注释层容器 div
+    this.div = null;
     this.pageNumber = 1;
     this.viewport = null;
     this.cancelled = false;
-    this._isRendered = false; // 标识上一次是否完成过渲染（用于判断能否只走 update）
+    // 标识上一次是否完成过渲染（用于判断能否只走 update）
+    this._isRendered = false;
   }
 
   setup({ pageNumber, viewport }) {
@@ -56,7 +59,7 @@ export class AnnotationLayerBuilder {
       // 首次渲染：清空容器并创建 annotationLayer div
       this.container.innerHTML = "";
 
-      // 我们自己实现的 goToDestination（闭包捕获）
+      // 自定义实现的 goToDestination（闭包捕获）
       const customGoToDestination = this.goToDestination;
       const linkService = {
         // 外部链接：不处理，避免跳出;
@@ -68,14 +71,12 @@ export class AnnotationLayerBuilder {
         // 内部链接：供注释层生成锚点
         getDestinationHash(dest) {
           if (typeof dest === "string") return "#" + encodeURIComponent(dest);
-          if (Array.isArray(dest))
+          if (Array.isArray(dest)) {
             return "#" + encodeURIComponent(JSON.stringify(dest));
+          }
           return "#";
         },
-        getAnchorUrl(anchor) {
-          return typeof anchor === "string" ? anchor : "#";
-        },
-        // 重写内部链接跳转方法
+        // 内部链接：重写跳转方法
         async goToDestination(dest) {
           if (typeof customGoToDestination !== "function") return;
           await customGoToDestination(dest);
@@ -97,7 +98,7 @@ export class AnnotationLayerBuilder {
         viewport,
       });
 
-      // 渲染（仅依赖我们提供的最小 linkService；外链 inert）
+      // 渲染注释层
       await this.annotationLayer.render({
         annotations,
         linkService,

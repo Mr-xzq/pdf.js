@@ -39,9 +39,7 @@ const mutations = {
 };
 
 const actions = {
-  /**
-   * 跳转到指定页面
-   */
+  // 跳转到指定页面
   goToPage({ commit, rootGetters }, pageNumber) {
     const totalPages = rootGetters["pdfReader/document/totalPages"];
 
@@ -49,14 +47,11 @@ const actions = {
       throw new Error(`页码超出范围: ${pageNumber}`);
     }
 
-    // 以 Store 为单一数据源：先更新 Store，由视图层通过 watcher 同步到 Core
     commit("SET_CURRENT_PAGE", pageNumber);
     return pageNumber;
   },
 
-  /**
-   * 下一页
-   */
+  // 下一页
   nextPage({ state, dispatch, rootGetters }) {
     const totalPages = rootGetters["pdfReader/document/totalPages"];
     if (state.currentPage < totalPages) {
@@ -65,9 +60,7 @@ const actions = {
     return state.currentPage;
   },
 
-  /**
-   * 上一页
-   */
+  // 上一页
   prevPage({ state, dispatch }) {
     if (state.currentPage > 1) {
       return dispatch("goToPage", state.currentPage - 1);
@@ -75,9 +68,7 @@ const actions = {
     return state.currentPage;
   },
 
-  /**
-   * 设置缩放
-   */
+  // 设置缩放
   setScale({ commit }, scale) {
     commit(
       "SET_SCALE",
@@ -86,25 +77,19 @@ const actions = {
     return scale;
   },
 
-  /**
-   * 放大（乘法步进）
-   */
+  // 放大（乘法步进）
   zoomIn({ state, dispatch }) {
     const next = Math.min(state.scale * DEFAULT_SCALE_DELTA, state.maxScale);
     return dispatch("setScale", round2(next));
   },
 
-  /**
-   * 缩小（乘法步进）
-   */
+  // 缩小（乘法步进）
   zoomOut({ state, dispatch }) {
     const next = Math.max(state.scale / DEFAULT_SCALE_DELTA, state.minScale);
     return dispatch("setScale", round2(next));
   },
 
-  /**
-   * 跳转到 PDF 内部目的地（支持命名目的地或 explicitDest 数组）
-   */
+  // PDF 内部跳转
   async goToDestination({ dispatch, rootState }, dest) {
     const doc = rootState?.pdfReader?.document?.pdfDocument;
     if (!doc) {
@@ -126,9 +111,7 @@ const actions = {
     }
   },
 
-  /**
-   * 重置查看器
-   */
+  // 重置查看器
   resetViewer({ commit }) {
     commit("RESET_VIEWER");
   },

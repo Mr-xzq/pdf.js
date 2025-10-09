@@ -45,12 +45,12 @@ export default {
     // 切换节点的展开/收起状态
     toggle(e) {
       // 阻止事件冒泡
-      e && e.stopPropagation();
+      e?.stopPropagation();
       // 如果是叶子节点，则不能切换，直接返回
       if (this.isLeaf) return;
-      const ex = !this.expanded;
+      const isExpanded = !this.expanded;
       // 传递当前节点和新的展开状态
-      this.$emit("toggle", this.node, ex);
+      this.$emit("toggle", this.node, isExpanded);
     },
     // 选中当前节点
     select() {
@@ -159,7 +159,7 @@ export default {
     const list = this.getChildren(this.node);
 
     // 如果存在子节点
-    if (list && list.length) {
+    if (list?.length) {
       // 渲染子节点列表容器
       const expandedChildrenVnode = (
         <div ref="wrap" class="tree__children">

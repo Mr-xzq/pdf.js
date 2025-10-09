@@ -29,7 +29,7 @@ export async function resolveDestToPage({ pdfDocument, dest } = {}) {
   }
 }
 
-// 取消指定页的当前正在渲染的任务（内部使用，不导出）
+// 取消指定页的当前正在渲染的任务
 function cancelRenderTask({ tasks, pageNumber }) {
   if (!tasks) return;
   console.log(`cancelRenderTask - 取消第 ${pageNumber} 页的渲染任务: `);
@@ -136,5 +136,5 @@ export async function renderPageToCanvas({
     }
   }
 
-  return { canvas, viewport: renderViewport, pageNumber };
+  return { canvas, viewport: renderViewport };
 }

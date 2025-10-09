@@ -64,13 +64,13 @@ export default {
   },
   data() {
     // 初始化将 expandedKeys 映射为 {}，方便后面查询对应节点
-    const m = {};
-    (this.expandedKeys || []).forEach(k => {
-      m[k] = true;
+    const map = {};
+    (this.expandedKeys || []).forEach(key => {
+      map[key] = true;
     });
     return {
       // 展开状态映射表：key => true
-      expandedMap: m,
+      expandedMap: map,
       // 快速索引映射：包含节点和父节点映射
       // nodesMap: key => node；parentMap: childKey => parentKey
       maps: { nodesMap: {}, parentMap: {} },
@@ -80,18 +80,20 @@ export default {
   watch: {
     expandedKeys: {
       deep: true,
-      handler(v) {
+      handler(newVal) {
         // 将新的 expandedKeys 数组转换为映射表
-        const m = {};
-        (v || []).forEach(k => {
-          m[k] = true;
+        const map = {};
+        (newVal || []).forEach(key => {
+          map[key] = true;
         });
-        this.expandedMap = m;
+        this.expandedMap = map;
       },
     },
-    activeKey(v) {
+    activeKey(newVal) {
       // 当 activeKey 变化时，自动展开其所有父节点
-      if (v !== undefined && v !== null) this.expandToKey(v);
+      if (newVal !== undefined && newVal !== null) {
+        this.expandToKey(newVal);
+      }
     },
     data: {
       immediate: true,
@@ -113,26 +115,28 @@ export default {
   methods: {
     // 递归构建 nodesMap (key -> node) 和 parentMap (childKey -> parentKey)
     buildMaps(list, parent = null, maps = { nodesMap: {}, parentMap: {} }) {
-      for (const n of list || []) {
-        const key = this.getKey(n);
+      for (const node of list || []) {
+        const key = this.getKey(node);
         if (key != null) {
-          maps.nodesMap[key] = n;
+          maps.nodesMap[key] = node;
           if (parent != null) {
             const pkey = this.getKey(parent);
             if (pkey != null) maps.parentMap[key] = pkey;
           }
         }
-        const ch = this.getChildren(n);
-        if (ch?.length) this.buildMaps(ch, n, maps);
+        const child = this.getChildren(node);
+        if (child?.length) {
+          this.buildMaps(child, node, maps);
+        }
       }
       return maps;
     },
 
     // 处理子组件传递的 toggle 事件
-    onToggle(node, ex) {
+    onToggle(node, isExpanded) {
       const key = this.getKey(node);
       // 如果 accordion 为 true
-      if (ex && this.accordion) {
+      if (isExpanded && this.accordion) {
         // 只保留“祖先链 + 当前节点”处于展开状态
         const pm = this.maps?.parentMap || this.buildMaps(this.data)?.parentMap;
         const keep = {};
@@ -148,42 +152,45 @@ export default {
         this.expandedMap = keep;
         // 触发更新事件
         this.$emit("update:expandedKeys", next);
-        this.$emit("toggle", node, ex, { expandedKeys: next });
+        this.$emit("toggle", node, isExpanded, { expandedKeys: next });
         return;
       }
       // 默认：合并/移除单个展开项
       const map = { ...(this.expandedMap || {}) };
       // 展开
-      if (ex) map[key] = true;
-      // 收起
-      else delete map[key];
+      if (isExpanded) {
+        map[key] = true;
+      } else {
+        // 收起
+        delete map[key];
+      }
       const next = Object.keys(map);
       this.expandedMap = map;
       // 触发更新事件
       this.$emit("update:expandedKeys", next);
-      this.$emit("toggle", node, ex, { expandedKeys: next });
+      this.$emit("toggle", node, isExpanded, { expandedKeys: next });
     },
 
     // 处理子组件传递的 select 事件
     onSelect(node) {
       // 如果不可选择，则直接返回
       if (!this.selectable) return;
-      const k = this.getKey(node);
+      const key = this.getKey(node);
       // 选中时自动展开其所有父节点
-      this.expandToKey(k);
+      this.expandToKey(key);
       // 触发 activeKey 更新
-      this.$emit("update:activeKey", k);
-      this.$emit("select", node, { activeKey: k });
+      this.$emit("update:activeKey", key);
+      this.$emit("select", node, { activeKey: key });
     },
 
     // 递归收集所有可展开节点的 key
     collectAllExpandable(list, acc = []) {
       for (const n of list || []) {
-        const ch = this.getChildren(n);
-        if (ch?.length) {
-          const k = this.getKey(n);
-          if (k != null) acc.push(k);
-          this.collectAllExpandable(ch, acc);
+        const child = this.getChildren(n);
+        if (child?.length) {
+          const key = this.getKey(n);
+          if (key != null) acc.push(key);
+          this.collectAllExpandable(child, acc);
         }
       }
       return acc;
@@ -192,11 +199,11 @@ export default {
     // 展开所有节点
     expandAll() {
       const keys = this.collectAllExpandable(this.data);
-      const m = {};
+      const map = {};
       keys.forEach(k => {
-        m[k] = true;
+        map[k] = true;
       });
-      this.expandedMap = m;
+      this.expandedMap = map;
       this.$emit("update:expandedKeys", keys);
     },
 
@@ -254,7 +261,7 @@ export default {
             `[data-key="${CSS.escape(String(key))}"]`
           );
           // 检查节点是否可见
-          const present = !!(el?.getClientRects && el?.getClientRects().length);
+          const present = !!el?.getClientRects?.().length;
           // 检查是否有高度过渡动画正在进行
           const running = root?.querySelector(
             '.tree__children[style*="height"]'
@@ -301,8 +308,8 @@ export default {
 
     // 根据 key 获取节点的 label
     getLabelByKey(key) {
-      const n = this.maps?.nodesMap ? this.maps.nodesMap[key] : null;
-      return n ? this.getLabel(n) : undefined;
+      const node = this.maps?.nodesMap ? this.maps.nodesMap[key] : null;
+      return node ? this.getLabel(node) : undefined;
     },
   },
 };

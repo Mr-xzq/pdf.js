@@ -98,6 +98,8 @@ export default {
           const rect = container.getBoundingClientRect();
           this.containerWidth = rect.width || 0;
           this.containerHeight = rect.height || 0;
+
+          console.log("container - resized: clampPan");
           // 容器尺寸变化后，需要重新计算并校正平移边界
           this.clampPan();
         });
@@ -118,6 +120,7 @@ export default {
           this.contentWidth = rect.width || 0;
           this.contentHeight = rect.height || 0;
 
+          console.log("content - resized: clampPan");
           // 内容尺寸变化后，也需要重新计算并校正平移边界
           this.clampPan();
         });
@@ -130,6 +133,8 @@ export default {
 
       // 设置清理逻辑
       const cleanup = () => {
+        console.log("cleanup - resize observer");
+
         this.containerResizeObserver?.disconnect?.();
         this.contentResizeObserver?.disconnect?.();
       };
@@ -295,6 +300,7 @@ export default {
   height: 100%;
   // flex 子元素有个默认的 min-height: min-content;
   min-height: 0;
+
   // 禁用浏览器默认的触摸行为（如滚动、缩放），以便我们完全接管手势处理
   touch-action: none;
   // 禁止用户在拖拽时选中文本
