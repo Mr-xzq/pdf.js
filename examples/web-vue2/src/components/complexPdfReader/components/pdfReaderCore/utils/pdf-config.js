@@ -3,6 +3,7 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 let _libInitialized = false;
 
 export function initializePdfJs() {
+  console.log("load worker");
   if (!_libInitialized) {
     pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
       new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
@@ -29,7 +30,7 @@ export function round2(value) {
  */
 export async function loadPdfDocument({
   onProgress,
-  getDocumentOptions = {}
+  getDocumentOptions = {},
 } = {}) {
   const pdfjsLib = initializePdfJs();
 

@@ -557,6 +557,7 @@ export default {
   --z-bottom-toolbar-tool-list: 10;
 
   position: relative;
+  box-sizing: border-box;
 
   height: 100%;
   padding-top: var(--top-toolbar-height);
@@ -565,6 +566,10 @@ export default {
   background-image: url("@/assets/images/complexPdfReader/full-background-2x.jpg");
   background-repeat: no-repeat;
   background-size: 100% 100%;
+
+  * {
+    box-sizing: border-box;
+  }
 
   .top-toolbar {
     position: absolute;

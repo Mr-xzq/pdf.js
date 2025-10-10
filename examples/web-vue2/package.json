@@ -6,6 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "format": "prettier . --write --cache",
+    "preview": "serve -s ./dist",
     "playwright-mcp": "cross-env PLAYWRIGHT_MCP_EXTENSION_TOKEN=xxx npx @playwright/mcp@latest --extension --port 8931"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "eslint-plugin-vue": "^8.0.3",
     "less": "^4.0.0",
     "less-loader": "^8.0.0",
+    "serve": "^14.2.5",
     "vue-template-compiler": "^2.6.14"
   }
 }

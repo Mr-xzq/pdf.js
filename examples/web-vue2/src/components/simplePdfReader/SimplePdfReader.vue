@@ -5,6 +5,7 @@
 // 尝试另外的导入方式
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
+// 不支持，这样好像会走内部的构建过程，而我们缺少构建它的环境，其实我们只希望原本路径拿过来用即可
 // pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 //   "pdfjs-dist/legacy/build/pdf.worker.mjs",
 //   import.meta.url
