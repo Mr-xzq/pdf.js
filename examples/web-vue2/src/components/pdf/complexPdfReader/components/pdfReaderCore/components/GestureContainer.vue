@@ -152,13 +152,13 @@ export default {
     computeAxisBounds({ overflow, align }) {
       if (!overflow || overflow <= 0) return [0, 0];
       switch (align) {
-        case "start":
-          return [-overflow, 0];
-        case "end":
-          return [0, overflow];
-        case "center":
-        default:
-          return [-(overflow / 2), overflow / 2];
+      case "start":
+        return [-overflow, 0];
+      case "end":
+        return [0, overflow];
+      case "center":
+      default:
+        return [-(overflow / 2), overflow / 2];
       }
     },
 

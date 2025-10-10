@@ -87,7 +87,7 @@ export default {
   },
 
   async mounted() {
-    await this.handleLoadDocument()
+    await this.handleLoadDocument();
   },
 
   computed: {
@@ -216,7 +216,7 @@ export default {
 
     // 重试加载
     async retry() {
-      await this.handleLoadDocument()
+      await this.handleLoadDocument();
     },
 
     // 处理文档加载完成

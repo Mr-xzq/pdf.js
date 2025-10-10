@@ -63,7 +63,7 @@ export class AnnotationLayerBuilder {
       const customGoToDestination = this.goToDestination;
       const linkService = {
         // 外部链接：不处理，避免跳出;
-        addLinkAttributes(el, _url, _newWindow = true) {
+        addLinkAttributes(el) {
           el.href = "#";
           el.rel = "noopener";
           el.target = "_self";

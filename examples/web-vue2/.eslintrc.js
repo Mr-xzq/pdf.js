@@ -8,7 +8,7 @@ module.exports = {
     parser: "@babel/eslint-parser",
   },
   rules: {
-    // indent: ["error", 2],
+    indent: ["error", 2],
     "no-eval": 2,
     "vue/script-setup-uses-vars": "off",
     "vue/multi-word-component-names": "off",

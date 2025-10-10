@@ -1,18 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
-let _libInitialized = false;
-
-export function initializePdfJs() {
-  console.log("load worker");
-  if (!_libInitialized) {
-    pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
-      new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
-      { type: "module" }
-    );
-    _libInitialized = true;
-  }
-  return pdfjsLib;
-}
 // 缩放常量与工具（供 viewer 模块使用）
 export const DEFAULT_SCALE_DELTA = 1.1; // 乘法步进
 export const MIN_SCALE = 0.1;
@@ -32,8 +19,6 @@ export async function loadPdfDocument({
   onProgress,
   getDocumentOptions = {},
 } = {}) {
-  const pdfjsLib = initializePdfJs();
-
   // 合并默认阅读器配置，保持与应用层一致
   const params = { ...getDocumentOptions };
   const loadingTask = pdfjsLib.getDocument(params);

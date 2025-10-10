@@ -176,9 +176,9 @@
 <script>
 // 引入组件
 import PdfViewport from "./components/pdfReaderCore/index.vue";
-import Drawer from "./components/drawer/index.vue";
-import OutlinePanel from "./components/outlinePanel/index.vue";
-import ThumbnailPanel from "./components/thumbnailPanel/index.vue";
+import Drawer from "./components/Drawer.vue";
+import OutlinePanel from "./components/OutlinePanel.vue";
+import ThumbnailPanel from "./components/ThumbnailPanel.vue";
 
 // 引入图标
 // import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";

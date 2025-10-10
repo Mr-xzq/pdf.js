@@ -98,7 +98,7 @@ const actions = {
   },
 
   // 加载文档
-  async loadDocument({ state, commit, dispatch }, getDocumentOptions = {}) {
+  async loadDocument({ commit, dispatch }, getDocumentOptions = {}) {
     try {
       // 每次开始新加载前，清空上一次文档与查看器状态，避免遗留旧数据
       commit("RESET_DOCUMENT");

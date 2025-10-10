@@ -1,5 +1,12 @@
 <template>
   <div class="tree-test">
+    <van-nav-bar
+      title="Tree Demo"
+      left-text="返回"
+      left-arrow
+      @click-left="$router.back()"
+    />
+
     <div class="ops">
       <van-button size="small" type="primary" @click="expandAll"
         >展开全部</van-button
@@ -77,7 +84,7 @@
 </template>
 
 <script>
-import Tree from "@/components/complexPdfReader/components/tree/index.vue";
+import Tree from "@/components/pdf/complexPdfReader/components/tree/index.vue";
 
 export default {
   name: "TreeTest",

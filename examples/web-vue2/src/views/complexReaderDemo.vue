@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import ComplexPdfReader from "@/components/complexPdfReader/index.vue";
+import { ComplexPdfReader } from "@/components/pdf/index.js";
 
 export default {
   name: "ComplexReaderDemo",
