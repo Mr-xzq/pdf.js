@@ -186,6 +186,8 @@ export default {
 
   beforeDestroy() {
     this.stopAutoPlay(true);
+    // 清除 Store 中关于 pdf 的所有状态
+    this.resetAllStateAction();
   },
 
   methods: {
@@ -195,6 +197,7 @@ export default {
       setDocumentError: "setDocumentError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
+      resetAllStateAction: "resetAllState",
     }),
     ...mapActions("complexPdfReader/viewer", {
       goToPageAction: "goToPage",

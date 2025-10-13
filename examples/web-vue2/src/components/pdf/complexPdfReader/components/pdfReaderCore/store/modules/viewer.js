@@ -109,11 +109,6 @@ const actions = {
       return null;
     }
   },
-
-  // 重置查看器
-  resetViewer({ commit }) {
-    commit("RESET_VIEWER");
-  },
 };
 
 const getters = {

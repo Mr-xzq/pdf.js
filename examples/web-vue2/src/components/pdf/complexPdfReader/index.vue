@@ -52,7 +52,7 @@
                 : pageFieldDisplay
             "
             :readonly="!isEditingPageInput"
-            :type="isEditingPageInput ? 'digit' : 'text'"
+            type="text"
             input-align="center"
             @click="handlePageFieldClick"
             @input="onPageFieldInput"

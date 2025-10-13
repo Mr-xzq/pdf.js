@@ -101,10 +101,7 @@ const actions = {
   async loadDocument({ commit, dispatch }, getDocumentOptions = {}) {
     try {
       // 每次开始新加载前，清空上一次文档与查看器状态，避免遗留旧数据
-      commit("RESET_DOCUMENT");
-      await dispatch("complexPdfReader/viewer/resetViewer", null, {
-        root: true,
-      });
+      dispatch("resetAllState");
 
       commit("SET_LOADING", true);
       commit("CLEAR_ERROR");
@@ -144,11 +141,8 @@ const actions = {
 
       return { pdfDocument };
     } catch (error) {
-      // 失败时也要清空文档，避免遗留旧数据
-      commit("RESET_DOCUMENT");
-      await dispatch("complexPdfReader/viewer/resetViewer", null, {
-        root: true,
-      });
+      // 清空上一次文档与查看器状态，避免遗留旧数据
+      dispatch("resetAllState");
 
       commit("SET_ERROR", { error: error.message, type: "load" });
       commit("SET_LOADING", false);
@@ -165,6 +159,12 @@ const actions = {
   setDocumentError({ commit }, { error, type = "load" }) {
     commit("SET_ERROR", { error, type });
     commit("SET_LOADING", false);
+  },
+
+  // 清除所有状态
+  resetAllState({ commit }) {
+    commit("RESET_DOCUMENT");
+    commit("complexPdfReader/viewer/RESET_VIEWER", null, { root: true });
   },
 };
 
