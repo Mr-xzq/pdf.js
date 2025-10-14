@@ -301,7 +301,7 @@ export default {
     },
   },
   computed: {
-    ...mapGetters("complexPdfReader/viewer", ["navigationState", "zoomState"]),
+    ...mapGetters("complexPdfReader", ["navigationState", "zoomState"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -319,7 +319,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions("complexPdfReader/viewer", {
+    ...mapActions("complexPdfReader", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",

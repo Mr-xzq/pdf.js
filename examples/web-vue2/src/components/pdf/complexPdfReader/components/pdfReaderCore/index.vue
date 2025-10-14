@@ -94,25 +94,24 @@ export default {
   },
 
   computed: {
-    ...mapState("complexPdfReader/document", [
-      "loading",
-      "loadProgress",
-      "loadMessage",
-      "error",
-    ]),
-    ...mapState("complexPdfReader/document", {
+    ...mapState("complexPdfReader", {
+      docLoading: "loading",
+      loadProgress: "loadProgress",
+      docMessageRaw: "loadMessage",
+      docError: "error",
       storePdfDocument: "pdfDocument",
     }),
-    ...mapGetters("complexPdfReader/document", {
+    ...mapGetters("complexPdfReader", {
       storeMetadata: "metadata",
       loadedEvent: "loadedEvent",
-      isDocumentLoaded: "isDocumentLoaded",
+      documentReady: "isDocumentLoaded",
+      documentLoaded: "isDocumentLoaded",
     }),
-    ...mapState("complexPdfReader/viewer", {
+    ...mapState("complexPdfReader", {
       storeCurrentPage: "currentPage",
       storeScale: "scale",
     }),
-    ...mapGetters("complexPdfReader/viewer", ["navigationState", "zoomState"]),
+    ...mapGetters("complexPdfReader", ["navigationState", "zoomState"]),
     scale: {
       get() {
         return this.storeScale;
@@ -130,27 +129,12 @@ export default {
       },
     },
 
-    documentLoaded() {
-      return this.isDocumentLoaded;
-    },
-
-    documentReady() {
-      return this.isDocumentLoaded;
-    },
-
-    docLoading() {
-      return this.loading;
-    },
-
     docMessage() {
-      return this.loadMessage || "加载中";
-    },
-    docError() {
-      return this.error;
+      return this.docMessageRaw || "加载中";
     },
 
     docErrorMessage() {
-      const e = this.error;
+      const e = this.docError;
       return typeof e === "string" ? e : e?.message || e || null;
     },
   },
@@ -195,15 +179,15 @@ export default {
   },
 
   methods: {
-    ...mapActions("complexPdfReader/document", {
+    ...mapActions("complexPdfReader", {
+      // document
       loadDocumentAction: "loadDocument",
       setLoadProgress: "setLoadProgress",
       setDocumentError: "setDocumentError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
       resetAllStateAction: "resetAllState",
-    }),
-    ...mapActions("complexPdfReader/viewer", {
+      // viewer
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
@@ -398,7 +382,7 @@ export default {
         }
       } catch (e) {
         console.warn("fitWidthOnce 计算失败:", e);
-        // 失败情况下也尽量回落到当前 scale 作为基础
+        // 失败情况下也尽量回退到当前 scale 作为基础
         this.setBaselineScaleAction(this.scale);
       }
     },
