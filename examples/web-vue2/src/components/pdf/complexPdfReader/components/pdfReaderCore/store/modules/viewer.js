@@ -6,6 +6,8 @@ import {
 } from "../../utils/pdf-config.js";
 import { resolveDestToPage } from "../../utils/pdf-utils.js";
 
+const ZOOM_EPS = 0.005;
+
 const state = {
   // 当前页面
   currentPage: 1,
@@ -14,6 +16,9 @@ const state = {
   scale: 1.0,
   minScale: 0.1,
   maxScale: 10.0,
+
+  // 基础缩放：用于判定 pdf 是否处于放大状态
+  baselineScale: null,
 };
 
 const mutations = {
@@ -31,10 +36,18 @@ const mutations = {
     }
   },
 
+  // 设置基础缩放
+  SET_BASELINE_SCALE(state, scale) {
+    if (typeof scale === 'number' && scale > 0) {
+      state.baselineScale = scale;
+    }
+  },
+
   // 重置查看器状态
   RESET_VIEWER(state) {
     state.currentPage = 1;
     state.scale = 1.0;
+    state.baselineScale = null;
   },
 };
 
@@ -73,6 +86,14 @@ const actions = {
       "SET_SCALE",
       round2(Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE))
     );
+    return scale;
+  },
+
+  // 设置基础缩放（用于判定 pdf 是否处于放大状态）
+  setBaselineScale({ commit }, scale) {
+    if (typeof scale === 'number' && scale > 0) {
+      commit("SET_BASELINE_SCALE", scale);
+    }
     return scale;
   },
 
@@ -129,11 +150,12 @@ const getters = {
   // 缩放状态
   zoomState: state => ({
     scale: state.scale,
-    scalePercent: Math.round(state.scale * 100),
     canZoomIn: state.scale < state.maxScale,
     canZoomOut: state.scale > state.minScale,
     minScale: state.minScale,
     maxScale: state.maxScale,
+    baselineScale: state.baselineScale,
+    isZoomed: (typeof state.baselineScale === 'number') && (state.scale - state.baselineScale > ZOOM_EPS),
   }),
 };
 

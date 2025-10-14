@@ -18,7 +18,10 @@
     >
       <gesture-container
         :gestures-enabled="gesturesEnabled"
+        :swipe-enabled="!zoomState.isZoomed"
         content-selector=".pdf-page-container"
+        @prev-page="prevPageAction"
+        @next-page="nextPageAction"
       >
         <pdf-page
           :page-number="page"
@@ -103,6 +106,7 @@ export default {
     ...mapGetters("complexPdfReader/document", {
       storeMetadata: "metadata",
       loadedEvent: "loadedEvent",
+      isDocumentLoaded: "isDocumentLoaded",
     }),
     ...mapState("complexPdfReader/viewer", {
       storeCurrentPage: "currentPage",
@@ -127,11 +131,11 @@ export default {
     },
 
     documentLoaded() {
-      return !!this.storePdfDocument;
+      return this.isDocumentLoaded;
     },
 
     documentReady() {
-      return this.documentLoaded;
+      return this.isDocumentLoaded;
     },
 
     docLoading() {
@@ -204,6 +208,7 @@ export default {
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScaleAction: "setScale",
+      setBaselineScaleAction: "setBaselineScale",
       goToDestinationAction: "goToDestination",
       resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
@@ -362,23 +367,39 @@ export default {
       }
     },
 
-    // 按容器宽度适配一次（无监听、无后续自动调整）
+    // 按容器宽度适配一次
     async fitWidthOnce() {
       try {
-        if (!this.documentLoaded) return;
-        const container = this.$refs.viewerContainer;
-        if (!container) return;
-        const rect = container.getBoundingClientRect();
-        if (!rect || rect.width === 0) return;
+        if (!this.documentLoaded) {
+          this.setBaselineScaleAction(this.scale);
+          return;
+        }
+        const rect = this.$refs.viewerContainer?.getBoundingClientRect();
+        if (!rect || rect.width === 0) {
+          this.setBaselineScaleAction(this.scale);
+          return;
+        }
 
         const page = await this.getPageAction(1);
         const viewport = page.getViewport({ scale: 1 });
         const computed = rect.width / viewport.width;
+
+        console.log("fitWidthOnce: ", {
+          viewport,
+          rect,
+          computed,
+        });
+
         if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
           this.setScaleAction(computed);
+          this.setBaselineScaleAction(computed);
+        } else {
+          this.setBaselineScaleAction(this.scale);
         }
       } catch (e) {
         console.warn("fitWidthOnce 计算失败:", e);
+        // 失败情况下也尽量回落到当前 scale 作为基础
+        this.setBaselineScaleAction(this.scale);
       }
     },
   },

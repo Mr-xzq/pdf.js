@@ -37,10 +37,14 @@ export default {
   name: "ComplexReaderDemo",
   components: { ComplexPdfReader },
   data() {
+    const { protocol, hostname } = window.location;
+    // 后端端口
+    const port = "5678";
+
     return {
       localPdfUrl: "",
       // pdfUrl: http://127.0.0.1:5678/pdfs/compressed.tracemonkey-pldi-09.pdf
-      pdfUrl: "http://127.0.0.1:5678/pdfs/gsjrPdf.pdf",
+      pdfUrl: `${protocol}//${hostname}:${port}/pdfs/gsjrPdf.pdf`,
     };
   },
 

@@ -23,6 +23,13 @@ export default {
     // 拖拽手势的触发阈值（单位：像素）
     // 触摸移动的距离超过这个值才会被识别为拖拽，以区分轻微抖动和真正的拖拽
     panThreshold: { type: Number, default: 6 },
+
+    // 是否启用左右滑动翻页（由父组件根据 pdf 是否处于放大状态来控制）
+    swipeEnabled: { type: Boolean, default: true },
+    // 触摸移动的距离超过这个值才会被识别为横向滑动（像素）
+    swipeThreshold: { type: Number, default: 50 },
+    // 允许的垂直偏移比例（|dy| <= |dx| * ratio）
+    swipeMaxYRatio: { type: Number, default: 0.5 },
   },
   data() {
     return {
@@ -64,10 +71,11 @@ export default {
       // 外部容器的高度
       containerHeight: 0,
 
-      // 监听外部容器尺寸变化的 ResizeObserver
-      containerResizeObserver: null,
-      // 监听内容节点尺寸变化的 ResizeObserver
-      contentResizeObserver: null,
+      // ResizeObserver 实例，监听多个元素大小改变
+      resizeObserver: null,
+      // 当前被观察的元素引用（用于区分 entries，也就是不同的元素）
+      observedContainer: null,
+      observedContent: null,
     };
   },
   computed: {
@@ -92,18 +100,43 @@ export default {
       const container = this.$refs.container;
       const pan = this.$refs.pan;
 
-      // 观察外部容器的尺寸变化
-      if (typeof ResizeObserver !== "undefined" && container) {
-        this.containerResizeObserver = new ResizeObserver(() => {
-          const rect = container.getBoundingClientRect();
-          this.containerWidth = rect.width || 0;
-          this.containerHeight = rect.height || 0;
+      if (typeof ResizeObserver === "undefined") return;
 
-          console.log("container - resized: clampPan");
-          // 容器尺寸变化后，需要重新计算并校正平移边界
+      // 单一 Observer，同时监听多个元素
+      this.resizeObserver = new ResizeObserver(entries => {
+        entries.forEach(entry => {
+          const target = entry.target;
+
+          // 优先使用 borderBoxSize（含 padding/border，box-sizing: border-box），不行就回退到 contentRect
+          const box = Array.isArray(entry.borderBoxSize)
+            ? entry.borderBoxSize[0]
+            : entry.borderBoxSize;
+          const rect = entry?.contentRect;
+          const width =
+            typeof box?.inlineSize === "number" ? box.inlineSize : rect?.width;
+          const height =
+            typeof box?.blockSize === "number" ? box.blockSize : rect?.height;
+          if (typeof width !== "number" || typeof height !== "number") return;
+
+          if (target === this.observedContainer) {
+            console.log("container - resized: clampPan", { width, height });
+            this.containerWidth = width || 0;
+            this.containerHeight = height || 0;
+          } else if (target === this.observedContent) {
+            console.log("content - resized: clampPan", { width, height });
+            this.contentWidth = width || 0;
+            this.contentHeight = height || 0;
+          }
+
+          // 尺寸变化后，重新计算并校正平移边界
           this.clampPan();
         });
-        this.containerResizeObserver.observe(container);
+      });
+
+      // 观察外部容器
+      if (container) {
+        this.observedContainer = container;
+        this.resizeObserver.observe(container, { box: "border-box" });
       }
 
       // 根据 contentSelector 找到要观察的内容节点
@@ -112,37 +145,25 @@ export default {
         return pan.querySelector(this.contentSelector);
       };
 
-      // 观察内容节点的尺寸变化
-      if (typeof ResizeObserver !== "undefined") {
-        this.contentResizeObserver = new ResizeObserver(entries => {
-          const rect = entries?.[0]?.contentRect;
-          if (!rect) return;
-          this.contentWidth = rect.width || 0;
-          this.contentHeight = rect.height || 0;
-
-          console.log("content - resized: clampPan");
-          // 内容尺寸变化后，也需要重新计算并校正平移边界
-          this.clampPan();
-        });
-        const contentTarget = pickContentTarget();
-
-        if (contentTarget) {
-          this.contentResizeObserver.observe(contentTarget);
-        }
+      const contentTarget = pickContentTarget();
+      if (contentTarget) {
+        this.observedContent = contentTarget;
+        this.resizeObserver.observe(contentTarget, { box: "border-box" });
       }
 
       // 设置清理逻辑
       const cleanup = () => {
         console.log("cleanup - resize observer");
 
-        this.containerResizeObserver?.disconnect?.();
-        this.contentResizeObserver?.disconnect?.();
+        this.resizeObserver?.disconnect?.();
+        this.observedContainer = null;
+        this.observedContent = null;
       };
       this.$on("hook:beforeDestroy", cleanup);
     },
 
     /**
-     * 计算某一条轴向（X 或 Y）的平移边界（对齐驱动）
+     * 计算某一条轴向（X 或 Y）的平移边界
      * - overflow: 溢出量（内容尺寸 - 容器尺寸；<= 0 表示无溢出，不允许平移）
      * - align: center | start | end
      *   center: 以中心为零位，区间 [-(overflow/2), +(overflow/2)]
@@ -191,6 +212,19 @@ export default {
     },
 
     // --- 手势事件处理 ---
+
+    /**
+     * 在 touchend 上识别左右滑动
+     * 返回 'left' | 'right' | undefined
+     */
+    detectSwipe({ dx, dy }) {
+      if (!this.swipeEnabled) return;
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX < this.swipeThreshold) return;
+      if (absY > absX * this.swipeMaxYRatio) return;
+      return dx < 0 ? "left" : "right";
+    },
 
     onPanStart(e) {
       if (!this.gesturesEnabled) return;
@@ -261,7 +295,39 @@ export default {
       this.clampPan();
     },
 
-    onPanEnd() {
+    onPanEnd(e) {
+      if (!this.gesturesEnabled) return;
+
+      console.log("onPanEnd: ", e);
+
+      // 无论本次是否进入拖拽，均在 touchend 尝试识别左右滑动（避免初始 overflowY 误触发 isPanning 导致无法翻页）
+      if (e) {
+        const point = e.changedTouches ? e.changedTouches[0] : e;
+        const dx = point.clientX - this.panStartX;
+        const dy = point.clientY - this.panStartY;
+        const dir = this.detectSwipe({ dx, dy });
+        if (dir) {
+          // 阻止后续 click（避免在链接上滑动时触发点击）
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+          console.log("dir: ", dir);
+          if (dir === "left") {
+            this.$emit("next-page");
+          } else {
+            this.$emit("prev-page");
+          }
+
+          // 重置状态并退出
+          this.maybeLinkTap = false;
+          this.maybeTapTarget = null;
+          this.panMoved = false;
+          this.synthClickNeeded = false;
+          this.isPanning = false;
+          return;
+        }
+      }
+
       // 退出拖拽状态
       this.isPanning = false;
 
