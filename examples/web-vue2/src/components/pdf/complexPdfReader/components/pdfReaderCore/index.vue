@@ -34,7 +34,7 @@
     </div>
 
     <!-- 空状态：仅在“无 src 且不在加载中”时显示；加载过程不显示 empty 占位 -->
-    <template v-else-if="!src && !docLoading">
+    <template v-else-if="!src && !isLoading">
       <slot name="empty"></slot>
     </template>
   </div>
@@ -96,9 +96,9 @@ export default {
 
   computed: {
     ...mapState("complexPdfReader", {
-      docLoading: "loading",
-      loadProgress: "loadProgress",
-      docMessageRaw: "loadMessage",
+      docLoading: "docLoading",
+
+
       docError: "error",
       storePdfDocument: "pdfDocument",
     }),
@@ -107,6 +107,8 @@ export default {
       loadedEvent: "loadedEvent",
       documentReady: "isDocumentLoaded",
       documentLoaded: "isDocumentLoaded",
+      isLoading: "isLoading",
+      docMessage: "loadingMessage",
     }),
     ...mapState("complexPdfReader", {
       storeCurrentPage: "currentPage",
@@ -130,10 +132,6 @@ export default {
       },
     },
 
-    docMessage() {
-      return this.docMessageRaw || "加载中";
-    },
-
     docErrorMessage() {
       const e = this.docError;
       return typeof e === "string" ? e : e?.message || e || null;
@@ -147,7 +145,8 @@ export default {
       }
     },
 
-    docLoading(val) {
+    // 统一的加载状态（队列 + 文档加载）
+    isLoading(val) {
       if (val) {
         this.$emit("loading-start", {
           source: "core",
@@ -183,11 +182,11 @@ export default {
     ...mapActions("complexPdfReader", {
       // document
       loadDocumentAction: "loadDocument",
-      setLoadProgress: "setLoadProgress",
-      setDocumentError: "setDocumentError",
+      setDocError: "setDocError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
       resetAllStateAction: "resetAllState",
+      runWithLoadPending: "runWithLoadPending",
       // viewer
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
@@ -198,12 +197,33 @@ export default {
       resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
 
+    // 模拟异步处理 loadDocumentAction 的参数
+    transformFileSource(source, timeout = 3000) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(source);
+        }, timeout);
+      });
+    },
+
     async handleLoadDocument() {
       try {
-        await this.loadDocumentAction({ url: this.src });
+        const fileSource = await this.runWithLoadPending({
+          run: () => this.transformFileSource(this.src),
+          label: "准备文件...",
+        });
+
+        await this.runWithLoadPending({
+          run: () => this.loadDocumentAction({ url: fileSource }),
+          label: "加载文档...",
+        });
+
         this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
-        this.onDocumentError({ message: error.message, type: "load" });
+        this.onDocumentError({
+          message: error?.message || String(error),
+          type: "load",
+        });
       }
     },
 

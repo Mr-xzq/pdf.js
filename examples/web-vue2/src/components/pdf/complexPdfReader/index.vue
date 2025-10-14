@@ -152,8 +152,6 @@
         :navigate-to-destination="navigateToDestination"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
         @selected="closeOutlineDrawer"
-        @loading-start="onChildLoadingStart"
-        @loading-stop="onChildLoadingStop"
       />
     </drawer>
     <drawer
@@ -170,8 +168,6 @@
         :render-thumbnail="renderThumbnail"
         :go-to-page="goToPage"
         @selected="closeThumbnailDrawer"
-        @loading-start="onChildLoadingStart"
-        @loading-stop="onChildLoadingStop"
       />
     </drawer>
   </div>
@@ -287,8 +283,7 @@ export default {
       sliderValue: 1,
       // 仅用于“放大后可还原”的 UI 状态
       lastScaleBeforeZoom: null,
-      // 显示层统一 loading（只在点击翻页/打开面板等需要时触发）
-      isDisplayLoading: false,
+
       // 当前已加载文档的指纹，用于触发子组件重新挂载
       docFingerprint: null,
     };
@@ -307,7 +302,7 @@ export default {
     },
   },
   computed: {
-    ...mapGetters("complexPdfReader", ["navigationState", "zoomState"]),
+    ...mapGetters("complexPdfReader", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -330,63 +325,34 @@ export default {
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",
       setScale: "setScale",
+      runWithLoadPending: "runWithLoadPending",
     }),
-
-    startDisplayLoading() {
-      if (this.isDisplayLoading) return;
-      this.isDisplayLoading = true;
-      this.$emit("loading-start", {
-        source: "viewer",
-        message: "加载中",
-      });
-    },
-    stopDisplayLoading() {
-      if (!this.isDisplayLoading) return;
-      this.isDisplayLoading = false;
-      this.$emit("loading-stop", { source: "viewer" });
-    },
 
     async goToPage(n) {
       const t = this.totalPages || 0;
       if (!Number.isFinite(n) || n < 1 || n > t) return;
       if (n === this.currentPage) return;
-      this.startDisplayLoading();
-      try {
-        await this.goToPageAction(n);
-      } catch (error) {
-        // 如果发生错误（例如内部校验失败），立即停止 loading，避免卡住
-        this.stopDisplayLoading();
-      }
+      await this.runWithLoadPending({
+        label: "跳转页面...",
+        run: () => this.goToPageAction(n),
+      });
     },
     async nextPage() {
       const t = this.totalPages || 0;
       const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0)
-        return;
-      this.startDisplayLoading();
-      try {
-        await this.nextPageAction();
-      } catch (error) {
-        this.stopDisplayLoading();
-      }
+      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
+      await this.runWithLoadPending({
+        label: "下一页...",
+        run: () => this.nextPageAction(),
+      });
     },
     async prevPage() {
       const cur = this.currentPage || 0;
       if (!Number.isFinite(cur) || cur <= 1) return;
-      this.startDisplayLoading();
-      try {
-        await this.prevPageAction();
-      } catch (error) {
-        this.stopDisplayLoading();
-      }
-    },
-
-    // 子面板触发的 loading 统一代理到组件级（对外抛出）
-    onChildLoadingStart() {
-      this.startDisplayLoading();
-    },
-    onChildLoadingStop() {
-      this.stopDisplayLoading();
+      await this.runWithLoadPending({
+        label: "上一页...",
+        run: () => this.prevPageAction(),
+      });
     },
 
     handleClickThumbnail() {
@@ -532,7 +498,7 @@ export default {
       this.$emit("page-changed", e);
     },
     onLoadingStart(e) {
-      const payload = { source: e?.source || "core", message: "加载中" };
+      const payload = { source: e?.source || "core", message: this.loadingMessage };
       this.$emit("loading-start", payload);
     },
     onLoadingStop(e) {
@@ -542,11 +508,9 @@ export default {
       this.$emit("scale-changed", e);
     },
     onPdfPageRendered(e) {
-      this.stopDisplayLoading();
       this.$emit("page-rendered", e);
     },
     onPdfRenderError(e) {
-      this.stopDisplayLoading();
       this.$emit("render-error", e);
     },
   },

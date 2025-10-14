@@ -26,6 +26,8 @@
 </template>
 
 <script>
+import { mapActions } from "vuex";
+
 export default {
   name: "ThumbnailPanel",
   props: {
@@ -50,13 +52,13 @@ export default {
     };
   },
   async mounted() {
-    this.$emit("loading-start", { source: "viewer", message: "加载中" });
-    try {
-      await this.ensureRenderThumbnails();
-      this.trySyncCurrent();
-    } finally {
-      this.$emit("loading-stop", { source: "viewer" });
-    }
+    await this.runWithLoadPending({
+      label: "渲染缩略图...",
+      run: async () => {
+        await this.ensureRenderThumbnails();
+        this.trySyncCurrent();
+      }
+    });
   },
   watch: {
     currentPage(n) {
@@ -84,6 +86,7 @@ export default {
     },
   },
   methods: {
+    ...mapActions("complexPdfReader", { runWithLoadPending: "runWithLoadPending" }),
     // 计算第一个缩略图的实际 CSS 宽度（与列数/容器宽度相关）
     getCssThumbWidth() {
       const list = this.$el?.querySelector(".thumb-list");
@@ -111,17 +114,16 @@ export default {
       this.$nextTick(async () => {
         const needLoad = !this.thumbsRendered;
         if (needLoad) {
-          this.$emit("loading-start", { source: "viewer", message: "加载中" });
-        }
-        try {
+          await this.runWithLoadPending({
+            label: "渲染缩略图...",
+            run: () => this.ensureRenderThumbnails()
+          });
+        } else {
           await this.ensureRenderThumbnails();
-          const target =
-            this.pendingPage != null ? this.pendingPage : this.currentPage;
-          if (target != null) await this.scrollToPage(target);
-          this.pendingPage = null;
-        } finally {
-          if (needLoad) this.$emit("loading-stop", { source: "viewer" });
         }
+        const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
+        if (target != null) await this.scrollToPage(target);
+        this.pendingPage = null;
       });
     },
     // 父容器关闭时的处理函数

@@ -13,15 +13,17 @@ const state = {
   pdfDocument: null,
   documentInfo: { numPages: 0, fingerprint: null },
   metadata: null,
-  loading: false,
-  loadProgress: 0,
-  loadMessage: "",
+  docLoading: false,
   error: null,
 
   // --- viewer ---
   currentPage: 1,
   scale: 1.0,
   baselineScale: null,
+
+  // --- loading queue ---
+  pendingCount: 0,
+  pendingLabels: [],
 };
 
 const mutations = {
@@ -37,16 +39,8 @@ const mutations = {
   SET_METADATA(state, metadata) {
     state.metadata = metadata;
   },
-  SET_LOADING(state, loading) {
-    state.loading = loading;
-    if (!loading) {
-      state.loadProgress = 0;
-      state.loadMessage = "";
-    }
-  },
-  SET_LOAD_PROGRESS(state, { progress, message }) {
-    state.loadProgress = progress || 0;
-    state.loadMessage = message || "";
+  SET_DOC_LOADING(state, loading) {
+    state.docLoading = loading;
   },
   SET_ERROR(state, { error }) {
     state.error = error;
@@ -58,9 +52,7 @@ const mutations = {
     state.pdfDocument = null;
     state.documentInfo = { numPages: 0, fingerprint: null };
     state.metadata = null;
-    state.loading = false;
-    state.loadProgress = 0;
-    state.loadMessage = "";
+    state.docLoading = false;
     state.error = null;
   },
 
@@ -78,6 +70,23 @@ const mutations = {
     state.currentPage = 1;
     state.scale = 1.0;
     state.baselineScale = null;
+  },
+
+  // --- loading queue ---
+  PENDING_ADD(state, { label } = {}) {
+    state.pendingCount += 1;
+    if (label) {
+      state.pendingLabels.push(label);
+    }
+  },
+  PENDING_REMOVE(state, { label } = {}) {
+    if (label) {
+      const idx = state.pendingLabels.lastIndexOf(label);
+      if (idx !== -1) {
+        state.pendingLabels.splice(idx, 1);
+      }
+    }
+    state.pendingCount = Math.max(0, state.pendingCount - 1);
   },
 };
 
@@ -103,25 +112,18 @@ const actions = {
     try {
       // 清空上一次文档与查看器状态
       dispatch("resetAllState");
-      commit("SET_LOADING", true);
+      commit("SET_DOC_LOADING", true);
       commit("CLEAR_ERROR");
 
-      let lastProgress = 0;
       const { pdfDocument } = await loadPdfDocument({
         getDocumentOptions,
-        onProgress: ({ percentage }) => {
-          if (percentage !== lastProgress) {
-            lastProgress = percentage;
-            commit("SET_LOAD_PROGRESS", { progress: percentage, message: "" });
-          }
-        },
       });
 
       const metadata = await pdfDocument.getMetadata();
       commit("SET_DOCUMENT", pdfDocument);
       if (metadata) commit("SET_METADATA", metadata);
 
-      commit("SET_LOADING", false);
+      commit("SET_DOC_LOADING", false);
       commit("CLEAR_ERROR");
 
       if (pdfDocument?.numPages > 0) {
@@ -131,16 +133,14 @@ const actions = {
     } catch (error) {
       dispatch("resetAllState");
       commit("SET_ERROR", { error: error.message, type: "load" });
-      commit("SET_LOADING", false);
+      commit("SET_DOC_LOADING", false);
       throw error;
     }
   },
-  setLoadProgress({ commit }, progressData) {
-    commit("SET_LOAD_PROGRESS", progressData);
-  },
-  setDocumentError({ commit }, { error, type = "load" }) {
+
+  setDocError({ commit }, { error, type = "load" }) {
     commit("SET_ERROR", { error, type });
-    commit("SET_LOADING", false);
+    commit("SET_DOC_LOADING", false);
   },
 
   // --- viewer ---
@@ -151,6 +151,18 @@ const actions = {
     commit("SET_CURRENT_PAGE", pageNumber);
     return pageNumber;
   },
+
+  // --- loading queue ---
+  async runWithLoadPending({ commit }, { run, label } = {}) {
+    commit("PENDING_ADD", { label });
+    try {
+      const runner = typeof run === "function" ? run : () => run;
+      return await runner();
+    } finally {
+      commit("PENDING_REMOVE", { label });
+    }
+  },
+
   nextPage({ state, dispatch, getters }) {
     const totalPages = getters.totalPages;
     if (state.currentPage < totalPages)
@@ -222,6 +234,16 @@ const getters = {
       metadata: state.metadata || null,
     },
   }),
+  isLoading: state => state.pendingCount > 0 || state.docLoading,
+  loadingMessage: state => {
+    const hasPending = state.pendingCount > 0;
+    const latest = state.pendingLabels.length
+      ? state.pendingLabels[state.pendingLabels.length - 1]
+      : "";
+    if (hasPending && latest) return latest; // 优先：pending 的 label
+
+    return hasPending ? "处理中..." : "加载中"; // 兜底
+  },
   navigationState: (state, getters) => {
     const totalPages = getters.totalPages;
     const currentPage = state.currentPage;

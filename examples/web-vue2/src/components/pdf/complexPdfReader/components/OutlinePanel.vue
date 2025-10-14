@@ -26,6 +26,8 @@ import Tree from "./tree/index.vue";
 import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
+import { mapActions } from "vuex";
+
 export default {
   name: "OutlinePanel",
   components: { Tree },
@@ -62,19 +64,19 @@ export default {
     };
   },
   async mounted() {
-    this.$emit("loading-start", { source: "viewer", message: "加载中" });
-    try {
-      const data = await this.getOutline();
-      this.outline = Array.isArray(data) ? data : [];
-      this.treeData = this.buildTreeData(this.outline);
-      await this.ensurePageMapOnce();
-      let initKey = this.pickKeyForPageSafe(this.currentPage);
-      if (initKey) {
-        this.activeKey = initKey;
+    await this.runWithLoadPending({
+      label: "加载目录...",
+      run: async () => {
+        const data = await this.getOutline();
+        this.outline = Array.isArray(data) ? data : [];
+        this.treeData = this.buildTreeData(this.outline);
+        await this.ensurePageMapOnce();
+        let initKey = this.pickKeyForPageSafe(this.currentPage);
+        if (initKey) {
+          this.activeKey = initKey;
+        }
       }
-    } finally {
-      this.$emit("loading-stop", { source: "viewer" });
-    }
+    });
   },
   watch: {
     // 监听 activeKey 变化，根据 popup 可见性决定是立即滚动还是延迟处理
@@ -109,6 +111,7 @@ export default {
     },
   },
   methods: {
+    ...mapActions("complexPdfReader", { runWithLoadPending: "runWithLoadPending" }),
     // 树节点选中事件处理
     async onTreeSelect(node) {
       console.log(
@@ -132,20 +135,17 @@ export default {
       this.$nextTick(async () => {
         const needLoad = !this.pageMapReady;
         if (needLoad) {
-          this.$emit("loading-start", { source: "viewer", message: "加载中" });
-        }
-        try {
+          await this.runWithLoadPending({
+            label: "准备目录...",
+            run: () => this.ensurePageMapOnce()
+          });
+        } else {
           await this.ensurePageMapOnce();
-          const k =
-            this.pendingActiveKey != null
-              ? this.pendingActiveKey
-              : this.activeKey;
-          if (k != null) {
-            await this.activateAndScroll(k);
-            this.pendingActiveKey = null;
-          }
-        } finally {
-          if (needLoad) this.$emit("loading-stop", { source: "viewer" });
+        }
+        const k = this.pendingActiveKey != null ? this.pendingActiveKey : this.activeKey;
+        if (k != null) {
+          await this.activateAndScroll(k);
+          this.pendingActiveKey = null;
         }
       });
     },
