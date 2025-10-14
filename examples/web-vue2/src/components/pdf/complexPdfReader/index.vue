@@ -31,17 +31,19 @@
     <div class="bottom-toolbar" :class="{ 'is-open-page-nav': isShowPageNav }">
       <div class="page-nav" :class="{ 'is-open': isShowPageNav }">
         <div class="nav-row">
-          <van-image
-            class="nav-row-item first-page"
+          <TouchIconButton
             :src="firstPageIconUrl"
+            img-class="nav-row-item first-page"
+            :min-size="30"
             @click="goToPage(1)"
-          ></van-image>
+          />
 
-          <van-image
-            class="nav-row-item"
+          <TouchIconButton
             :src="previousPageIconUrl"
+            img-class="nav-row-item"
+            :min-size="30"
             @click="prevPage"
-          ></van-image>
+          />
 
           <van-field
             ref="pageInput"
@@ -60,17 +62,19 @@
             @keyup.enter.native="finishEditPage"
           />
 
-          <van-image
-            class="nav-row-item"
+          <TouchIconButton
             :src="nextPageIconUrl"
+            img-class="nav-row-item"
+            :min-size="30"
             @click="nextPage"
-          ></van-image>
+          />
 
-          <van-image
-            class="nav-row-item last-page"
+          <TouchIconButton
             :src="lastPageIconUrl"
+            img-class="nav-row-item last-page"
+            :min-size="30"
             @click="goToPage(totalPages)"
-          ></van-image>
+          />
         </div>
 
         <van-slider
@@ -93,44 +97,44 @@
       </div>
 
       <div class="bottom-toolbar-tool-list">
-        <van-image
-          class="thumbnail-tool-item"
+        <TouchIconButton
           :src="thumbnailIconUrl"
+          img-class="thumbnail-tool-item"
           @click="handleClickThumbnail"
-        ></van-image>
-        <van-image
-          class="outline-tool-item"
+        />
+        <TouchIconButton
           :src="outlineIconUrl"
+          img-class="outline-tool-item"
           @click="handleClickOutline"
-        ></van-image>
-        <van-image
-          class="page-flip-tool-item"
+        />
+        <TouchIconButton
           :src="pageFlipIconUrl"
+          img-class="page-flip-tool-item"
           @click="togglePageNav"
-        ></van-image>
+        />
         <!-- <van-image
           class="page-flip-audio-tool-item"
           :src="pageFlipAudioIconUrl"
         ></van-image> -->
         <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
-        <van-image
+        <TouchIconButton
           v-if="!lastScaleBeforeZoom"
-          class="zoom-in-tool-item"
           :src="zoomInIconUrl"
+          img-class="zoom-in-tool-item"
           @click="handleZoomIn"
-        ></van-image>
-        <van-image
+        />
+        <TouchIconButton
           v-else
-          class="zoom-out-tool-item"
           :src="zoomOutIconUrl"
+          img-class="zoom-out-tool-item"
           @click="handleResetZoom"
-        ></van-image>
+        />
         <!-- 自动播放/暂停 -->
-        <van-image
-          class="auto-play-tool-item"
+        <TouchIconButton
           :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
+          img-class="auto-play-tool-item"
           @click="handleToggleAutoPlay"
-        ></van-image>
+        />
       </div>
     </div>
 
@@ -179,6 +183,7 @@ import PdfViewport from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/Drawer.vue";
 import OutlinePanel from "./components/OutlinePanel.vue";
 import ThumbnailPanel from "./components/ThumbnailPanel.vue";
+import TouchIconButton from "./components/TouchIconButton.vue";
 
 // 引入图标
 // import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";
@@ -206,6 +211,7 @@ export default {
     PdfViewport,
     OutlinePanel,
     ThumbnailPanel,
+    TouchIconButton,
   },
   props: {
     src: {
@@ -625,7 +631,7 @@ export default {
       overflow: initial;
     }
 
-    .page-nav {
+    /deep/ .page-nav {
       position: absolute;
       left: 0;
       right: 0;
@@ -698,7 +704,7 @@ export default {
       }
     }
 
-    .bottom-toolbar-tool-list {
+    /deep/ .bottom-toolbar-tool-list {
       position: relative;
       display: flex;
       align-items: center;

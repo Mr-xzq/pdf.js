@@ -12,11 +12,13 @@
     <div class="drawer">
       <div v-if="showHeader" class="drawer__header">
         <slot name="header">
-          <van-image
-            class="drawer__back"
+          <TouchIconButton
             :src="backIconUrl"
+            class="back-wrapper"
+            img-class="drawer__back"
+            :min-size="40"
             @click="handleClose"
-          ></van-image>
+          />
           <div class="drawer__title">{{ title }}</div>
         </slot>
       </div>
@@ -29,9 +31,11 @@
 
 <script>
 import backIconUrl from "@/assets/images/complexPdfReader/back-2x.png";
+import TouchIconButton from "./TouchIconButton.vue";
 
 export default {
   name: "Drawer",
+  components: { TouchIconButton },
   props: {
     isShow: { type: Boolean, default: false },
     title: { type: String, default: "" },
@@ -57,17 +61,24 @@ export default {
   flex-direction: column;
 
   .drawer__header {
+    position: relative;
     display: flex;
     align-items: center;
+    justify-content: center;
     height: 3.5rem;
-    padding: 0 12px;
     background: #fff;
     border-bottom: 1px solid #f0f0f0;
   }
 
-  .drawer__back {
-    width: 0.6rem;
-    height: 1.19rem;
+  /deep/ .back-wrapper {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    .drawer__back {
+      width: 0.6rem;
+      height: 1.19rem;
+    }
   }
 
   .drawer__title {
