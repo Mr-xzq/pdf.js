@@ -4,10 +4,9 @@ import {
   MIN_SCALE,
   MAX_SCALE,
   round2,
+  ZOOM_EPS,
 } from "../utils/pdf-config.js";
 import { resolveDestToPage } from "../utils/pdf-utils.js";
-
-const ZOOM_EPS = 0.005;
 
 const state = {
   // --- document ---

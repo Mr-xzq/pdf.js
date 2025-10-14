@@ -11,6 +11,12 @@ export function round2(value) {
 }
 
 /**
+ * ZOOM_EPS：用于判断“是否超出基础缩放”的容差阈值（epsilon）
+ * 用于过滤浮点/布局抖动
+ */
+export const ZOOM_EPS = 0.005;
+
+/**
  * @param {Object} params
  * @param {(progress:{loaded:number,total:number,percentage:number})=>void} [params.onProgress]
  * @param {Object} [params.getDocumentOptions] 其它传给 getDocument 的参数（url, data, headers、withCredentials 等）

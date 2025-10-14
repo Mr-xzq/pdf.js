@@ -47,6 +47,7 @@ import GestureContainer from "./components/GestureContainer.vue";
 
 // 引入自己项目里的工具函数
 import { renderPageToCanvas } from "./utils/pdf-utils.js";
+import { ZOOM_EPS } from "./utils/pdf-config.js";
 
 // 引入第三方库
 import { mapState, mapGetters, mapActions } from "vuex";
@@ -374,7 +375,7 @@ export default {
           computed,
         });
 
-        if (computed > 0 && Math.abs(computed - this.scale) > 0.005) {
+        if (computed > 0 && Math.abs(computed - this.scale) > ZOOM_EPS) {
           this.setScaleAction(computed);
           this.setBaselineScaleAction(computed);
         } else {
