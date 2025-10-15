@@ -1,12 +1,7 @@
 <template>
   <div class="pdf-page-container" ref="container">
     <!-- 页面画布 -->
-    <canvas
-      ref="pageCanvas"
-      class="pdf-page-container__canvas"
-      :style="canvasStyle"
-      @click="onCanvasClick"
-    ></canvas>
+    <canvas ref="pageCanvas" class="pdf-page-container__canvas" :style="canvasStyle" @click="onCanvasClick"></canvas>
 
     <!-- 注释层 -->
     <div
@@ -19,10 +14,7 @@
 </template>
 
 <script>
-import {
-  cancelAllRenderTasks,
-  renderPageToCanvas,
-} from "../utils/pdf-utils.js";
+import { cancelAllRenderTasks, renderPageToCanvas } from "../utils/pdf-utils.js";
 
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
 
@@ -168,11 +160,7 @@ export default {
     // 初始化 Layer builders
     initializeLayers() {
       // Annotation Layer
-      if (
-        this.annotationsEnabled &&
-        !this.layers.annotation &&
-        this.$refs.annotationLayer
-      ) {
+      if (this.annotationsEnabled && !this.layers.annotation && this.$refs.annotationLayer) {
         this.layers.annotation = new AnnotationLayerBuilder({
           container: this.$refs.annotationLayer,
           getPage: this.getPage,

@@ -103,19 +103,15 @@ export default {
       if (typeof ResizeObserver === "undefined") return;
 
       // 单一 Observer，同时监听多个元素
-      this.resizeObserver = new ResizeObserver(entries => {
-        entries.forEach(entry => {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry) => {
           const target = entry.target;
 
           // 优先使用 borderBoxSize（含 padding/border，box-sizing: border-box），不行就回退到 contentRect
-          const box = Array.isArray(entry.borderBoxSize)
-            ? entry.borderBoxSize[0]
-            : entry.borderBoxSize;
+          const box = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
           const rect = entry?.contentRect;
-          const width =
-            typeof box?.inlineSize === "number" ? box.inlineSize : rect?.width;
-          const height =
-            typeof box?.blockSize === "number" ? box.blockSize : rect?.height;
+          const width = typeof box?.inlineSize === "number" ? box.inlineSize : rect?.width;
+          const height = typeof box?.blockSize === "number" ? box.blockSize : rect?.height;
           if (typeof width !== "number" || typeof height !== "number") return;
 
           if (target === this.observedContainer) {
@@ -265,10 +261,8 @@ export default {
       const moved = Math.hypot(dx, dy) > this.panThreshold;
 
       // 检查内容是否在任一方向上溢出容器（需要加 1px 的容错）
-      const overflowX =
-        (this.contentWidth || 0) > (this.containerWidth || 0) + 1;
-      const overflowY =
-        (this.contentHeight || 0) > (this.containerHeight || 0) + 1;
+      const overflowX = (this.contentWidth || 0) > (this.containerWidth || 0) + 1;
+      const overflowY = (this.contentHeight || 0) > (this.containerHeight || 0) + 1;
       const overflow = overflowX || overflowY;
 
       // 当尚未进入拖拽状态、内容确实溢出、且移动距离超过阈值时，才正式进入拖拽模式，并阻止浏览器的默认行为（如页面滚动）

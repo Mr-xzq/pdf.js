@@ -10,13 +10,7 @@
         @click="onSelect(page)"
       >
         <div class="thumb-media">
-          <van-image
-            v-if="thumbSrcs[page]"
-            class="thumb-img"
-            :src="thumbSrcs[page]"
-            fit="contain"
-            width="100%"
-          />
+          <van-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="contain" width="100%" />
           <div v-else class="thumb-ph"></div>
         </div>
         <div class="thumb-label">{{ page }}</div>
@@ -121,8 +115,7 @@ export default {
         } else {
           await this.ensureRenderThumbnails();
         }
-        const target =
-          this.pendingPage != null ? this.pendingPage : this.currentPage;
+        const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
         if (target != null) await this.scrollToPage(target);
         this.pendingPage = null;
       });
@@ -165,9 +158,7 @@ export default {
     },
     // 滚动到指定页的缩略图
     async scrollToPage(page) {
-      const item = this.$el?.querySelector(
-        '.thumb-item[data-page="' + page + '"]'
-      );
+      const item = this.$el?.querySelector('.thumb-item[data-page="' + page + '"]');
       item?.scrollIntoView({ behavior: "smooth" });
     },
     // 滚动到当前页的缩略图

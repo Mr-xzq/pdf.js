@@ -28,9 +28,7 @@
       /></template>
 
       <!-- 自定义 label -->
-      <template v-if="$scopedSlots.label" #label="slotProps"
-        ><slot name="label" v-bind="slotProps"></slot
-      ></template>
+      <template v-if="$scopedSlots.label" #label="slotProps"><slot name="label" v-bind="slotProps"></slot></template>
     </tree-node>
     <!-- empty slot -->
     <div v-if="!data || !data.length"><slot name="empty"></slot></div>
@@ -65,7 +63,7 @@ export default {
   data() {
     // 初始化将 expandedKeys 映射为 {}，方便后面查询对应节点
     const map = {};
-    (this.expandedKeys || []).forEach(key => {
+    (this.expandedKeys || []).forEach((key) => {
       map[key] = true;
     });
     return {
@@ -83,7 +81,7 @@ export default {
       handler(newVal) {
         // 将新的 expandedKeys 数组转换为映射表
         const map = {};
-        (newVal || []).forEach(key => {
+        (newVal || []).forEach((key) => {
           map[key] = true;
         });
         this.expandedMap = map;
@@ -101,10 +99,7 @@ export default {
         // 重建节点和父节点的映射表
         this.maps = this.buildMaps(this.data);
         // 如果设置了 defaultExpandAll 且 expandedKeys 为空，则自动展开所有节点
-        if (
-          this.defaultExpandAll &&
-          (!this.expandedKeys || !this.expandedKeys.length)
-        ) {
+        if (this.defaultExpandAll && (!this.expandedKeys || !this.expandedKeys.length)) {
           const all = this.collectAllExpandable(this.data);
           // 触发 expandedKeys 的更新
           this.$emit("update:expandedKeys", all);
@@ -200,7 +195,7 @@ export default {
     expandAll() {
       const keys = this.collectAllExpandable(this.data);
       const map = {};
-      keys.forEach(k => {
+      keys.forEach((k) => {
         map[k] = true;
       });
       this.expandedMap = map;
@@ -255,17 +250,13 @@ export default {
     waitForNodeReady(key, maxMs = 2000) {
       const root = this.$refs.root;
       const start = Date.now();
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         const check = () => {
-          const el = root?.querySelector(
-            `[data-key="${CSS.escape(String(key))}"]`
-          );
+          const el = root?.querySelector(`[data-key="${CSS.escape(String(key))}"]`);
           // 检查节点是否可见
           const present = !!el?.getClientRects?.().length;
           // 检查是否有高度过渡动画正在进行
-          const running = root?.querySelector(
-            '.tree__children[style*="height"]'
-          );
+          const running = root?.querySelector('.tree__children[style*="height"]');
           // 如果节点存在且没有动画运行，或超时
           if ((present && !running) || Date.now() - start > maxMs) {
             resolve();

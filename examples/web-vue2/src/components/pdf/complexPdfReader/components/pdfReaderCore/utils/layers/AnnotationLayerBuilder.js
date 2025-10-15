@@ -38,8 +38,7 @@ export class AnnotationLayerBuilder {
       if (!page) return;
 
       // 统一按官方实现克隆 viewport（dontFlip: true）
-      const viewport =
-        this.viewport?.clone?.({ dontFlip: true }) || this.viewport;
+      const viewport = this.viewport?.clone?.({ dontFlip: true }) || this.viewport;
 
       // 若已有注释层，优先走 update 流程（避免重建，和 web/annotation_layer_builder.js 一致）
       if (this.annotationLayer && this.div && this._isRendered) {

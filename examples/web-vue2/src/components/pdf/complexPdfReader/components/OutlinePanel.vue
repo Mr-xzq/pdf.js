@@ -10,10 +10,7 @@
       @select="onTreeSelect"
     >
       <template #switcher="{ expanded }">
-        <van-image
-          class="toggle-tool-item"
-          :src="expanded ? collapseIconUrl : expandIconUrl"
-        ></van-image>
+        <van-image class="toggle-tool-item" :src="expanded ? collapseIconUrl : expandIconUrl"></van-image>
       </template>
     </Tree>
   </div>
@@ -142,10 +139,7 @@ export default {
         } else {
           await this.ensurePageMapOnce();
         }
-        const k =
-          this.pendingActiveKey != null
-            ? this.pendingActiveKey
-            : this.activeKey;
+        const k = this.pendingActiveKey != null ? this.pendingActiveKey : this.activeKey;
         if (k != null) {
           await this.activateAndScroll(k);
           this.pendingActiveKey = null;
@@ -197,11 +191,9 @@ export default {
       if (direct) return direct;
       // 找到小于或等于当前页码的最大页码
       const pages = Object.keys(map)
-        .map(n => parseInt(n, 10))
+        .map((n) => parseInt(n, 10))
         .sort((a, b) => a - b);
-      const prev = pages
-        .filter(n => Number.isFinite(n) && n <= pageNumber)
-        .pop();
+      const prev = pages.filter((n) => Number.isFinite(n) && n <= pageNumber).pop();
       // 如果没有前驱页码，则使用第一个页码
       const target = prev != null ? prev : pages[0];
       return target != null ? map[target] || null : null;

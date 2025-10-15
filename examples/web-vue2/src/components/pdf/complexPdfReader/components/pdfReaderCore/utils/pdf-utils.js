@@ -50,14 +50,7 @@ export function cancelAllRenderTasks({ tasks }) {
 }
 
 // 渲染 pdf page 到 Canvas
-export async function renderPageToCanvas({
-  getPage,
-  tasks,
-  pageNumber,
-  canvas,
-  scale = 1,
-  renderOptions = {},
-} = {}) {
+export async function renderPageToCanvas({ getPage, tasks, pageNumber, canvas, scale = 1, renderOptions = {} } = {}) {
   // 取消同页已有渲染任务
   cancelRenderTask({ tasks, pageNumber });
 
@@ -68,20 +61,13 @@ export async function renderPageToCanvas({
   // 使用 devicePixelRatio 提升清晰度(考虑到多倍屏的情况，物理像素和逻辑像素的像素比)
   const devicePixelRatio = window.devicePixelRatio || 1;
   // 渲染一页 PDF 所需的像素数（CSS 尺寸）
-  const viewportPixels = Math.max(
-    1,
-    renderViewport.width * renderViewport.height
-  );
+  const viewportPixels = Math.max(1, renderViewport.width * renderViewport.height);
   // 限制最大 canvas 像素数，防止内存溢出（可配）
-  const MAX_CANVAS_PIXELS =
-    Number(renderOptions.maxCanvasPixels) || 5 * 1024 * 1024;
+  const MAX_CANVAS_PIXELS = Number(renderOptions.maxCanvasPixels) || 5 * 1024 * 1024;
   // 实际渲染时的像素比
   let renderPixelRatio = devicePixelRatio;
   // 如果超出最大像素限制，按照 MAX_CANVAS_PIXELS 来降低渲染像素比
-  if (
-    viewportPixels * (devicePixelRatio * devicePixelRatio) >
-    MAX_CANVAS_PIXELS
-  ) {
+  if (viewportPixels * (devicePixelRatio * devicePixelRatio) > MAX_CANVAS_PIXELS) {
     renderPixelRatio = Math.sqrt(MAX_CANVAS_PIXELS / viewportPixels);
   }
 
@@ -105,10 +91,7 @@ export async function renderPageToCanvas({
     // 根据 DPR 进行缩放
     // CanvasRenderingContext2D transform(a, b, c, d, e, f)
     // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
-    transform:
-      renderPixelRatio !== 1
-        ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0]
-        : null,
+    transform: renderPixelRatio !== 1 ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0] : null,
     ...renderOptions,
   };
 
@@ -120,10 +103,7 @@ export async function renderPageToCanvas({
     await renderTask.promise;
   } catch (error) {
     // 转换取消异常，便于上层统一处理
-    if (
-      error?.name === "RenderingCancelledException" ||
-      /cancel/i.test(String(error.message || ""))
-    ) {
+    if (error?.name === "RenderingCancelledException" || /cancel/i.test(String(error.message || ""))) {
       throw Object.assign(new Error("render-cancelled"), {
         code: "RENDER_CANCELLED",
       });

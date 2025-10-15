@@ -21,10 +21,7 @@ export const ZOOM_EPS = 0.005;
  * @param {(progress:{loaded:number,total:number,percentage:number})=>void} [params.onProgress]
  * @param {Object} [params.getDocumentOptions] 其它传给 getDocument 的参数（url, data, headers、withCredentials 等）
  */
-export async function loadPdfDocument({
-  onProgress,
-  getDocumentOptions = {},
-} = {}) {
+export async function loadPdfDocument({ onProgress, getDocumentOptions = {} } = {}) {
   // 合并默认阅读器配置，保持与应用层一致
   const params = { ...getDocumentOptions };
   const loadingTask = pdfjsLib.getDocument(params);

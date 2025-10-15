@@ -93,10 +93,7 @@ export default {
       // 实际渲染时的像素比
       let renderPixelRatio = devicePixelRatio;
       // 如果超出最大像素限制，按照 MAX_CANVAS_PIXELS 来降低渲染像素比
-      if (
-        viewportPixels * (devicePixelRatio * devicePixelRatio) >
-        MAX_CANVAS_PIXELS
-      ) {
+      if (viewportPixels * (devicePixelRatio * devicePixelRatio) > MAX_CANVAS_PIXELS) {
         renderPixelRatio = Math.sqrt(MAX_CANVAS_PIXELS / viewportPixels);
       }
 
@@ -115,10 +112,7 @@ export default {
         // 根据 DPR 进行缩放
         // CanvasRenderingContext2D transform(a, b, c, d, e, f)
         // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
-        transform:
-          renderPixelRatio !== 1
-            ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0]
-            : null,
+        transform: renderPixelRatio !== 1 ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0] : null,
       });
 
       await renderTask.promise;
@@ -159,8 +153,7 @@ export default {
         this.totalPages = pdf.numPages;
 
         // 使用缓存的占位尺寸，避免重复计算与首次渲染抖动
-        const { phW: placeholderWidth, phH: placeholderHeight } =
-          await this.ensureLayoutCache();
+        const { phW: placeholderWidth, phH: placeholderHeight } = await this.ensureLayoutCache();
 
         for (let i = 0; i < this.totalPages; i++) {
           // 给 page 设置占位尺寸，避免布局跳动
@@ -206,8 +199,7 @@ export default {
       // 在浏览器下一帧渲染之前 emit progress，提高流畅度并减少卡顿
       if (this.progressRafId) cancelAnimationFrame(this.progressRafId);
       this.progressRafId = requestAnimationFrame(() => {
-        const render =
-          this.totalPages > 0 ? this.renderedPages / this.totalPages : 0;
+        const render = this.totalPages > 0 ? this.renderedPages / this.totalPages : 0;
         // 总的进度： pdf.js 内部处理阶段权重 30%（比如下载），渲染阶段权重 70%
         const raw = this.downloadProgress * 0.3 + render * 0.7;
         // Math.round 防止精度丢失，Math.min + Math.max 确保 progress 在 0 - 1 之间

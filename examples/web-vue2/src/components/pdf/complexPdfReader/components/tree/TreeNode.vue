@@ -95,10 +95,7 @@ export default {
       <div class="tree__toggle tree__toggle--placeholder" />
     ) : (
       // 如果不是叶子节点，显示可点击的切换图标
-      <div
-        class={["tree__toggle", { "is-expanded": this.expanded }]}
-        onClick={this.toggle}
-      >
+      <div class={["tree__toggle", { "is-expanded": this.expanded }]} onClick={this.toggle}>
         {this.$scopedSlots.switcher ? (
           this.$scopedSlots.switcher({
             node: this.node,
@@ -122,9 +119,7 @@ export default {
           })
         ) : (
           // 没有 label 插槽就渲染默认的标签文本
-          <div class={["tree__label", this.labelClassName]}>
-            {this.getLabel(this.node)}
-          </div>
+          <div class={["tree__label", this.labelClassName]}>{this.getLabel(this.node)}</div>
         )}
       </div>
     );
@@ -163,7 +158,7 @@ export default {
       // 渲染子节点列表容器
       const expandedChildrenVnode = (
         <div ref="wrap" class="tree__children">
-          {list.map(childItem => {
+          {list.map((childItem) => {
             // 为每个子节点创建一个新的 TreeNode 组件
             const treeNodeVnodeConfig = {
               props: {
@@ -177,7 +172,7 @@ export default {
               on: {
                 // 监听子组件的 toggle/select 事件并向父组件传递
                 toggle: (n, next) => this.$emit("toggle", n, next),
-                select: n => this.$emit("select", n),
+                select: (n) => this.$emit("select", n),
               },
               // 传递作用域插槽，比如 label，switcher 等
               scopedSlots: this.$scopedSlots,
@@ -246,8 +241,7 @@ export default {
     border-right: 2px solid #666;
     border-bottom: 2px solid #666;
     transform: rotate(-45deg);
-    transition: transform var(--tree-duration, 160ms)
-      var(--tree-ease, cubic-bezier(0.2, 0, 0, 1));
+    transition: transform var(--tree-duration, 160ms) var(--tree-ease, cubic-bezier(0.2, 0, 0, 1));
   }
 
   &.is-expanded {
@@ -273,7 +267,6 @@ export default {
 }
 .tree__children {
   overflow: hidden;
-  transition: height var(--tree-duration, 160ms)
-    var(--tree-ease, cubic-bezier(0.2, 0, 0, 1));
+  transition: height var(--tree-duration, 160ms) var(--tree-ease, cubic-bezier(0.2, 0, 0, 1));
 }
 </style>

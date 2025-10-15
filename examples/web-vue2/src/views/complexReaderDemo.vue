@@ -1,20 +1,10 @@
 <template>
   <div class="page">
-    <van-nav-bar
-      title="Complex PDF Reader"
-      left-arrow
-      @click-left="$router.back()"
-    />
+    <van-nav-bar title="Complex PDF Reader" left-arrow @click-left="$router.back()" />
 
-    <van-field
-      v-model="localPdfUrl"
-      label="PDF地址"
-      placeholder="输入PDF文件URL"
-    >
+    <van-field v-model="localPdfUrl" label="PDF地址" placeholder="输入PDF文件URL">
       <template #button>
-        <van-button size="small" type="primary" @click="confirmUrl"
-          >确认
-        </van-button>
+        <van-button size="small" type="primary" @click="confirmUrl">确认 </van-button>
       </template>
     </van-field>
 

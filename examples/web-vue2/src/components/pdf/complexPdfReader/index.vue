@@ -38,21 +38,12 @@
             @click="goToPage(1)"
           />
 
-          <TouchIconButton
-            :src="previousPageIconUrl"
-            img-class="nav-row-item"
-            :min-size="30"
-            @click="prevPage"
-          />
+          <TouchIconButton :src="previousPageIconUrl" img-class="nav-row-item" :min-size="30" @click="prevPage" />
 
           <van-field
             ref="pageInput"
             class="page-input"
-            :value="
-              isEditingPageInput
-                ? String(gotoPageInput || '')
-                : pageFieldDisplay
-            "
+            :value="isEditingPageInput ? String(gotoPageInput || '') : pageFieldDisplay"
             :readonly="!isEditingPageInput"
             type="text"
             input-align="center"
@@ -62,12 +53,7 @@
             @keyup.enter.native="finishEditPage"
           />
 
-          <TouchIconButton
-            :src="nextPageIconUrl"
-            img-class="nav-row-item"
-            :min-size="30"
-            @click="nextPage"
-          />
+          <TouchIconButton :src="nextPageIconUrl" img-class="nav-row-item" :min-size="30" @click="nextPage" />
 
           <TouchIconButton
             :src="lastPageIconUrl"
@@ -97,21 +83,9 @@
       </div>
 
       <div class="bottom-toolbar-tool-list">
-        <TouchIconButton
-          :src="thumbnailIconUrl"
-          img-class="thumbnail-tool-item"
-          @click="handleClickThumbnail"
-        />
-        <TouchIconButton
-          :src="outlineIconUrl"
-          img-class="outline-tool-item"
-          @click="handleClickOutline"
-        />
-        <TouchIconButton
-          :src="pageFlipIconUrl"
-          img-class="page-flip-tool-item"
-          @click="togglePageNav"
-        />
+        <TouchIconButton :src="thumbnailIconUrl" img-class="thumbnail-tool-item" @click="handleClickThumbnail" />
+        <TouchIconButton :src="outlineIconUrl" img-class="outline-tool-item" @click="handleClickOutline" />
+        <TouchIconButton :src="pageFlipIconUrl" img-class="page-flip-tool-item" @click="togglePageNav" />
         <!-- <van-image
           class="page-flip-audio-tool-item"
           :src="pageFlipAudioIconUrl"
@@ -123,12 +97,7 @@
           img-class="zoom-in-tool-item"
           @click="handleZoomIn"
         />
-        <TouchIconButton
-          v-else
-          :src="zoomOutIconUrl"
-          img-class="zoom-out-tool-item"
-          @click="handleResetZoom"
-        />
+        <TouchIconButton v-else :src="zoomOutIconUrl" img-class="zoom-out-tool-item" @click="handleResetZoom" />
         <!-- 自动播放/暂停 -->
         <TouchIconButton
           :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
@@ -138,12 +107,7 @@
       </div>
     </div>
 
-    <drawer
-      :is-show.sync="isShowOutlineDrawer"
-      title="目录"
-      @closed="onOutlineDrawerClosed"
-      @opened="onOutlineOpened"
-    >
+    <drawer :is-show.sync="isShowOutlineDrawer" title="目录" @closed="onOutlineDrawerClosed" @opened="onOutlineOpened">
       <outline-panel
         :key="pdfDocKey"
         ref="outlinePanel"
@@ -302,12 +266,7 @@ export default {
     },
   },
   computed: {
-    ...mapGetters("complexPdfReader", [
-      "navigationState",
-      "zoomState",
-      "isLoading",
-      "loadingMessage",
-    ]),
+    ...mapGetters("complexPdfReader", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -345,8 +304,7 @@ export default {
     async nextPage() {
       const t = this.totalPages || 0;
       const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0)
-        return;
+      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
       await this.runWithLoadPending({
         message: "下一页",
         run: () => this.nextPageAction(),
@@ -420,8 +378,7 @@ export default {
     // 放大：记录放大前倍数 -> 放大到目标倍数
     handleZoomIn() {
       // 记录放大前的倍数（从 Store 获取当前缩放）
-      this.lastScaleBeforeZoom =
-        this.zoomState?.scale || this.lastScaleBeforeZoom || 1;
+      this.lastScaleBeforeZoom = this.zoomState?.scale || this.lastScaleBeforeZoom || 1;
       this.setScale(this.zoomTarget);
     },
 
@@ -561,11 +518,7 @@ export default {
     height: var(--top-toolbar-height);
 
     opacity: 0.7;
-    background-image: linear-gradient(
-      180deg,
-      #ffffff 0%,
-      rgba(255, 255, 255, 0.6) 100%
-    );
+    background-image: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.6) 100%);
 
     box-shadow: 0 0.29rem 0.29rem 0 rgba(0, 0, 0, 0.05);
     border-radius: 0 0 0.57rem 0.57rem;

@@ -2,20 +2,11 @@
   <div class="pdf-viewer-core" ref="viewerContainer">
     <!-- 错误显示 -->
     <template v-if="docError">
-      <slot
-        name="error"
-        :error="docError"
-        :message="docErrorMessage"
-        :retry="retry"
-      ></slot>
+      <slot name="error" :error="docError" :message="docErrorMessage" :retry="retry"></slot>
     </template>
 
     <!-- PDF 内容区域 -->
-    <div
-      v-else-if="documentReady"
-      class="pdf-viewer-core__content"
-      ref="content"
-    >
+    <div v-else-if="documentReady" class="pdf-viewer-core__content" ref="content">
       <gesture-container
         :gestures-enabled="gesturesEnabled"
         :swipe-enabled="!zoomState.isZoomed"
@@ -198,7 +189,7 @@ export default {
 
     // 模拟异步处理 loadDocumentAction 的参数
     transformFileSource(source, timeout = 3000) {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         setTimeout(() => {
           resolve(source);
         }, timeout);
@@ -278,11 +269,7 @@ export default {
         this.fitWidthOnce();
       });
 
-      console.log(
-        `PDF 文档加载完成，共 ${
-          event?.info?.numPages || "unknown"
-        } 页，初始缩放: ${this.initialScale}`
-      );
+      console.log(`PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，初始缩放: ${this.initialScale}`);
     },
 
     // 对外提供方法，获取目录
@@ -300,22 +287,16 @@ export default {
       try {
         const isCanvas =
           canvasEl &&
-          ((typeof HTMLCanvasElement !== "undefined" &&
-            canvasEl instanceof HTMLCanvasElement) ||
-            (canvasEl.tagName &&
-              String(canvasEl.tagName).toLowerCase() === "canvas"));
+          ((typeof HTMLCanvasElement !== "undefined" && canvasEl instanceof HTMLCanvasElement) ||
+            (canvasEl.tagName && String(canvasEl.tagName).toLowerCase() === "canvas"));
         if (!isCanvas) {
-          console.warn(
-            "renderThumbnail: 非法的 canvas 元素，已跳过",
-            pageNumber,
-            canvasEl
-          );
+          console.warn("renderThumbnail: 非法的 canvas 元素，已跳过", pageNumber, canvasEl);
           return;
         }
         const opts = { scale: options.scale || 0.2, ...options };
         const { scale, ...rest } = opts;
         await renderPageToCanvas({
-          getPage: n => this.getPageAction(n),
+          getPage: (n) => this.getPageAction(n),
           tasks: this.thumbnailTasks,
           pageNumber,
           canvas: canvasEl,

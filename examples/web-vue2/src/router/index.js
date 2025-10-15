@@ -8,7 +8,7 @@ const originalReplace = VueRouter.prototype.replace;
 // 重写 push 方法
 VueRouter.prototype.push = function push(location) {
   // 增加错误捕获
-  return originalPush.call(this, location).catch(err => {
+  return originalPush.call(this, location).catch((err) => {
     // 如果是重复导航错误，则忽略
     if (err.name === "NavigationDuplicated") {
       // 返回 Promise.resolve 让链式调用继续
@@ -21,7 +21,7 @@ VueRouter.prototype.push = function push(location) {
 
 // 重写 replace 方法
 VueRouter.prototype.replace = function replace(location) {
-  return originalReplace.call(this, location).catch(err => {
+  return originalReplace.call(this, location).catch((err) => {
     if (err.name === "NavigationDuplicated") {
       return Promise.resolve(err);
     }

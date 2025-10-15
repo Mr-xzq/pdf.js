@@ -1,23 +1,11 @@
 <template>
   <div class="tree-test">
-    <van-nav-bar
-      title="Tree Demo"
-      left-text="返回"
-      left-arrow
-      @click-left="$router.back()"
-    />
+    <van-nav-bar title="Tree Demo" left-text="返回" left-arrow @click-left="$router.back()" />
 
     <div class="ops">
-      <van-button size="small" type="primary" @click="expandAll"
-        >展开全部</van-button
-      >
+      <van-button size="small" type="primary" @click="expandAll">展开全部</van-button>
       <van-button size="small" @click="collapseAll">收起全部</van-button>
-      <van-field
-        v-model="gotoValue"
-        :placeholder="gotoPlaceholder"
-        clearable
-        input-align="left"
-      />
+      <van-field v-model="gotoValue" :placeholder="gotoPlaceholder" clearable input-align="left" />
       <van-button size="small" type="info" @click="activate">定位</van-button>
     </div>
 
@@ -31,29 +19,18 @@
         <input type="number" v-model.number="itemHeight" min="24" step="2" />
       </label>
       <label><input type="checkbox" v-model="transition" />动画</label>
-      <label
-        ><input type="number" v-model.number="transitionDuration" />动画
-        duration</label
-      >
+      <label><input type="number" v-model.number="transitionDuration" />动画 duration</label>
       <label><input type="checkbox" v-model="selectable" />可选中</label>
       <label><input type="checkbox" v-model="accordion" />互斥展开</label>
 
-      <label
-        ><input type="checkbox" v-model="useCustomSwitcher" />自定义开关</label
-      >
-      <label
-        ><input type="checkbox" v-model="useMapped" />使用字段映射 demo</label
-      >
+      <label><input type="checkbox" v-model="useCustomSwitcher" />自定义开关</label>
+      <label><input type="checkbox" v-model="useMapped" />使用字段映射 demo</label>
     </div>
 
     <div class="hint" v-if="activePathLabels && activePathLabels.length">
       <span class="crumb" v-for="(lbl, i) in activePathLabels" :key="i">
         <span class="crumb__text">{{ lbl }}</span>
-        <van-icon
-          v-if="i < activePathLabels.length - 1"
-          name="arrow"
-          class="crumb__sep"
-        />
+        <van-icon v-if="i < activePathLabels.length - 1" name="arrow" class="crumb__sep" />
       </span>
     </div>
 
@@ -72,10 +49,7 @@
         :selectable="selectable"
       >
         <template v-if="useCustomSwitcher" #switcher="{ expanded }">
-          <van-icon
-            :name="expanded ? 'arrow-down' : 'arrow'"
-            class="switcher-icon"
-          />
+          <van-icon :name="expanded ? 'arrow-down' : 'arrow'" class="switcher-icon" />
         </template>
         >
       </Tree>
@@ -214,9 +188,7 @@ export default {
       const t = this.$refs.tree;
       if (!k || !t || !t.getAncestorKeys) return [];
       const keys = [...(t.getAncestorKeys(k) || []), k];
-      return keys.map(x =>
-        t.getLabelByKey ? t.getLabelByKey(x) || String(x) : String(x)
-      );
+      return keys.map((x) => (t.getLabelByKey ? t.getLabelByKey(x) || String(x) : String(x)));
     },
   },
 
