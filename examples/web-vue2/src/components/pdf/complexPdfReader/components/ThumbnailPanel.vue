@@ -189,7 +189,6 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: pointer;
     border-radius: 8px;
     min-width: 0;
     transition: all 200ms ease;
