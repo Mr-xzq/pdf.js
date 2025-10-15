@@ -98,7 +98,6 @@ export default {
     ...mapState("complexPdfReader", {
       docLoading: "docLoading",
 
-
       docError: "error",
       storePdfDocument: "pdfDocument",
     }),
@@ -210,12 +209,12 @@ export default {
       try {
         const fileSource = await this.runWithLoadPending({
           run: () => this.transformFileSource(this.src),
-          label: "准备文件...",
+          message: "转换路径",
         });
 
         await this.runWithLoadPending({
           run: () => this.loadDocumentAction({ url: fileSource }),
-          label: "加载文档...",
+          message: "加载文档",
         });
 
         this.onDocumentLoaded(this.loadedEvent);

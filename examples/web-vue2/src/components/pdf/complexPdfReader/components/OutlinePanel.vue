@@ -65,7 +65,7 @@ export default {
   },
   async mounted() {
     await this.runWithLoadPending({
-      label: "加载目录...",
+      message: "渲染目录",
       run: async () => {
         const data = await this.getOutline();
         this.outline = Array.isArray(data) ? data : [];
@@ -75,7 +75,7 @@ export default {
         if (initKey) {
           this.activeKey = initKey;
         }
-      }
+      },
     });
   },
   watch: {
@@ -111,7 +111,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions("complexPdfReader", { runWithLoadPending: "runWithLoadPending" }),
+    ...mapActions("complexPdfReader", ["runWithLoadPending"]),
     // 树节点选中事件处理
     async onTreeSelect(node) {
       console.log(
@@ -136,13 +136,16 @@ export default {
         const needLoad = !this.pageMapReady;
         if (needLoad) {
           await this.runWithLoadPending({
-            label: "准备目录...",
-            run: () => this.ensurePageMapOnce()
+            message: "渲染目录",
+            run: () => this.ensurePageMapOnce(),
           });
         } else {
           await this.ensurePageMapOnce();
         }
-        const k = this.pendingActiveKey != null ? this.pendingActiveKey : this.activeKey;
+        const k =
+          this.pendingActiveKey != null
+            ? this.pendingActiveKey
+            : this.activeKey;
         if (k != null) {
           await this.activateAndScroll(k);
           this.pendingActiveKey = null;

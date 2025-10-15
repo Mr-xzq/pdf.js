@@ -22,8 +22,7 @@ const state = {
   baselineScale: null,
 
   // --- loading queue ---
-  pendingCount: 0,
-  pendingLabels: [],
+  pendingQueue: [],
 };
 
 const mutations = {
@@ -73,20 +72,17 @@ const mutations = {
   },
 
   // --- loading queue ---
-  PENDING_ADD(state, { label } = {}) {
-    state.pendingCount += 1;
-    if (label) {
-      state.pendingLabels.push(label);
-    }
+  PENDING_ADD(state, { id, message }) {
+    const msg = message || "加载中";
+    state.pendingQueue.push({ id, message: msg });
   },
-  PENDING_REMOVE(state, { label } = {}) {
-    if (label) {
-      const idx = state.pendingLabels.lastIndexOf(label);
-      if (idx !== -1) {
-        state.pendingLabels.splice(idx, 1);
-      }
+  PENDING_REMOVE(state, { id }) {
+    const idx = state.pendingQueue.findIndex(
+      queueItem => queueItem && queueItem.id === id
+    );
+    if (idx !== -1) {
+      state.pendingQueue.splice(idx, 1);
     }
-    state.pendingCount = Math.max(0, state.pendingCount - 1);
   },
 };
 
@@ -153,13 +149,14 @@ const actions = {
   },
 
   // --- loading queue ---
-  async runWithLoadPending({ commit }, { run, label } = {}) {
-    commit("PENDING_ADD", { label });
+  async runWithLoadPending({ commit }, { run, message } = {}) {
+    const id = `${Date.now()}-${Math.random()}`;
+    commit("PENDING_ADD", { id, message });
     try {
       const runner = typeof run === "function" ? run : () => run;
       return await runner();
     } finally {
-      commit("PENDING_REMOVE", { label });
+      commit("PENDING_REMOVE", { id });
     }
   },
 
@@ -234,15 +231,14 @@ const getters = {
       metadata: state.metadata || null,
     },
   }),
-  isLoading: state => state.pendingCount > 0 || state.docLoading,
+  isLoading: state => !!state.pendingQueue?.length || state.docLoading,
   loadingMessage: state => {
-    const hasPending = state.pendingCount > 0;
-    const latest = state.pendingLabels.length
-      ? state.pendingLabels[state.pendingLabels.length - 1]
-      : "";
-    if (hasPending && latest) return latest; // 优先：pending 的 label
-
-    return hasPending ? "处理中..." : "加载中"; // 兜底
+    const hasPending = !!state.pendingQueue?.length;
+    if (hasPending) {
+      const last = state.pendingQueue[state.pendingQueue.length - 1];
+      return last?.message || "加载中";
+    }
+    return "加载中";
   },
   navigationState: (state, getters) => {
     const totalPages = getters.totalPages;

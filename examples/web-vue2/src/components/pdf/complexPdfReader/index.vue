@@ -302,7 +302,12 @@ export default {
     },
   },
   computed: {
-    ...mapGetters("complexPdfReader", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
+    ...mapGetters("complexPdfReader", [
+      "navigationState",
+      "zoomState",
+      "isLoading",
+      "loadingMessage",
+    ]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -333,16 +338,17 @@ export default {
       if (!Number.isFinite(n) || n < 1 || n > t) return;
       if (n === this.currentPage) return;
       await this.runWithLoadPending({
-        label: "跳转页面...",
+        message: "跳转页面",
         run: () => this.goToPageAction(n),
       });
     },
     async nextPage() {
       const t = this.totalPages || 0;
       const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
+      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0)
+        return;
       await this.runWithLoadPending({
-        label: "下一页...",
+        message: "下一页",
         run: () => this.nextPageAction(),
       });
     },
@@ -350,7 +356,7 @@ export default {
       const cur = this.currentPage || 0;
       if (!Number.isFinite(cur) || cur <= 1) return;
       await this.runWithLoadPending({
-        label: "上一页...",
+        message: "上一页",
         run: () => this.prevPageAction(),
       });
     },
@@ -498,7 +504,10 @@ export default {
       this.$emit("page-changed", e);
     },
     onLoadingStart(e) {
-      const payload = { source: e?.source || "core", message: this.loadingMessage };
+      const payload = {
+        source: e?.source || "core",
+        message: this.loadingMessage,
+      };
       this.$emit("loading-start", payload);
     },
     onLoadingStop(e) {
