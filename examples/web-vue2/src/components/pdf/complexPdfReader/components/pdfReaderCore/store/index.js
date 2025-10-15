@@ -1,7 +1,8 @@
+import { cloneDeep } from "lodash";
 import { loadPdfDocument, DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE, round2, ZOOM_EPS } from "../utils/pdf-config.js";
 import { resolveDestToPage } from "../utils/pdf-utils.js";
 
-const state = {
+const initState = {
   // --- document ---
   pdfDocument: null,
   documentInfo: { numPages: 0, fingerprint: null },
@@ -17,6 +18,8 @@ const state = {
   // --- loading queue ---
   pendingQueue: [],
 };
+
+const state = cloneDeep(initState);
 
 const mutations = {
   // --- document ---
@@ -39,13 +42,6 @@ const mutations = {
   CLEAR_ERROR(state) {
     state.error = null;
   },
-  RESET_DOCUMENT(state) {
-    state.pdfDocument = null;
-    state.documentInfo = { numPages: 0, fingerprint: null };
-    state.metadata = null;
-    state.docLoading = false;
-    state.error = null;
-  },
 
   // --- viewer ---
   SET_CURRENT_PAGE(state, pageNumber) {
@@ -57,11 +53,6 @@ const mutations = {
   SET_BASELINE_SCALE(state, scale) {
     if (typeof scale === "number" && scale > 0) state.baselineScale = scale;
   },
-  RESET_VIEWER(state) {
-    state.currentPage = 1;
-    state.scale = 1.0;
-    state.baselineScale = null;
-  },
 
   // --- loading queue ---
   PENDING_ADD(state, { id, message }) {
@@ -72,6 +63,13 @@ const mutations = {
     const idx = state.pendingQueue.findIndex((queueItem) => queueItem && queueItem.id === id);
     if (idx !== -1) {
       state.pendingQueue.splice(idx, 1);
+    }
+  },
+
+  // 还原 store 中的所有状态
+  RESET_ALL_STATE(state) {
+    for (const [key, initValue] of Object.entries(cloneDeep(initState))) {
+      state[key] = initValue;
     }
   },
 };
@@ -96,7 +94,7 @@ const actions = {
   async loadDocument({ commit, dispatch }, getDocumentOptions = {}) {
     try {
       // 清空上一次文档与查看器状态
-      dispatch("resetAllState");
+      commit("RESET_ALL_STATE");
       commit("SET_DOC_LOADING", true);
       commit("CLEAR_ERROR");
 
@@ -116,7 +114,7 @@ const actions = {
       }
       return { pdfDocument };
     } catch (error) {
-      dispatch("resetAllState");
+      commit("RESET_ALL_STATE");
       commit("SET_ERROR", { error: error.message, type: "load" });
       commit("SET_DOC_LOADING", false);
       throw error;
@@ -187,12 +185,6 @@ const actions = {
     } catch (error) {
       return null;
     }
-  },
-
-  // --- all ---
-  resetAllState({ commit }) {
-    commit("RESET_DOCUMENT");
-    commit("RESET_VIEWER");
   },
 };
 

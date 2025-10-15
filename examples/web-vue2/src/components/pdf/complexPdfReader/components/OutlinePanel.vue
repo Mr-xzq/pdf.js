@@ -224,17 +224,18 @@ export default {
 <style lang="less" scoped>
 .outline-panel {
   height: 100%;
-}
-.toggle-tool-item {
-  width: 1.36rem;
-  height: 1.36rem;
-}
 
-/deep/ .custom-label-content {
-  font-size: 1rem;
-  color: #000000;
-  letter-spacing: 0;
-  line-height: 2rem;
-  font-weight: 400;
+  .toggle-tool-item {
+    width: 1.36rem;
+    height: 1.36rem;
+  }
+
+  /deep/ .custom-label-content {
+    font-size: 1rem;
+    color: #000000;
+    letter-spacing: 0;
+    line-height: 2rem;
+    font-weight: 400;
+  }
 }
 </style>

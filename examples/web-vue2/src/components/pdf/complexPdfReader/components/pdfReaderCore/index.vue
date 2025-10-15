@@ -6,13 +6,13 @@
     </template>
 
     <!-- PDF 内容区域 -->
-    <div v-else-if="documentReady" class="pdf-viewer-core__content" ref="content">
+    <div v-else-if="documentLoaded" class="pdf-viewer-core__content" ref="content">
       <gesture-container
         :gestures-enabled="gesturesEnabled"
         :swipe-enabled="!zoomState.isZoomed"
         content-selector=".pdf-page-container"
-        @prev-page="prevPageAction"
-        @next-page="nextPageAction"
+        @prev-page="onSwipePrev"
+        @next-page="onSwipeNext"
       >
         <pdf-page
           :page-number="page"
@@ -41,7 +41,7 @@ import { renderPageToCanvas } from "./utils/pdf-utils.js";
 import { ZOOM_EPS } from "./utils/pdf-config.js";
 
 // 引入第三方库
-import { mapState, mapGetters, mapActions } from "vuex";
+import { mapState, mapMutations, mapGetters, mapActions } from "vuex";
 
 export default {
   name: "PdfViewport",
@@ -87,15 +87,10 @@ export default {
 
   computed: {
     ...mapState("complexPdfReader", {
-      docLoading: "docLoading",
-
       docError: "error",
-      storePdfDocument: "pdfDocument",
     }),
     ...mapGetters("complexPdfReader", {
-      storeMetadata: "metadata",
       loadedEvent: "loadedEvent",
-      documentReady: "isDocumentLoaded",
       documentLoaded: "isDocumentLoaded",
       isLoading: "isLoading",
       docMessage: "loadingMessage",
@@ -165,17 +160,17 @@ export default {
   beforeDestroy() {
     this.stopAutoPlay(true);
     // 清除 Store 中关于 pdf 的所有状态
-    this.resetAllStateAction();
+    this.RESET_ALL_STATE();
   },
 
   methods: {
+    ...mapMutations("complexPdfReader", ["RESET_ALL_STATE"]),
     ...mapActions("complexPdfReader", {
       // document
       loadDocumentAction: "loadDocument",
       setDocError: "setDocError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
-      resetAllStateAction: "resetAllState",
       runWithLoadPending: "runWithLoadPending",
       // viewer
       goToPageAction: "goToPage",
@@ -325,19 +320,42 @@ export default {
       }
     },
 
-    startAutoPlay() {
+    // 手势翻页
+    async onSwipePrev() {
+      await this.runWithLoadPending({
+        message: "上一页",
+        run: () => this.prevPageAction(),
+      });
+    },
+    async onSwipeNext() {
+      await this.runWithLoadPending({
+        message: "下一页",
+        run: () => this.nextPageAction(),
+      });
+    },
+
+
+    async startAutoPlay() {
       if (this.autoPlaying || !this.documentLoaded) return;
       this.autoPlaying = true;
       const nav = this.navigationState || {};
-      if (nav.currentPage < (nav.totalPages || 0)) this.nextPageAction();
-      this.autoPlayTimer = setInterval(() => {
+      if (nav.currentPage < (nav.totalPages || 0)) {
+        await this.runWithLoadPending({
+          message: "下一页",
+          run: () => this.nextPageAction(),
+        });
+      }
+      this.autoPlayTimer = setInterval(async () => {
         const s = this.navigationState || {};
         const canGoNext = (s.currentPage || 0) < (s.totalPages || 0);
         if (!canGoNext) {
           this.stopAutoPlay(false);
           return;
         }
-        this.nextPageAction();
+        await this.runWithLoadPending({
+          message: "下一页",
+          run: () => this.nextPageAction(),
+        });
       }, this.autoPlayIntervalMs);
     },
 
