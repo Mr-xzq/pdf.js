@@ -91,19 +91,36 @@
           :src="pageFlipAudioIconUrl"
         ></van-image> -->
         <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
-        <TouchIconButton
-          v-if="!lastScaleBeforeZoom"
-          :src="zoomInIconUrl"
-          img-class="zoom-in-tool-item"
-          @click="handleZoomIn"
-        />
-        <TouchIconButton v-else :src="zoomOutIconUrl" img-class="zoom-out-tool-item" @click="handleResetZoom" />
+        <template>
+          <TouchIconButton
+            v-show="!lastScaleBeforeZoom"
+            :src="zoomInIconUrl"
+            img-class="zoom-in-tool-item"
+            @click="handleZoomIn"
+          />
+          <TouchIconButton
+            v-show="lastScaleBeforeZoom"
+            :src="zoomOutIconUrl"
+            img-class="zoom-out-tool-item"
+            @click="handleResetZoom"
+          />
+        </template>
+
         <!-- 自动播放/暂停 -->
-        <TouchIconButton
-          :src="autoPlay ? pauseIconUrl : autoPlayIconUrl"
-          img-class="auto-play-tool-item"
-          @click="handleToggleAutoPlay"
-        />
+        <template>
+          <TouchIconButton
+            v-show="!autoPlay"
+            :src="autoPlayIconUrl"
+            img-class="auto-play-tool-item"
+            @click="handleToggleAutoPlay"
+          />
+          <TouchIconButton
+            v-show="autoPlay"
+            :src="pauseIconUrl"
+            img-class="auto-play-tool-item"
+            @click="handleToggleAutoPlay"
+          />
+        </template>
       </div>
     </div>
 
@@ -496,7 +513,7 @@ export default {
   box-sizing: border-box;
 
   height: 100%;
-  padding-top: var(--top-toolbar-height);
+  // padding-top: var(--top-toolbar-height);
   padding-bottom: var(--bottom-toolbar-height);
 
   background-image: url("@/assets/images/complexPdfReader/full-background-2x.jpg");

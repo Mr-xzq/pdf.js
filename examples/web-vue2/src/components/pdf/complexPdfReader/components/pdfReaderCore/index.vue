@@ -194,7 +194,7 @@ export default {
     async handleLoadDocument() {
       try {
         const fileSource = await this.runWithLoadPending({
-          run: () => this.transformFileSource(this.src),
+          run: () => this.transformFileSource(this.src, 1000),
           message: "转换路径",
         });
 

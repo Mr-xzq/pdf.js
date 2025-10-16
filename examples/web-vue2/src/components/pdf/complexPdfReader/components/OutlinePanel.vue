@@ -10,7 +10,8 @@
       @select="onTreeSelect"
     >
       <template #switcher="{ expanded }">
-        <van-image class="toggle-tool-item" :src="expanded ? collapseIconUrl : expandIconUrl"></van-image>
+        <van-image v-show="!expanded" class="toggle-tool-item" :src="expandIconUrl"></van-image>
+        <van-image v-show="expanded" class="toggle-tool-item" :src="collapseIconUrl"></van-image>
       </template>
     </Tree>
   </div>
