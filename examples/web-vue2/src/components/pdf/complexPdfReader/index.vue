@@ -72,7 +72,6 @@
           :min="1"
           :max="Math.max(totalPages, 1)"
           :step="1"
-          :lazy-change="true"
           @drag-start="onSliderDragStart"
           @change="onSliderChange"
         >
