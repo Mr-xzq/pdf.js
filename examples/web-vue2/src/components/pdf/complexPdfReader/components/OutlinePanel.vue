@@ -19,12 +19,12 @@
 
 <script>
 import Tree from "./tree/index.vue";
+import { mapActions } from "vuex";
+import { isValidPageNumber } from "./pdfReaderCore/utils/pdf-utils.js";
 
 // 图标
 import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
-
-import { mapActions } from "vuex";
 
 export default {
   name: "OutlinePanel",
@@ -91,10 +91,12 @@ export default {
       }
     },
     // 监听 currentPage 变化，自动匹配对应的目录节点
-    async currentPage(newVal) {
-      if (!Number.isFinite(newVal)) return;
+    async currentPage(newPageNumber) {
+      if (!isValidPageNumber(newPageNumber)) {
+        return;
+      }
       await this.ensurePageMapOnce();
-      const key = this.pickKeyForPageSafe(newVal);
+      const key = this.pickKeyForPageSafe(newPageNumber);
       if (!key) return;
       if (!this.visible) {
         // popup 不可见时，只记录，等打开时再统一滚动
@@ -160,16 +162,18 @@ export default {
       const walk = async (nodes, depth = 0) => {
         for (const node of nodes || []) {
           // 解析当前节点的页码
-          let page = null;
+          let pageNumber = null;
 
-          if (node?.dest) page = await resolver(node.dest);
+          if (node?.dest) {
+            pageNumber = await resolver(node.dest);
+          }
 
-          if (Number.isInteger(page) && page > 0) {
-            const prevDepth = depthMap[page] ?? -1;
+          if (isValidPageNumber(pageNumber)) {
+            const prevDepth = depthMap[pageNumber] ?? -1;
             // 优先选择更深层次的节点作为最佳匹配
             if (depth > prevDepth) {
-              map[page] = node.key;
-              depthMap[page] = depth;
+              map[pageNumber] = node.key;
+              depthMap[pageNumber] = depth;
             }
           }
           // 递归处理子节点
@@ -194,7 +198,7 @@ export default {
       const pages = Object.keys(map)
         .map((n) => parseInt(n, 10))
         .sort((a, b) => a - b);
-      const prev = pages.filter((n) => Number.isFinite(n) && n <= pageNumber).pop();
+      const prev = pages.filter((n) => isValidPageNumber(n) && n <= pageNumber).pop();
       // 如果没有前驱页码，则使用第一个页码
       const target = prev != null ? prev : pages[0];
       return target != null ? map[target] || null : null;

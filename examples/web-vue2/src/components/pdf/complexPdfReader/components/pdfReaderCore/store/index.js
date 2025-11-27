@@ -1,13 +1,20 @@
 import { cloneDeep } from "lodash";
-import { loadPdfDocument, DEFAULT_SCALE_DELTA, MIN_SCALE, MAX_SCALE, round2, ZOOM_EPS } from "../utils/pdf-config.js";
-import { resolveDestToPage } from "../utils/pdf-utils.js";
+import {
+  loadPdfDocument,
+  DEFAULT_SCALE_DELTA,
+  MIN_SCALE,
+  MAX_SCALE,
+  round2,
+  ZOOM_EPS,
+  ERROR_TYPES,
+} from "../utils/pdf-config.js";
+import { resolveDestToPage, isValidPageNumber } from "../utils/pdf-utils.js";
 
 const initState = {
   // --- document ---
   pdfDocument: null,
   documentInfo: { numPages: 0, fingerprint: null },
   metadata: null,
-  docLoading: false,
   error: null,
 
   // --- viewer ---
@@ -33,11 +40,8 @@ const mutations = {
   SET_METADATA(state, metadata) {
     state.metadata = metadata;
   },
-  SET_DOC_LOADING(state, loading) {
-    state.docLoading = loading;
-  },
-  SET_ERROR(state, { error }) {
-    state.error = error;
+  SET_ERROR(state, { type, message } = {}) {
+    state.error = { type, message };
   },
   CLEAR_ERROR(state) {
     state.error = null;
@@ -45,13 +49,19 @@ const mutations = {
 
   // --- viewer ---
   SET_CURRENT_PAGE(state, pageNumber) {
-    if (pageNumber >= 1) state.currentPage = pageNumber;
+    if (isValidPageNumber(pageNumber)) {
+      state.currentPage = pageNumber;
+    }
   },
   SET_SCALE(state, scale) {
-    if (scale >= MIN_SCALE && scale <= MAX_SCALE) state.scale = scale;
+    if (scale >= MIN_SCALE && scale <= MAX_SCALE) {
+      state.scale = scale;
+    }
   },
   SET_BASELINE_SCALE(state, scale) {
-    if (typeof scale === "number" && scale > 0) state.baselineScale = scale;
+    if (typeof scale === "number" && scale > 0) {
+      state.baselineScale = scale;
+    }
   },
 
   // --- loading queue ---
@@ -66,9 +76,12 @@ const mutations = {
     }
   },
 
-  // 还原 store 中的所有状态
-  RESET_ALL_STATE(state) {
+  // payload.excludeFields: 指定不需要重置的字段，例如 { excludeFields: ["pendingQueue"] }
+  // 默认是还原全部的 initState
+  RESET_STATE(state, payload = {}) {
+    const { excludeFields = [] } = payload || {};
     for (const [key, initValue] of Object.entries(cloneDeep(initState))) {
+      if (excludeFields.includes(key)) continue;
       state[key] = initValue;
     }
   },
@@ -78,25 +91,31 @@ const actions = {
   // --- document ---
   async getPage({ state }, pageNumber) {
     const doc = state.pdfDocument;
-    if (!doc) throw new Error("文档未加载");
-    if (pageNumber < 1 || pageNumber > (doc.numPages || 0)) throw new Error(`页码超出范围: ${pageNumber}`);
+    if (!doc) {
+      throw new Error("文档未加载");
+    }
+    if (!isValidPageNumber(pageNumber)) {
+      throw new Error(`页码超出范围: ${pageNumber}`);
+    }
     return await doc.getPage(pageNumber);
   },
   async getOutline({ state }) {
     const doc = state.pdfDocument;
-    if (!doc) throw new Error("文档未加载");
+    if (!doc) {
+      throw new Error("文档未加载");
+    }
     try {
       return await doc.getOutline();
     } catch (error) {
       return null;
     }
   },
-  async loadDocument({ commit, dispatch }, getDocumentOptions = {}) {
+  // 文档加载核心逻辑：只负责状态与数据，不直接管理 loading 队列
+  async _handleLoadDocument({ commit, dispatch }, getDocumentOptions = {}) {
     try {
-      // 清空上一次文档与查看器状态
-      commit("RESET_ALL_STATE");
-      commit("SET_DOC_LOADING", true);
-      commit("CLEAR_ERROR");
+      // 清空上一次文档与查看器状态，在这里如果 pendingQueue 还原了会导致 loadDocument 的 runWithLoadPending 提前被清空
+      // 这样就提前终止 loading 了
+      commit("RESET_STATE", { excludeFields: ["pendingQueue"] });
 
       const { pdfDocument } = await loadPdfDocument({
         getDocumentOptions,
@@ -104,9 +123,9 @@ const actions = {
 
       const metadata = await pdfDocument.getMetadata();
       commit("SET_DOCUMENT", pdfDocument);
-      if (metadata) commit("SET_METADATA", metadata);
-
-      commit("SET_DOC_LOADING", false);
+      if (metadata) {
+        commit("SET_METADATA", metadata);
+      }
       commit("CLEAR_ERROR");
 
       if (pdfDocument?.numPages > 0) {
@@ -114,22 +133,29 @@ const actions = {
       }
       return { pdfDocument };
     } catch (error) {
-      commit("RESET_ALL_STATE");
-      commit("SET_ERROR", { error: error.message, type: "load" });
-      commit("SET_DOC_LOADING", false);
+      // 加载失败时还原文档相关状态，并由统一错误出口上报，保留 pendingQueue
+      commit("RESET_STATE", { excludeFields: ["pendingQueue"] });
+      commit("SET_ERROR", {
+        type: ERROR_TYPES.LOAD_ERROR,
+        message: error?.message || String(error),
+      });
       throw error;
     }
   },
 
-  setDocError({ commit }, { error, type = "load" }) {
-    commit("SET_ERROR", { error, type });
-    commit("SET_DOC_LOADING", false);
+  // 对外暴露的文档加载入口，并且通过 loading 队列管理加载态
+  async loadDocument({ dispatch }, getDocumentOptions = {}) {
+    return dispatch("runWithLoadPending", {
+      message: "加载文档",
+      run: () => dispatch("_handleLoadDocument", getDocumentOptions),
+    });
   },
 
   // --- viewer ---
-  goToPage({ commit, getters }, pageNumber) {
-    const totalPages = getters.totalPages;
-    if (pageNumber < 1 || pageNumber > totalPages) throw new Error(`页码超出范围: ${pageNumber}`);
+  goToPage({ commit }, pageNumber) {
+    if (!isValidPageNumber(pageNumber)) {
+      throw new Error(`页码超出范围: ${pageNumber}`);
+    }
     commit("SET_CURRENT_PAGE", pageNumber);
     return pageNumber;
   },
@@ -148,11 +174,15 @@ const actions = {
 
   nextPage({ state, dispatch, getters }) {
     const totalPages = getters.totalPages;
-    if (state.currentPage < totalPages) return dispatch("goToPage", state.currentPage + 1);
+    if (state.currentPage < totalPages) {
+      return dispatch("goToPage", state.currentPage + 1);
+    }
     return state.currentPage;
   },
   prevPage({ state, dispatch }) {
-    if (state.currentPage > 1) return dispatch("goToPage", state.currentPage - 1);
+    if (state.currentPage > 1) {
+      return dispatch("goToPage", state.currentPage - 1);
+    }
     return state.currentPage;
   },
   setScale({ commit }, scale) {
@@ -160,7 +190,9 @@ const actions = {
     return scale;
   },
   setBaselineScale({ commit }, scale) {
-    if (typeof scale === "number" && scale > 0) commit("SET_BASELINE_SCALE", scale);
+    if (typeof scale === "number" && scale > 0) {
+      commit("SET_BASELINE_SCALE", scale);
+    }
     return scale;
   },
   zoomIn({ state, dispatch }) {
@@ -173,9 +205,13 @@ const actions = {
   },
   async goToDestination({ dispatch, state }, dest) {
     const doc = state.pdfDocument;
-    if (!doc) throw new Error("PDF 文档未加载");
+    if (!doc) {
+      throw new Error("PDF 文档未加载");
+    }
     const pageNumber = await resolveDestToPage({ pdfDocument: doc, dest });
-    if (!pageNumber) throw new Error("无法解析目的地页码");
+    if (!pageNumber) {
+      throw new Error("无法解析目的地页码");
+    }
     return await dispatch("goToPage", pageNumber);
   },
   async resolveDestinationToPage({ state }, dest) {
@@ -204,7 +240,8 @@ const getters = {
       metadata: state.metadata || null,
     },
   }),
-  isLoading: (state) => !!state.pendingQueue?.length || state.docLoading,
+  // 统一的加载状态：仅基于 loading 队列是否为空
+  isLoading: (state) => !!state.pendingQueue?.length,
   loadingMessage: (state) => {
     const hasPending = !!state.pendingQueue?.length;
     if (hasPending) {

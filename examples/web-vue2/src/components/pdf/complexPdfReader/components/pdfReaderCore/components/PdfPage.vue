@@ -15,11 +15,11 @@
 
 <script>
 import { cancelAllRenderTasks, renderPageToCanvas } from "../utils/pdf-utils.js";
-
+import { ERROR_TYPES } from "../utils/pdf-config.js";
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
 
 // 引入第三方库
-import { mapState, mapActions } from "vuex";
+import { mapState, mapActions, mapMutations } from "vuex";
 
 export default {
   name: "PdfPage",
@@ -77,8 +77,8 @@ export default {
     scale: "onScaleChange",
   },
   methods: {
-    ...mapActions("complexPdfReader", ["getPage"]),
-    ...mapActions("complexPdfReader", ["goToDestination"]),
+    ...mapMutations("complexPdfReader", ["SET_ERROR"]),
+    ...mapActions("complexPdfReader", ["getPage", "goToDestination"]),
     // 渲染页面
     async renderPage() {
       const doc = this.pdfDocument;
@@ -127,12 +127,6 @@ export default {
           transition: "opacity .15s ease",
         };
 
-        this.$emit("page-rendered", {
-          pageNumber: this.pageNumber,
-          scale: this.scale,
-          viewport: this.viewport,
-        });
-
         console.log(`页面 ${this.pageNumber} 渲染完成`);
       } catch (error) {
         // 忽略因取消导致的异常
@@ -144,10 +138,9 @@ export default {
         // 渲染完成与异常都同步容器尺寸，避免缩小时容器高于画布
         this.$nextTick(() => this.syncContainerSize());
 
-        console.error(`页面 ${this.pageNumber} 渲染失败:`, error);
-        this.$emit("render-error", {
-          pageNumber: this.pageNumber,
-          error: error.message,
+        this.SET_ERROR({
+          type: ERROR_TYPES.RENDER_ERROR,
+          message: error?.message || String(error),
         });
       }
     },
@@ -160,7 +153,7 @@ export default {
     // 初始化 Layer builders
     initializeLayers() {
       // Annotation Layer
-      if (this.annotationsEnabled && !this.layers.annotation && this.$refs.annotationLayer) {
+      if (this.annotationsEnabled && !this.layers.annotation) {
         this.layers.annotation = new AnnotationLayerBuilder({
           container: this.$refs.annotationLayer,
           getPage: this.getPage,

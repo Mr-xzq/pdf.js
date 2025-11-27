@@ -10,6 +10,12 @@ export function round2(value) {
   return Math.round(value * 100) / 100;
 }
 
+export const ERROR_TYPES = {
+  LOAD_ERROR: "LOAD_ERROR",
+  FLIP_AUDIO_LOAD_ERROR: "FLIP_AUDIO_LOAD_ERROR",
+  RENDER_ERROR: "RENDER_ERROR",
+};
+
 /**
  * ZOOM_EPS：用于判断“是否超出基础缩放”的容差阈值（epsilon）
  * 用于过滤浮点/布局抖动

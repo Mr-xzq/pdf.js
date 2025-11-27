@@ -1,3 +1,5 @@
+import store from "@/store/index.js";
+
 /**
  * 解析 PDF 目的地为 1-based 页码
  * @param {Object} params
@@ -15,13 +17,19 @@ export async function resolveDestToPage({ pdfDocument, dest } = {}) {
     if (!Array.isArray(explicitDest)) return null;
 
     const destRef = explicitDest[0];
-    if (destRef && typeof destRef === "object") {
-      // 通过引用解析页码
+    console.log("explicitDest: ", explicitDest);
+    console.log(await pdfDocument.getPageIndex(destRef));
+    // 通过引用解析页码
+    if (destRef !== null && typeof destRef === "object") {
       return (await pdfDocument.getPageIndex(destRef)) + 1;
     }
-    if (Number.isInteger(destRef)) {
-      return destRef + 1; // convert 0-based to 1-based
+
+    // 我们的页码是从 1 开始，因此要从 0-based 转换为 1-based
+    const pageNumber = destRef + 1;
+    if (isValidPageNumber(pageNumber)) {
+      return pageNumber;
     }
+
     return null;
   } catch (e) {
     console.warn("resolveDestToPage 失败:", e);
@@ -117,4 +125,23 @@ export async function renderPageToCanvas({ getPage, tasks, pageNumber, canvas, s
   }
 
   return { canvas, viewport: renderViewport };
+}
+
+// 判断页码是否合法：1-totalPages
+export function isValidPageNumber(pageNumber) {
+  const totalPages = store.getters["complexPdfReader/totalPages"] || 0;
+  const totalPagesRes = Number(totalPages);
+  const pageNumberRes = Number(pageNumber);
+
+  // pageNumber >= 1
+  if (!Number.isFinite(pageNumberRes) || pageNumberRes <= 0) {
+    return false;
+  }
+
+  // totalPages >= 1
+  if (!Number.isFinite(totalPagesRes) || totalPagesRes <= 0) {
+    return false;
+  }
+
+  return pageNumberRes <= totalPagesRes;
 }

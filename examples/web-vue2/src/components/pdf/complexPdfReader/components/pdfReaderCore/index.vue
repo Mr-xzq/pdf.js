@@ -1,12 +1,6 @@
 <template>
   <div class="pdf-viewer-core" ref="viewerContainer">
-    <!-- 错误显示 -->
-    <template v-if="docError">
-      <slot name="error" :error="docError" :message="docErrorMessage" :retry="retry"></slot>
-    </template>
-
-    <!-- PDF 内容区域 -->
-    <div v-else-if="documentLoaded" class="pdf-viewer-core__content" ref="content">
+    <div v-if="documentLoaded" class="pdf-viewer-core__content" ref="content">
       <gesture-container
         :gestures-enabled="gesturesEnabled"
         :swipe-enabled="!zoomState.isZoomed"
@@ -14,33 +8,17 @@
         @prev-page="onSwipePrev"
         @next-page="onSwipeNext"
       >
-        <pdf-page
-          :page-number="page"
-          :scale="scale"
-          :annotations-enabled="true"
-          @page-rendered="onPageRendered"
-          @render-error="onRenderError"
-        />
+        <pdf-page :page-number="page" :scale="scale" :annotations-enabled="true" />
       </gesture-container>
     </div>
-
-    <!-- 空状态：仅在“无 src 且不在加载中”时显示；加载过程不显示 empty 占位 -->
-    <template v-else-if="!src && !isLoading">
-      <slot name="empty"></slot>
-    </template>
   </div>
 </template>
 
 <script>
-// 引入组件
 import PdfPage from "./components/PdfPage.vue";
 import GestureContainer from "./components/GestureContainer.vue";
-
-// 引入自己项目里的工具函数
 import { renderPageToCanvas } from "./utils/pdf-utils.js";
-import { ZOOM_EPS } from "./utils/pdf-config.js";
-
-// 引入第三方库
+import { ZOOM_EPS, ERROR_TYPES } from "./utils/pdf-config.js";
 import { mapState, mapMutations, mapGetters, mapActions } from "vuex";
 
 export default {
@@ -86,41 +64,17 @@ export default {
   },
 
   computed: {
-    ...mapState("complexPdfReader", {
-      docError: "error",
-    }),
     ...mapGetters("complexPdfReader", {
       loadedEvent: "loadedEvent",
       documentLoaded: "isDocumentLoaded",
-      isLoading: "isLoading",
-      docMessage: "loadingMessage",
+      navigationState: "navigationState",
+      zoomState: "zoomState",
     }),
+    // 直接从 Store 读取当前页码和缩放倍数，作为只读计算属性
     ...mapState("complexPdfReader", {
-      storeCurrentPage: "currentPage",
-      storeScale: "scale",
+      page: "currentPage",
+      scale: "scale",
     }),
-    ...mapGetters("complexPdfReader", ["navigationState", "zoomState"]),
-    scale: {
-      get() {
-        return this.storeScale;
-      },
-      set(v) {
-        this.setScaleAction(v);
-      },
-    },
-    page: {
-      get() {
-        return this.storeCurrentPage;
-      },
-      set(v) {
-        this.goToPageAction(v);
-      },
-    },
-
-    docErrorMessage() {
-      const e = this.docError;
-      return typeof e === "string" ? e : e?.message || e || null;
-    },
   },
 
   watch: {
@@ -130,29 +84,14 @@ export default {
       }
     },
 
-    // 统一的加载状态（队列 + 文档加载）
-    isLoading(val) {
-      if (val) {
-        this.$emit("loading-start", {
-          source: "core",
-          message: this.docMessage,
-        });
-      } else {
-        this.$emit("loading-stop", { source: "core" });
-      }
-    },
-
+    // 加载状态事件由父组件基于 Store 统一派发，此处仅处理局部行为（自动播放等）
     autoPlayEnabled(val) {
       if (val) {
-        if (this.documentLoaded) this.startAutoPlay();
+        if (this.documentLoaded) {
+          this.startAutoPlay();
+        }
       } else {
         this.stopAutoPlay(true);
-      }
-    },
-
-    scale(val) {
-      if (typeof val === "number") {
-        this.$emit("scale-changed", { scale: val });
       }
     },
   },
@@ -160,15 +99,14 @@ export default {
   beforeDestroy() {
     this.stopAutoPlay(true);
     // 清除 Store 中关于 pdf 的所有状态
-    this.RESET_ALL_STATE();
+    this.RESET_STATE();
   },
 
   methods: {
-    ...mapMutations("complexPdfReader", ["RESET_ALL_STATE"]),
+    ...mapMutations("complexPdfReader", ["RESET_STATE", "SET_ERROR"]),
     ...mapActions("complexPdfReader", {
       // document
       loadDocumentAction: "loadDocument",
-      setDocError: "setDocError",
       getOutlineAction: "getOutline",
       getPageAction: "getPage",
       runWithLoadPending: "runWithLoadPending",
@@ -192,29 +130,30 @@ export default {
     },
 
     async handleLoadDocument() {
+      let fileSource;
+
       try {
-        const fileSource = await this.runWithLoadPending({
+        fileSource = await this.runWithLoadPending({
           run: () => this.transformFileSource(this.src, 1000),
           message: "转换路径",
         });
-
-        await this.runWithLoadPending({
-          run: () => this.loadDocumentAction({ url: fileSource }),
-          message: "加载文档",
+      } catch (error) {
+        this.SET_ERROR({
+          type: ERROR_TYPES.LOAD_ERROR,
+          message: error?.message || String(error),
         });
+        console.error("[PdfViewport] transformFileSource failed", error);
+        return;
+      }
 
+      // 真正加载文档
+      try {
+        await this.loadDocumentAction({ url: fileSource });
         this.onDocumentLoaded(this.loadedEvent);
       } catch (error) {
-        this.onDocumentError({
-          message: error?.message || String(error),
-          type: "load",
-        });
+        // 这里不用 SET_ERROR，避免与 loadDocumentAction --> _handleLoadDocument 的 SET_ERROR 重复
+        console.error("[PdfViewport] loadDocument failed", error);
       }
-    },
-
-    // 重试加载
-    async retry() {
-      await this.handleLoadDocument();
     },
 
     // 处理文档加载完成
@@ -235,22 +174,6 @@ export default {
         document: event.document,
         info: event.info,
       });
-    },
-
-    // 处理文档加载错误
-    onDocumentError(event) {
-      this.$emit("document-error", event);
-    },
-
-    // 处理页面渲染完成
-    onPageRendered(event) {
-      this.$emit("page-rendered", event);
-    },
-
-    // 处理页面渲染错误
-    onRenderError(event) {
-      console.error("页面渲染错误:", event);
-      this.$emit("render-error", event);
     },
 
     // 初始化文档的缩放比例
@@ -333,7 +256,6 @@ export default {
         run: () => this.nextPageAction(),
       });
     },
-
 
     async startAutoPlay() {
       if (this.autoPlaying || !this.documentLoaded) return;

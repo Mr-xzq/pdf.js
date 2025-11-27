@@ -18,13 +18,6 @@
         :auto-play-enabled="autoPlay"
         :auto-play-interval-ms="autoPlayIntervalMs"
         @document-loaded="onPdfLoaded"
-        @document-error="onPdfError"
-        @page-changed="onPdfPageChanged"
-        @scale-changed="onPdfScaleChanged"
-        @page-rendered="onPdfPageRendered"
-        @render-error="onPdfRenderError"
-        @loading-start="onLoadingStart"
-        @loading-stop="onLoadingStop"
         @auto-play-ended="onAutoPlayEnded"
       />
     </div>
@@ -85,10 +78,7 @@
         <TouchIconButton :src="thumbnailIconUrl" img-class="thumbnail-tool-item" @click="handleClickThumbnail" />
         <TouchIconButton :src="outlineIconUrl" img-class="outline-tool-item" @click="handleClickOutline" />
         <TouchIconButton :src="pageFlipIconUrl" img-class="page-flip-tool-item" @click="togglePageNav" />
-        <!-- <van-image
-          class="page-flip-audio-tool-item"
-          :src="pageFlipAudioIconUrl"
-        ></van-image> -->
+
         <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
         <template>
           <TouchIconButton
@@ -102,6 +92,22 @@
             :src="zoomOutIconUrl"
             img-class="zoom-out-tool-item"
             @click="handleResetZoom"
+          />
+        </template>
+
+        <!-- 翻页声音 -->
+        <template>
+          <TouchIconButton
+            v-show="!isFlipSoundEnabled"
+            :src="pageFlipSoundOffIconUrl"
+            img-class="page-flip-sound-off-tool-item"
+            @click="toggleFlipSound"
+          />
+          <TouchIconButton
+            v-show="isFlipSoundEnabled"
+            :src="pageFlipSoundOnIconUrl"
+            img-class="page-flip-sound-on-tool-item"
+            @click="toggleFlipSound"
           />
         </template>
 
@@ -154,14 +160,16 @@
 </template>
 
 <script>
-// 引入组件
 import PdfViewport from "./components/pdfReaderCore/index.vue";
 import Drawer from "./components/Drawer.vue";
 import OutlinePanel from "./components/OutlinePanel.vue";
 import ThumbnailPanel from "./components/ThumbnailPanel.vue";
 import TouchIconButton from "./components/TouchIconButton.vue";
+import { isValidPageNumber } from "./components/pdfReaderCore/utils/pdf-utils.js";
+import { ERROR_TYPES } from "./components/pdfReaderCore/utils/pdf-config.js";
+import { mapActions, mapMutations, mapGetters, mapState } from "vuex";
 
-// 引入图标
+// 静态资源
 // import fullscreenIconUrl from "@/assets/images/complexPdfReader/fullscreen-2x.png";
 // import searchIconUrl from "@/assets/images/complexPdfReader/search-2x.png";
 import thumbnailIconUrl from "@/assets/images/complexPdfReader/thumbnail-2x.png";
@@ -171,14 +179,14 @@ import firstPageIconUrl from "@/assets/images/complexPdfReader/firstPage-2x.png"
 import lastPageIconUrl from "@/assets/images/complexPdfReader/lastPage-2x.png";
 import previousPageIconUrl from "@/assets/images/complexPdfReader/previousPage-2x.png";
 import nextPageIconUrl from "@/assets/images/complexPdfReader/nextPage-2x.png";
-// import pageFlipAudioIconUrl from "@/assets/images/complexPdfReader/page-flip-audio-2x.png";
+import pageFlipSoundOnIconUrl from "@/assets/images/complexPdfReader/page-flip-sound-on-2x.png";
+import pageFlipSoundOffIconUrl from "@/assets/images/complexPdfReader/page-flip-sound-off-2x.png";
+// import pageFlipSoundAudioUrl from '@/assets/images/complexPdfReader/page-flip-sound.mp3';
+import sampleAudioUrl from "@/assets/images/complexPdfReader/sample3.mp3";
 import zoomInIconUrl from "@/assets/images/complexPdfReader/zoom-in-2x.png";
 import zoomOutIconUrl from "@/assets/images/complexPdfReader/zoom-out-2x.png";
 import autoPlayIconUrl from "@/assets/images/complexPdfReader/auto-play-2x.png";
 import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
-
-// 引入第三方库
-import { mapActions, mapGetters } from "vuex";
 
 export default {
   name: "ComplexPdfReader",
@@ -219,9 +227,19 @@ export default {
       default: 1500,
     },
   },
-  mounted() {
+  async mounted() {
     this.pdfReaderRef = this.$refs.pdfReader ?? {};
     this.pageInputRef = this.$refs.pageInput ?? {};
+
+    // 初始化翻页音效
+    try {
+      await this.runWithLoadPending({
+        message: "加载翻页声音",
+        run: () => this.loadFlipSoundAudio(),
+      });
+    } catch (e) {
+      this.SET_ERROR({ type: ERROR_TYPES.FLIP_AUDIO_LOAD_ERROR, message: e.message || "翻页声音预加载失败" });
+    }
   },
   data() {
     return {
@@ -243,7 +261,9 @@ export default {
       previousPageIconUrl,
       nextPageIconUrl,
       // 翻页声音
-      // pageFlipAudioIconUrl,
+      pageFlipSoundOnIconUrl,
+      pageFlipSoundOffIconUrl,
+      pageFlipSoundAudio: null,
       // 放大
       zoomInIconUrl,
       // 缩小
@@ -255,6 +275,7 @@ export default {
       isShowOutlineDrawer: false,
       isShowThumbnailDrawer: false,
       isEditingPageInput: false,
+      isFlipSoundEnabled: true,
       // 自动播放相关（由 PdfReader 内部驱动）
       autoPlay: this.autoPlayEnabled,
       isShowPageNav: false,
@@ -273,15 +294,42 @@ export default {
     autoPlayEnabled(val) {
       this.autoPlay = !!val;
     },
-    // 监听真实页码：用于同步 slider 显示与输入框
-    currentPage(n) {
-      if (Number.isFinite(n)) {
-        this.sliderValue = n;
-        this.gotoPageInput = n;
+    // 监听真实页码：用于同步 slider 显示与输入框 + 统一触发翻页音效
+    currentPage(newPageNumber, oldPageNumber) {
+      if (isValidPageNumber(newPageNumber)) {
+        this.sliderValue = newPageNumber;
+        this.gotoPageInput = newPageNumber;
+
+        this.$emit("page-changed", { newPageNumber, oldPageNumber });
+      }
+      // 仅在实际页码变化且音效开启、已就绪，且非首次初始化时播放
+      if (isValidPageNumber(oldPageNumber) && newPageNumber !== oldPageNumber) {
+        this.playPageFlipSoundAudio();
+      }
+    },
+    // 统一监听 Store 错误并对外只派发一个 error 事件
+    storeError(err) {
+      if (err) {
+        this.$emit("error", err);
+        if (err.type === ERROR_TYPES.LOAD_ERROR) {
+          // LOAD_ERROR 时强制 Outline/Thumb 重新挂载
+          this.docFingerprint = `error:${Date.now()}`;
+        }
+      }
+    },
+    // 统一监听 Store 的加载状态，对外派发 loading-start / loading-stop
+    isLoading(val) {
+      if (val) {
+        this.$emit("loading-start", {
+          message: this.loadingMessage,
+        });
+      } else {
+        this.$emit("loading-stop");
       }
     },
   },
   computed: {
+    ...mapState("complexPdfReader", { storeError: "error" }),
     ...mapGetters("complexPdfReader", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
@@ -300,6 +348,7 @@ export default {
     },
   },
   methods: {
+    ...mapMutations("complexPdfReader", ["SET_ERROR"]),
     ...mapActions("complexPdfReader", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
@@ -307,28 +356,33 @@ export default {
       setScale: "setScale",
       runWithLoadPending: "runWithLoadPending",
     }),
-
-    async goToPage(n) {
-      const t = this.totalPages || 0;
-      if (!Number.isFinite(n) || n < 1 || n > t) return;
-      if (n === this.currentPage) return;
+    async goToPage(pageNumber) {
+      if (!isValidPageNumber(pageNumber)) {
+        return;
+      }
+      if (pageNumber === this.currentPage) {
+        return;
+      }
       await this.runWithLoadPending({
         message: "跳转页面",
-        run: () => this.goToPageAction(n),
+        run: () => this.goToPageAction(pageNumber),
       });
     },
     async nextPage() {
-      const t = this.totalPages || 0;
-      const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || !Number.isFinite(t) || cur >= t || t <= 0) return;
+      const next = (this.currentPage || 0) + 1;
+      if (!isValidPageNumber(next)) {
+        return;
+      }
       await this.runWithLoadPending({
         message: "下一页",
         run: () => this.nextPageAction(),
       });
     },
     async prevPage() {
-      const cur = this.currentPage || 0;
-      if (!Number.isFinite(cur) || cur <= 1) return;
+      const prev = (this.currentPage || 0) - 1;
+      if (!isValidPageNumber(prev)) {
+        return;
+      }
       await this.runWithLoadPending({
         message: "上一页",
         run: () => this.prevPageAction(),
@@ -374,15 +428,19 @@ export default {
       this.isShowPageNav = !this.isShowPageNav;
     },
     goToPageByInput() {
-      const n = Number(this.gotoPageInput);
-      const t = this.totalPages || 0;
-      if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
+      const pageNumber = Number(this.gotoPageInput);
+
+      if (isValidPageNumber(pageNumber)) {
+        this.goToPage(pageNumber);
+      }
     },
     // slider 进度变化且结束拖动后触发
     onSliderChange(val) {
-      const n = Number(val);
-      const t = this.totalPages || 0;
-      if (Number.isFinite(n) && n >= 1 && n <= t) this.goToPage(n);
+      const pageNumber = Number(val);
+
+      if (isValidPageNumber(pageNumber)) {
+        this.goToPage(pageNumber);
+      }
     },
     // 与滑条交互开始：若处于编辑态则退出（避免不触发 blur 的情况）
     onSliderDragStart() {
@@ -461,39 +519,66 @@ export default {
       // 记录文档指纹（若缺失则兜底一个唯一值）
       this.docFingerprint = e?.info?.fingerprint || String(Date.now());
       this.$emit("document-loaded", e);
-      // 注意：初始化时不触发翻页 loading，避免与文档级 loading 冲突
     },
-    onPdfError(e) {
-      console.error("PDF 加载失败", e);
-      // 强制 Outline/Thumb 重新挂载
-      this.docFingerprint = `error:${Date.now()}`;
-      this.$emit("document-error", e);
-    },
-    onPdfPageChanged(e) {
-      if (e?.pageNumber) {
-        this.gotoPageInput = e.pageNumber;
-        this.sliderValue = e.pageNumber;
+
+    // 切换翻页音效是否禁用
+    toggleFlipSound() {
+      this.isFlipSoundEnabled = !this.isFlipSoundEnabled;
+      if (!this.isFlipSoundEnabled) {
+        this.pageFlipSoundAudio.pause();
+        this.pageFlipSoundAudio.currentTime = 0;
       }
-      this.$emit("page-changed", e);
     },
-    onLoadingStart(e) {
-      const payload = {
-        source: e?.source || "core",
-        message: this.loadingMessage,
-      };
-      this.$emit("loading-start", payload);
+    // 播放翻页音效
+    async playPageFlipSoundAudio() {
+      try {
+        if (!this.isFlipSoundEnabled) {
+          return;
+        }
+        // 重置进度
+        this.pageFlipSoundAudio.currentTime = 0;
+        await this.pageFlipSoundAudio.play();
+      } catch (e) {
+        console.error("播放翻页声音异常：", e);
+      }
     },
-    onLoadingStop(e) {
-      this.$emit("loading-stop", e);
-    },
-    onPdfScaleChanged(e) {
-      this.$emit("scale-changed", e);
-    },
-    onPdfPageRendered(e) {
-      this.$emit("page-rendered", e);
-    },
-    onPdfRenderError(e) {
-      this.$emit("render-error", e);
+    // 加载翻页音效
+    loadFlipSoundAudio(timeoutMs = 10 * 1000) {
+      return new Promise((resolve, reject) => {
+        this.pageFlipSoundAudio = new Audio(sampleAudioUrl);
+
+        const onComplete = () => {
+          cleanup();
+          resolve();
+        };
+        const onAbort = (e) => {
+          cleanup();
+          reject(e || new Error("flip-sound-load-error"));
+        };
+        const cleanup = () => {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+          this.pageFlipSoundAudio.removeEventListener("canplaythrough", onComplete);
+          this.pageFlipSoundAudio.removeEventListener("error", onAbort);
+        };
+        this.pageFlipSoundAudio.addEventListener("canplaythrough", onComplete, { once: true });
+        this.pageFlipSoundAudio.addEventListener("error", onAbort, { once: true });
+
+        // 超时机制, 如果音频很长时间没有加载出来，直接终止加载，抛出异常
+        let timer = setTimeout(() => {
+          cleanup();
+          reject(new Error(`flip-sound-timeout: ${timeoutMs}ms`));
+        }, timeoutMs);
+
+        this.$once("hook:beforeDestroy", () => {
+          console.log("pageFlipSoundAudio - beforeDestroy");
+          cleanup();
+          this.pageFlipSoundAudio.pause();
+          this.pageFlipSoundAudio.currentTime = 0;
+        });
+      });
     },
   },
 };
@@ -674,8 +759,13 @@ export default {
         height: 0.68rem;
       }
 
-      .page-flip-audio-tool-item {
+      .page-flip-sound-on-tool-item {
         width: 1.21rem;
+        height: 1.91rem;
+      }
+
+      .page-flip-sound-off-tool-item {
+        width: 1.5rem;
         height: 1.91rem;
       }
 

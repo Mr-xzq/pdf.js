@@ -21,6 +21,7 @@
 
 <script>
 import { mapActions } from "vuex";
+import { isValidPageNumber } from "./pdfReaderCore/utils/pdf-utils.js";
 
 export default {
   name: "ThumbnailPanel",
@@ -163,7 +164,7 @@ export default {
     },
     // 滚动到当前页的缩略图
     scrollCurrentIntoView() {
-      if (typeof this.currentPage === "number") {
+      if (isValidPageNumber(this.currentPage)) {
         this.scrollToPage(this.currentPage);
       }
     },
