@@ -192,14 +192,15 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-radius: 8px;
     // Desktop 横向缩略图：高度由外层容器控制，这里占满可用高度
     flex: 0 0 auto;
     height: 100%;
     box-sizing: border-box;
     transition: all 200ms ease;
-    // 外部圆角, 内部没有圆角, 隐藏内部溢出
+    //border-radius: 8px;
+    //外部圆角, 内部没有圆角, 隐藏内部溢出
     overflow: hidden;
+    cursor: pointer;
 
     &:active {
       transform: scale(0.98);
