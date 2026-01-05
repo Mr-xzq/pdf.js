@@ -14,8 +14,8 @@
 </template>
 
 <script>
-import { cancelAllRenderTasks, renderPageToCanvas } from "../utils/pdf-utils.js";
-import { ERROR_TYPES } from "../utils/pdf-config.js";
+import { cancelAllRenderTasks, renderPageToCanvas } from "@/components/pdf/core/pdf-utils.js";
+import { ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
 import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
 
 // 引入第三方库
@@ -62,7 +62,7 @@ export default {
     };
   },
   computed: {
-    ...mapState("complexPdfReader", ["pdfDocument"]),
+    ...mapState("pdfReaderCore", ["pdfDocument"]),
   },
   mounted() {
     this.renderPage();
@@ -77,8 +77,8 @@ export default {
     scale: "onScaleChange",
   },
   methods: {
-    ...mapMutations("complexPdfReader", ["SET_ERROR"]),
-    ...mapActions("complexPdfReader", ["getPage", "goToDestination"]),
+    ...mapMutations("pdfReaderCore", ["SET_ERROR"]),
+    ...mapActions("pdfReaderCore", ["getPage", "goToDestination"]),
     // 渲染页面
     async renderPage() {
       const doc = this.pdfDocument;
@@ -243,7 +243,6 @@ export default {
 <style lang="less" scoped>
 .pdf-page-container {
   position: relative;
-  display: inline-block;
   background: transparent;
   box-shadow: none;
   margin: 0;

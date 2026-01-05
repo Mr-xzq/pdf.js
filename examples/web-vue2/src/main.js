@@ -3,11 +3,17 @@ import App from "./App.vue";
 import router from "./router";
 import store from "./store";
 // import VConsole from "vconsole";
+// vant
 import Vant from "vant";
 import "vant/lib/index.css";
+// element-ui
+import ElementUI from 'element-ui';
+import 'element-ui/lib/theme-chalk/index.css';
+
 import "@/style/index.less";
 
 Vue.use(Vant);
+Vue.use(ElementUI);
 
 // 检查是否为移动设备
 // const isMobile =

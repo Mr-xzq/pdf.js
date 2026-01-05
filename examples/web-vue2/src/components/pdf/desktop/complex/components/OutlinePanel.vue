@@ -20,7 +20,7 @@
 <script>
 import Tree from "./tree/index.vue";
 import { mapActions } from "vuex";
-import { isValidPageNumber } from "./pdfReaderCore/utils/pdf-utils.js";
+import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
 
 // 图标
 import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
@@ -111,7 +111,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions("complexPdfReader", ["runWithLoadPending"]),
+    ...mapActions("pdfReaderCore", ["runWithLoadPending"]),
     // 树节点选中事件处理
     async onTreeSelect(node) {
       console.log(

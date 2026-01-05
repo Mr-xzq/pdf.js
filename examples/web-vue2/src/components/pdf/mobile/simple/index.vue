@@ -1,5 +1,6 @@
 <script>
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { mapState, mapGetters, mapActions } from "vuex";
+import { renderPageToCanvas, cancelAllRenderTasks } from "@/components/pdf/core/pdf-utils.js";
 
 export default {
   name: "SimplePdfReader",
@@ -10,20 +11,35 @@ export default {
   },
   data() {
     return {
-      pdfDocument: null,
       pageVNodeList: [],
       // 首次布局缓存：统一缓存第一页基准尺寸与适配比例，避免重复计算
       layoutCache: null,
       // pdf.js 下载处理进度
       downloadProgress: 0,
       // 渲染进度 renderedPages / totalPages
-      totalPages: 0,
       renderedPages: 0,
       progressRafId: null,
+      // 渲染任务表，复用 Core 的渲染取消机制
+      renderTasks: {},
     };
+  },
+  computed: {
+    // 复用 Core 中的 pdfDocument 与 totalPages 状态
+    ...mapState("pdfReaderCore", {
+      pdfDocument: "pdfDocument",
+      storeError: "error",
+    }),
+    ...mapGetters("pdfReaderCore", ["totalPages"]),
   },
   watch: {
     src: { handler: "loadDocument" },
+    // 统一监听 Store 错误并对外只派发一个 error 事件
+    // storeError(err) {
+    //   if (err) {
+    //     const msg = err?.message || String(err);
+    //     this.$emit("error", msg);
+    //   }
+    // },
   },
   mounted() {
     this.loadDocument();
@@ -32,6 +48,10 @@ export default {
     this.cleanup();
   },
   methods: {
+    ...mapActions("pdfReaderCore", {
+      loadDocumentCore: "loadDocument",
+      getPageAction: "getPage",
+    }),
     /**
      * 计算并缓存首页的基准尺寸与适配比例（仅计算一次）
      * 1. 统一占位与渲染所用的 scale，避免抖动与重复计算
@@ -47,7 +67,7 @@ export default {
       const containerWidth = root?.clientWidth || window.innerWidth || 375;
 
       // 仅取第 1 页作为基准视口，避免对每页都调用 getPage 带来额外开销
-      const firstPage = await this.pdfDocument.getPage(1);
+      const firstPage = await this.getPageAction(1);
       const baseViewport = firstPage.getViewport({ scale: 1 });
 
       // 根据容器宽度计算铺满宽度的比例
@@ -68,59 +88,27 @@ export default {
     },
 
     async renderOnePage(pageNumber) {
-      if (!this.pdfDocument) return;
-      const page = await this.pdfDocument.getPage(pageNumber);
-
       // 复用缓存的适配比例，避免重复计算与不一致
       const cache = await this.ensureLayoutCache();
-      // 根据缓存的比例计算实际的渲染尺寸
-      const renderViewport = page.getViewport({ scale: cache?.fitScale || 1 });
+      if (!cache) return;
 
       const pageVNode = this.pageVNodeList[pageNumber - 1];
 
       // vnode.elm --> el
       const canvas = pageVNode.children[0]?.elm;
       if (!canvas) return;
-      const ctx = canvas.getContext("2d");
+      const scale = cache?.fitScale || 1;
 
-      // 使用 devicePixelRatio 提升清晰度(考虑到多倍屏的情况，物理像素和逻辑像素的像素比)
-      const devicePixelRatio = window.devicePixelRatio || 1;
-      // 限制最大 canvas 像素数，防止内存溢出（可配）
-      const MAX_CANVAS_PIXELS = this.maxCanvasPixels;
-      // 渲染一页 PDF 所需的像素数（CSS 尺寸）
-      const viewportPixels = renderViewport.width * renderViewport.height;
-
-      // 实际渲染时的像素比
-      let renderPixelRatio = devicePixelRatio;
-      // 如果超出最大像素限制，按照 MAX_CANVAS_PIXELS 来降低渲染像素比
-      if (viewportPixels * (devicePixelRatio * devicePixelRatio) > MAX_CANVAS_PIXELS) {
-        renderPixelRatio = Math.sqrt(MAX_CANVAS_PIXELS / viewportPixels);
-      }
-
-      // 物理像素
-      canvas.width = Math.floor(renderViewport.width * renderPixelRatio);
-      canvas.height = Math.floor(renderViewport.height * renderPixelRatio);
-
-      // 逻辑像素
-      canvas.style.width = `${Math.floor(renderViewport.width)}px`;
-      canvas.style.height = `${Math.floor(renderViewport.height)}px`;
-
-      const renderTask = page.render({
-        canvasContext: ctx,
-        // 根据宽度撑满计算的尺寸信息
-        viewport: renderViewport,
-        // 根据 DPR 进行缩放
-        // CanvasRenderingContext2D transform(a, b, c, d, e, f)
-        // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
-        transform: renderPixelRatio !== 1 ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0] : null,
+      await renderPageToCanvas({
+        getPage: this.getPageAction,
+        tasks: this.renderTasks,
+        pageNumber,
+        canvas,
+        scale,
+        renderOptions: { maxCanvasPixels: this.maxCanvasPixels },
       });
-
-      await renderTask.promise;
-      return renderTask;
     },
     async loadDocument() {
-      if (!this.src) return;
-
       // 清理上一次状态
       this.cleanup();
 
@@ -128,33 +116,25 @@ export default {
       this.$emit("loading-start");
 
       try {
-        // const arrayBuffer = await fetch(this.src).then(response => {
-        //   if (!response.ok) {
-        //     throw new Error("Network response was not ok");
-        //   }
-        //   return response.arrayBuffer(); // 获取 ArrayBuffer 格式的数据
-        // });
-        //
-        // console.log("arrayBuffer: ", arrayBuffer);
-
-        // 创建 pdf.js 文档加载任务
-        const task = pdfjsLib.getDocument({ url: this.src });
-        // const task = pdfjsLib.getDocument({ data: arrayBuffer });
-        // pdf.js 处理（下载等）进度回调，合并进总进度处理
-        // loaded 和 total 都是 contentLength
-        task.onProgress = ({ loaded = 0, total = 1 }) => {
-          this.downloadProgress = total ? loaded / total : 0;
-          this.emitProgress();
-        };
-        // 等待文档加载完成
-        const pdf = await task.promise;
-
-        this.pdfDocument = pdf;
-        this.totalPages = pdf.numPages;
+        // 通过 Core 的 loadDocument 能力加载文档，并透传下载进度
+        await this.loadDocumentCore({
+          getDocumentOptions: { url: this.src },
+          onProgress: ({ loaded = 0, total = 0, percentage }) => {
+            let ratio = 0;
+            if (typeof percentage === "number") {
+              ratio = percentage / 100;
+            } else {
+              ratio = total ? loaded / total : 0;
+            }
+            this.downloadProgress = Math.min(1, Math.max(0, ratio));
+            this.emitProgress();
+          },
+        });
 
         // 使用缓存的占位尺寸，避免重复计算与首次渲染抖动
         const { phW: placeholderWidth, phH: placeholderHeight } = await this.ensureLayoutCache();
 
+        this.pageVNodeList = [];
         for (let i = 0; i < this.totalPages; i++) {
           // 给 page 设置占位尺寸，避免布局跳动
           const pageDataObject = {
@@ -192,7 +172,8 @@ export default {
         this.$emit("loaded", { numPages: this.totalPages });
       } catch (e) {
         console.error("loadDocument error", e);
-        this.$emit("error", e?.message ?? String(e));
+        const msg = e?.message || this.storeError?.message || String(e);
+        this.$emit("error", msg);
       }
     },
     emitProgress() {
@@ -209,14 +190,16 @@ export default {
       });
     },
     cleanup() {
-      this.pdfDocument = null;
+      // 清理本地渲染状态（不直接重置 Core Store，以便与其他 Reader 共存）
       this.pageVNodeList = [];
       // 初始化进度与渲染计数
       this.downloadProgress = 0;
-      this.totalPages = 0;
       this.renderedPages = 0;
       // 清理布局缓存，确保下次加载或容器尺寸变化时能重新计算
       this.layoutCache = null;
+      // 取消所有在途渲染任务
+      cancelAllRenderTasks({ tasks: this.renderTasks });
+      this.renderTasks = {};
       if (this.progressRafId) {
         cancelAnimationFrame(this.progressRafId);
         this.progressRafId = null;

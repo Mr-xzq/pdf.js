@@ -35,16 +35,16 @@ const routes = [
     component: () => import("@/views/index.vue"),
   },
   {
-    path: "/simple-pdf-reader-demo",
+    path: "/mobile-simple-pdf-reader-demo",
     component: () => import("@/views/simpleReaderDemo.vue"),
   },
   {
-    path: "/tree-demo",
-    component: () => import("@/views/treeDemo.vue"),
+    path: "/mobile-complex-pdf-reader-demo",
+    component: () => import("@/views/complexReaderDemo.vue"),
   },
   {
-    path: "/complex-pdf-reader-demo",
-    component: () => import("@/views/complexReaderDemo.vue"),
+    path: "/desktop-complex-pdf-reader-demo",
+    component: () => import("@/views/desktopComplexReaderDemo.vue"),
   },
 ];
 

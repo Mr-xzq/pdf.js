@@ -29,9 +29,9 @@ export default defineComponent({
   data() {
     return {
       demoConfigList: [
-        { title: "simpleReaderDemo", path: "/simple-pdf-reader-demo" },
-        { title: "treeDemo", path: "/tree-demo" },
-        { title: "complexReaderDemo", path: "/complex-pdf-reader-demo" },
+        { title: "MobileSimpleReaderDemo", path: "/mobile-simple-pdf-reader-demo" },
+        { title: "MobileComplexReaderDemo", path: "/mobile-complex-pdf-reader-demo" },
+        { title: "DesktopComplexReaderDemo", path: "/desktop-complex-pdf-reader-demo" },
       ],
     };
   },

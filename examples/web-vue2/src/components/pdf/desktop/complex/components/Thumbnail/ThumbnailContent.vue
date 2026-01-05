@@ -1,6 +1,6 @@
 <template>
   <div class="thumbnail-panel">
-    <div v-if="totalPages" class="thumb-list" :style="gridStyle">
+    <div v-if="totalPages" ref="thumbList" class="thumb-list">
       <div
         v-for="page in totalPages"
         :key="page"
@@ -21,99 +21,101 @@
 
 <script>
 import { mapActions } from "vuex";
-import { isValidPageNumber } from "./pdfReaderCore/utils/pdf-utils.js";
+import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
 
 export default {
-  name: "ThumbnailPanel",
+  name: "ThumbnailContent",
   props: {
+    // 总页数
     totalPages: { type: Number, required: true },
     // 渲染指定页缩略图
     renderThumbnail: { type: Function, required: true },
+    // 跳转到指定页
     goToPage: { type: Function, required: true },
+    // 当前页码
     currentPage: { type: Number, default: 1 },
-    // 缩略图的列数，<=0 或未传则自适应
-    columns: { type: Number, default: 3 },
   },
   data() {
     return {
       // 标记缩略图是否已全部渲染
       thumbsRendered: false,
-      // 标记 popup 是否可见
-      visible: false,
-      // 当 popup 不可见时，待同步的页码
+      // 浮层不可见时，待同步的页码
       pendingPage: null,
       // 存储缩略图的 Data URL，将 page 作为 key
       thumbSrcs: {},
+      // 由父容器控制的可见性状态
+      visible: false,
     };
   },
-  async mounted() {
-    await this.runWithLoadPending({
-      message: "渲染缩略图",
-      run: async () => {
-        await this.ensureRenderThumbnails();
-        this.trySyncCurrent();
-      },
-    });
-  },
   watch: {
+    // 当前页变化时，依据可见性决定是立即滚动还是记录待同步页码
     currentPage(n) {
+      if (!isValidPageNumber(n)) return;
       if (!this.visible) {
-        // popup 不可见时，缓存待同步的页码
         this.pendingPage = n;
       } else {
-        // popup 可见时，滚动到当前页
         this.$nextTick(() => this.scrollCurrentIntoView());
       }
     },
-    // 如果总页数存在且未渲染过，则开始渲染
+    // 总页数在浮层已打开且尚未渲染过时，触发一次渲染
     totalPages(n) {
-      if (n && !this.thumbsRendered) {
-        this.$nextTick(() => this.ensureRenderThumbnails());
-      }
-    },
-  },
-  computed: {
-    // 根据 columns 属性计算缩略图渲染列数
-    gridStyle() {
-      if (this.columns <= 0) return;
-
-      return { gridTemplateColumns: `repeat(${this.columns}, 1fr)` };
+      if (!n || this.thumbsRendered || !this.visible) return;
+      this.$nextTick(() => {
+        this.runWithLoadPending({
+          message: "渲染缩略图",
+          run: () => this.ensureRenderThumbnails(),
+        });
+      });
     },
   },
   methods: {
-    ...mapActions("complexPdfReader", ["runWithLoadPending"]),
-    // 计算第一个缩略图的实际 CSS 宽度（与列数/容器宽度相关）
+    ...mapActions("pdfReaderCore", ["runWithLoadPending"]),
+    // 计算第一个缩略图的实际 CSS 宽度（与当前缩略图实际宽度/容器宽度相关）
     getCssThumbWidth() {
-      const list = this.$el?.querySelector(".thumb-list");
+      const list = this.$refs.thumbList;
       if (!list) return 0;
       const item = list.querySelector(".thumb-item");
       const w = item ? item.clientWidth : 0;
       return w || 0;
     },
-    // 按列宽动态换算 scale；以 120px 对应 0.2 作为基准
-    getScaleFromWidth(cssWidth) {
-      const baseCss = 120;
+    // 根据容器高度，计算可用的缩略图高度（不再依赖 3:4 宽高比）
+    getAvailableHeightFromContainer() {
+      const list = this.$refs.thumbList;
+      if (!list) return 0;
+      const style = window.getComputedStyle(list);
+      const paddingTop = parseFloat(style.paddingTop) || 0;
+      const paddingBottom = parseFloat(style.paddingBottom) || 0;
+      const contentHeight = list.clientHeight - paddingTop - paddingBottom;
+      if (contentHeight <= 0) return 0;
+      // 预留页码文字等占用的高度，避免被裁切
+      const labelReserve = 24;
+      const availableHeight = Math.max(contentHeight - labelReserve, 0);
+      return availableHeight > 0 ? availableHeight : 0;
+    },
+    // 按容器高度动态换算缩略图 scale；以 240px 高度对应 0.2 作为基准
+    // 这样可以直接用可用高度控制缩略图清晰度
+    getScaleFromContainerHeight(height) {
+      const baseHeight = 240;
       const baseScale = 0.2;
-      if (!cssWidth) return baseScale;
-      return (cssWidth / baseCss) * baseScale;
+      if (!height) return baseScale;
+      return (height / baseHeight) * baseScale;
     },
     // 缩略图点击事件
     onSelect(page) {
-      // 导航到指定页
       this.goToPage(page);
       this.$emit("selected", page);
     },
-    // 父容器打开时
+    // 父容器打开时调用
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        const needLoad = !this.thumbsRendered;
+        const needLoad = !this.thumbsRendered && this.totalPages;
         if (needLoad) {
           await this.runWithLoadPending({
             message: "渲染缩略图",
             run: () => this.ensureRenderThumbnails(),
           });
-        } else {
+        } else if (this.thumbsRendered) {
           await this.ensureRenderThumbnails();
         }
         const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
@@ -121,45 +123,38 @@ export default {
         this.pendingPage = null;
       });
     },
-    // 父容器关闭时的处理函数
+    // 父容器关闭时调用
     onParentClosed() {
       this.visible = false;
-    },
-    // 尝试同步当前页的滚动位置
-    trySyncCurrent() {
-      if (this.visible && this.thumbsRendered) {
-        this.$nextTick(() => this.scrollCurrentIntoView());
-      } else {
-        this.pendingPage = this.currentPage;
-      }
     },
     // 确保所有缩略图被渲染
     async ensureRenderThumbnails() {
       if (this.thumbsRendered || !this.totalPages) return;
-      // 标记开始渲染
       this.thumbsRendered = true;
       await this.$nextTick();
-      const cssWidth = this.getCssThumbWidth() || 120;
-      // 计算缩放比例
-      const scale = this.getScaleFromWidth(cssWidth);
-      let rendered = 0;
-      // 循环遍历每一页，渲染缩略图
+      // 优先根据容器高度直接计算缩略图 scale，让缩略图高度随容器自适应
+      const availableHeight = this.getAvailableHeightFromContainer();
+      let scale;
+      if (availableHeight) {
+        scale = this.getScaleFromContainerHeight(availableHeight);
+      } else {
+        const cssWidth = this.getCssThumbWidth() || 120;
+        scale = this.getScaleFromWidth(cssWidth);
+      }
       for (let p = 1; p <= this.totalPages; p += 1) {
         const tmp = document.createElement("canvas");
         await this.renderThumbnail(p, tmp, { scale });
         const url = tmp.toDataURL("image/png");
-        // 将生成的 Data URL 存入 thumbSrcs
         this.$set(this.thumbSrcs, p, url);
-        // 释放 canvas 内存
         tmp.width = 0;
         tmp.height = 0;
-        rendered += 1;
       }
-      console.log("Thumbnails rendered", rendered, "/", this.totalPages);
     },
     // 滚动到指定页的缩略图
     async scrollToPage(page) {
-      const item = this.$el?.querySelector('.thumb-item[data-page="' + page + '"]');
+      const list = this.$refs.thumbList;
+      if (!list) return;
+      const item = list.querySelector('.thumb-item[data-page="' + page + '"]');
       item?.scrollIntoView({ behavior: "smooth" });
     },
     // 滚动到当前页的缩略图
@@ -175,23 +170,33 @@ export default {
 <style lang="less" scoped>
 .thumbnail-panel {
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .thumb-list {
   box-sizing: border-box;
-  display: grid;
-  // 自适应网格布局，每列最小 120px，最大 1fr
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  padding: 8px 12px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 8px 24px;
+  height: 100%;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 
   .thumb-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     border-radius: 8px;
-    min-width: 0;
+    // Desktop 横向缩略图：高度由外层容器控制，这里占满可用高度
+    flex: 0 0 auto;
+    height: 100%;
+    box-sizing: border-box;
     transition: all 200ms ease;
     // 外部圆角, 内部没有圆角, 隐藏内部溢出
     overflow: hidden;
@@ -207,23 +212,18 @@ export default {
 
     .thumb-media {
       width: 100%;
-      // 保持 3:4 的宽高比
+      // 使用容器高度作为基准：媒体区域占满扣除页码文字后的高度，与 JS 中 labelReserve 保持一致
+      height: calc(100% - 24px);
+      // 仅作为占位比例，保证缩略图加载前有稳定宽高比和稳定高度，避免布局抖动
       aspect-ratio: 3 / 4;
 
       .thumb-img,
       .thumb-ph {
         display: block;
         width: 100%;
+        height: 100%;
         background: #f7f7f7;
         border-radius: 4px;
-      }
-
-      .thumb-img {
-        height: auto;
-      }
-
-      .thumb-ph {
-        height: 100%;
       }
     }
 

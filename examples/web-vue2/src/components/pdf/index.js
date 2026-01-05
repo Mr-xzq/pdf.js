@@ -1,5 +1,8 @@
-import SimplePdfReader from "./simplePdfReader/index.vue";
-import ComplexPdfReader from "./complexPdfReader/index.vue";
+import MobileSimplePdfReader from "./mobile/simple/index.vue";
+import MobileComplexPdfReader from "./mobile/complex/index.vue";
+
+// Desktop 复杂版当前作为 mobile/complex 的同构实现
+import DesktopComplexPdfReader from "./desktop/complex/index.vue";
 
 // suceess
 // import * as pdfjsLib from "pdfjs-dist/webpack.mjs";
@@ -54,7 +57,7 @@ function initializePdfJs() {
   if (!_libInitialized) {
     pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
       new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
-      { type: "module" }
+      { type: "module" },
     );
     _libInitialized = true;
   }
@@ -63,4 +66,14 @@ function initializePdfJs() {
 
 initializePdfJs();
 
-export { SimplePdfReader, ComplexPdfReader };
+// 保留旧导出名，同时导出 Mobile / Desktop 命名别名
+export {
+  // 向后兼容旧名称
+  MobileSimplePdfReader as SimplePdfReader,
+  MobileComplexPdfReader as ComplexPdfReader,
+  // 显式的 Mobile 命名
+  MobileSimplePdfReader,
+  MobileComplexPdfReader,
+  // Desktop 复杂版
+  DesktopComplexPdfReader,
+};

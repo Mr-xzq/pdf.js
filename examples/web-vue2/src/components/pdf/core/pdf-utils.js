@@ -1,3 +1,5 @@
+// Core pdf-utils 实现：渲染与页码相关的公共工具
+
 import store from "@/store/index.js";
 
 /**
@@ -129,7 +131,7 @@ export async function renderPageToCanvas({ getPage, tasks, pageNumber, canvas, s
 
 // 判断页码是否合法：1-totalPages
 export function isValidPageNumber(pageNumber) {
-  const totalPages = store.getters["complexPdfReader/totalPages"] || 0;
+  const totalPages = store.getters["pdfReaderCore/totalPages"] || 0;
   const totalPagesRes = Number(totalPages);
   const pageNumberRes = Number(pageNumber);
 
@@ -145,3 +147,4 @@ export function isValidPageNumber(pageNumber) {
 
   return pageNumberRes <= totalPagesRes;
 }
+

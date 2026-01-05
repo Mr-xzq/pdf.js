@@ -16,17 +16,18 @@
 
 <script>
 import PdfPage from "./components/PdfPage.vue";
-import GestureContainer from "./components/GestureContainer.vue";
-import { renderPageToCanvas } from "./utils/pdf-utils.js";
-import { ZOOM_EPS, ERROR_TYPES } from "./utils/pdf-config.js";
+import { renderPageToCanvas } from "@/components/pdf/core/pdf-utils.js";
+import { ZOOM_EPS, ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
 import { mapState, mapMutations, mapGetters, mapActions } from "vuex";
+import { debounce } from "lodash";
+import GestureContainer from "./components/GestureContainer.vue";
 
 export default {
   name: "PdfViewport",
 
   components: {
-    PdfPage,
     GestureContainer,
+    PdfPage,
   },
 
   props: {
@@ -60,18 +61,19 @@ export default {
   },
 
   async mounted() {
+    this.initReSizeObservers();
     await this.handleLoadDocument();
   },
 
   computed: {
-    ...mapGetters("complexPdfReader", {
+    ...mapGetters("pdfReaderCore", {
       loadedEvent: "loadedEvent",
       documentLoaded: "isDocumentLoaded",
       navigationState: "navigationState",
       zoomState: "zoomState",
     }),
     // 直接从 Store 读取当前页码和缩放倍数，作为只读计算属性
-    ...mapState("complexPdfReader", {
+    ...mapState("pdfReaderCore", {
       page: "currentPage",
       scale: "scale",
     }),
@@ -103,8 +105,8 @@ export default {
   },
 
   methods: {
-    ...mapMutations("complexPdfReader", ["RESET_STATE", "SET_ERROR"]),
-    ...mapActions("complexPdfReader", {
+    ...mapMutations("pdfReaderCore", ["RESET_STATE", "SET_ERROR"]),
+    ...mapActions("pdfReaderCore", {
       // document
       loadDocumentAction: "loadDocument",
       getOutlineAction: "getOutline",
@@ -119,6 +121,42 @@ export default {
       goToDestinationAction: "goToDestination",
       resolveDestinationToPageAction: "resolveDestinationToPage",
     }),
+
+    // 初始化 ResizeObserver，用于监听元素尺寸的变化
+    initReSizeObservers() {
+      const el = this.$refs.viewerContainer;
+
+      if (!el) return;
+      if (typeof ResizeObserver === "undefined") return;
+
+      const handleContainerResizeDebounced = debounce(() => {
+        if (!this.documentLoaded) return;
+
+        this.fitPageOnce().catch((e) => {
+          console.warn("[Desktop PdfViewport] fitPageOnce on container resize failed:", e);
+        });
+        // 通知父组件：容器尺寸已变化且已重新适配整页，父级可以重置与手动缩放相关的 UI 状态
+        this.$emit("container-resized");
+      }, 100);
+
+      const resizeObserver = new ResizeObserver(() => {
+        handleContainerResizeDebounced();
+      });
+
+      resizeObserver.observe(el);
+
+      // 设置清理逻辑
+      const cleanup = () => {
+        console.log("cleanup - resize observer");
+
+        // 取消监听
+        resizeObserver?.disconnect?.();
+        // 取消防抖回调，避免销毁后还持有组件引用
+        handleContainerResizeDebounced?.cancel?.();
+      };
+
+      this.$on("hook:beforeDestroy", cleanup);
+    },
 
     // 模拟异步处理 loadDocumentAction 的参数
     transformFileSource(source, timeout = 3000) {
@@ -176,18 +214,22 @@ export default {
       });
     },
 
-    // 初始化文档的缩放比例
-    initializeScaleForDocument(event) {
-      // 初始化页码与缩放
-      this.setScaleAction(this.initialScale);
+    // 初始化文档的缩放比例（Desktop：默认适配整页，一屏展示）
+    async initializeScaleForDocument(event) {
+      try {
+        await this.fitPageOnce();
+      } catch (e) {
+        console.warn("[Desktop PdfViewport] fitPageOnce 计算失败，回退到 initialScale:", e);
+        this.setScaleAction(this.initialScale);
+        this.setBaselineScaleAction(this.initialScale);
+      }
+
+      // 无论如何都跳转到初始页
       this.goToPageAction(this.initialPage);
 
-      // 初次加载按容器宽度适配一次
-      this.$nextTick(() => {
-        this.fitWidthOnce();
-      });
-
-      console.log(`PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，初始缩放: ${this.initialScale}`);
+      console.log(
+        `[Desktop PdfViewport] PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，当前缩放: ${this.scale}`
+      );
     },
 
     // 对外提供方法，获取目录
@@ -243,7 +285,7 @@ export default {
       }
     },
 
-    // 手势翻页
+    // 手势翻页（与 mobile 版行为保持一致）
     async onSwipePrev() {
       await this.runWithLoadPending({
         message: "上一页",
@@ -292,27 +334,59 @@ export default {
       }
     },
 
-    // 按容器宽度适配一次
-    async fitWidthOnce() {
+    // 按「内容容器高度」适配整页（PC 端一屏一页）
+    async fitPageOnce() {
       try {
         if (!this.documentLoaded) {
           this.setBaselineScaleAction(this.scale);
           return;
         }
-        const rect = this.$refs.viewerContainer?.getBoundingClientRect();
-        if (!rect || rect.width === 0) {
+
+        const contentEl = this.$refs.content;
+        if (!contentEl) {
+          this.setBaselineScaleAction(this.scale);
+          return;
+        }
+
+        // 通过 getBoundingClientRect 计算宽高可以得到元素真实渲染的宽高，不然我们还需要额外处理 padding 等之类的情况
+        const rect = contentEl.getBoundingClientRect();
+        if (!rect || rect.width === 0 || rect.height === 0) {
+          this.setBaselineScaleAction(this.scale);
+          return;
+        }
+
+        const style = window.getComputedStyle(contentEl);
+        const paddingX = parseFloat(style.paddingLeft || "0") + parseFloat(style.paddingRight || "0");
+        const paddingY = parseFloat(style.paddingTop || "0") + parseFloat(style.paddingBottom || "0");
+
+        // 逻辑上的「上下留白」高度（不写在 CSS 里，只参与缩放计算），单位：px
+        const visualPaddingY = 0;
+
+        const availableWidth = rect.width - paddingX;
+        const availableHeight = rect.height - paddingY - visualPaddingY;
+
+        if (availableWidth <= 0 || availableHeight <= 0) {
           this.setBaselineScaleAction(this.scale);
           return;
         }
 
         const page = await this.getPageAction(1);
         const viewport = page.getViewport({ scale: 1 });
-        const computed = rect.width / viewport.width;
 
-        console.log("fitWidthOnce: ", {
+        // 只根据容器高度适配：保证「一屏一页」效果，同时预留 visualPaddingY 的上下留白
+        const scaleY = availableHeight / viewport.height;
+        const computed = scaleY;
+
+        console.log("fitPageOnce (height-only with visual padding):", {
           viewport,
           rect,
+          paddingX,
+          paddingY,
+          visualPaddingY,
+          availableWidth,
+          availableHeight,
           computed,
+          scaleY,
         });
 
         if (computed > 0 && Math.abs(computed - this.scale) > ZOOM_EPS) {
@@ -322,7 +396,7 @@ export default {
           this.setBaselineScaleAction(this.scale);
         }
       } catch (e) {
-        console.warn("fitWidthOnce 计算失败:", e);
+        console.warn("fitPageOnce 计算失败:", e);
         // 失败情况下也尽量回退到当前 scale 作为基础
         this.setBaselineScaleAction(this.scale);
       }

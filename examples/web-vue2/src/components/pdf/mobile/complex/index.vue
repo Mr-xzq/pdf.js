@@ -165,8 +165,8 @@ import Drawer from "./components/Drawer.vue";
 import OutlinePanel from "./components/OutlinePanel.vue";
 import ThumbnailPanel from "./components/ThumbnailPanel.vue";
 import TouchIconButton from "./components/TouchIconButton.vue";
-import { isValidPageNumber } from "./components/pdfReaderCore/utils/pdf-utils.js";
-import { ERROR_TYPES } from "./components/pdfReaderCore/utils/pdf-config.js";
+import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
+import { ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
 import { mapActions, mapMutations, mapGetters, mapState } from "vuex";
 
 // 静态资源
@@ -329,8 +329,8 @@ export default {
     },
   },
   computed: {
-    ...mapState("complexPdfReader", { storeError: "error" }),
-    ...mapGetters("complexPdfReader", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
+    ...mapState("pdfReaderCore", { storeError: "error" }),
+    ...mapGetters("pdfReaderCore", ["navigationState", "zoomState", "isLoading", "loadingMessage"]),
     currentPage() {
       return this.navigationState?.currentPage || 1;
     },
@@ -348,8 +348,8 @@ export default {
     },
   },
   methods: {
-    ...mapMutations("complexPdfReader", ["SET_ERROR"]),
-    ...mapActions("complexPdfReader", {
+    ...mapMutations("pdfReaderCore", ["SET_ERROR"]),
+    ...mapActions("pdfReaderCore", {
       goToPageAction: "goToPage",
       nextPageAction: "nextPage",
       prevPageAction: "prevPage",

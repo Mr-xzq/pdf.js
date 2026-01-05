@@ -1,3 +1,5 @@
+// Core pdf-config 实现：作为 pdfReaderCore 的统一配置与工具出口
+
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // 缩放常量与工具（供 viewer 模块使用）
@@ -43,3 +45,4 @@ export async function loadPdfDocument({ onProgress, getDocumentOptions = {} } = 
   const pdfDocument = await loadingTask.promise;
   return { pdfDocument };
 }
+

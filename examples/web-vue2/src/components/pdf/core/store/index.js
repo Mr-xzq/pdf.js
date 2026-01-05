@@ -7,8 +7,8 @@ import {
   round2,
   ZOOM_EPS,
   ERROR_TYPES,
-} from "../utils/pdf-config.js";
-import { resolveDestToPage, isValidPageNumber } from "../utils/pdf-utils.js";
+} from "../pdf-config.js";
+import { resolveDestToPage, isValidPageNumber } from "../pdf-utils.js";
 
 const initState = {
   // --- document ---
@@ -111,7 +111,7 @@ const actions = {
     }
   },
   // 文档加载核心逻辑：只负责状态与数据，不直接管理 loading 队列
-  async _handleLoadDocument({ commit, dispatch }, getDocumentOptions = {}) {
+  async _handleLoadDocument({ commit, dispatch }, { getDocumentOptions = {}, onProgress } = {}) {
     try {
       // 清空上一次文档与查看器状态，在这里如果 pendingQueue 还原了会导致 loadDocument 的 runWithLoadPending 提前被清空
       // 这样就提前终止 loading 了
@@ -119,6 +119,7 @@ const actions = {
 
       const { pdfDocument } = await loadPdfDocument({
         getDocumentOptions,
+        onProgress,
       });
 
       const metadata = await pdfDocument.getMetadata();
@@ -144,10 +145,18 @@ const actions = {
   },
 
   // 对外暴露的文档加载入口，并且通过 loading 队列管理加载态
-  async loadDocument({ dispatch }, getDocumentOptions = {}) {
+  async loadDocument({ dispatch }, payload = {}) {
+    // 兼容旧用法：loadDocument({ url })，也支持新用法：loadDocument({ getDocumentOptions, onProgress })
+    let options;
+    if (payload && (payload.getDocumentOptions || payload.onProgress)) {
+      const { getDocumentOptions = {}, onProgress } = payload;
+      options = { getDocumentOptions, onProgress };
+    } else {
+      options = { getDocumentOptions: payload || {} };
+    }
     return dispatch("runWithLoadPending", {
       message: "加载文档",
-      run: () => dispatch("_handleLoadDocument", getDocumentOptions),
+      run: () => dispatch("_handleLoadDocument", options),
     });
   },
 

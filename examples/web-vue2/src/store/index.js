@@ -1,6 +1,7 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { pdfReaderModule } from "@/components/pdf/complexPdfReader/components/pdfReaderCore/store/index.js";
+// 通过 core/store.js 暴露稳定的 pdfReaderCore 模块入口
+import { pdfReaderCoreModule } from "@/components/pdf/core/store.js";
 
 Vue.use(Vuex);
 
@@ -10,7 +11,7 @@ const store = new Vuex.Store({
   mutations: {},
   actions: {},
   modules: {
-    complexPdfReader: pdfReaderModule,
+    pdfReaderCore: pdfReaderCoreModule,
   },
 });
 
