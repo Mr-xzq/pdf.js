@@ -10,7 +10,7 @@
         @click="onSelect(page)"
       >
         <div class="thumb-media">
-          <van-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="contain" width="100%" />
+          <el-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="cover" />
           <div v-else class="thumb-ph"></div>
         </div>
         <div class="thumb-label">{{ page }}</div>
@@ -69,36 +69,38 @@ export default {
     },
   },
   methods: {
-    ...mapActions("pdfReaderCore", ["runWithLoadPending"]),
-    // 计算第一个缩略图的实际 CSS 宽度（与当前缩略图实际宽度/容器宽度相关）
-    getCssThumbWidth() {
-      const list = this.$refs.thumbList;
-      if (!list) return 0;
-      const item = list.querySelector(".thumb-item");
-      const w = item ? item.clientWidth : 0;
-      return w || 0;
-    },
-    // 根据容器高度，计算可用的缩略图高度（不再依赖 3:4 宽高比）
+    ...mapActions("pdfReaderCore", ["runWithLoadPending", "getPage"]),
+    // 根据容器高度，计算可用的缩略图高度
     getAvailableHeightFromContainer() {
       const list = this.$refs.thumbList;
-      if (!list) return 0;
       const style = window.getComputedStyle(list);
       const paddingTop = parseFloat(style.paddingTop) || 0;
       const paddingBottom = parseFloat(style.paddingBottom) || 0;
       const contentHeight = list.clientHeight - paddingTop - paddingBottom;
       if (contentHeight <= 0) return 0;
-      // 预留页码文字等占用的高度，避免被裁切
-      const labelReserve = 24;
+
+      // 预留页码文字等占用的高度，避免被裁切, margin + lineHeight
+      const labelReserve = 34 + 16;
       const availableHeight = Math.max(contentHeight - labelReserve, 0);
       return availableHeight > 0 ? availableHeight : 0;
     },
-    // 按容器高度动态换算缩略图 scale；以 240px 高度对应 0.2 作为基准
-    // 这样可以直接用可用高度控制缩略图清晰度
-    getScaleFromContainerHeight(height) {
-      const baseHeight = 240;
-      const baseScale = 0.2;
-      if (!height) return baseScale;
-      return (height / baseHeight) * baseScale;
+    // 按容器高度动态换算缩略图 scale
+    async getScaleFromContainerHeight(containerHeight) {
+      const page = await this.getPage(1);
+      const viewport = page.getViewport({ scale: 1 });
+
+      // 根据真实 pdf 高度来计算实际缩放比例
+      const scaleY = containerHeight / viewport.height;
+
+      console.log("getScaleFromContainerHeight: ", {
+        containerHeight,
+        viewport,
+        scaleY,
+      });
+
+      // 得到缩放比例，它会影响实际渲染 canvas 的物理像素
+      // 为了让其清晰些，我给了一个 1.5 倍精度渲染
+      return scaleY * 1.5;
     },
     // 缩略图点击事件
     onSelect(page) {
@@ -109,13 +111,13 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        const needLoad = !this.thumbsRendered && this.totalPages;
+        const needLoad = !this.thumbsRendered;
         if (needLoad) {
           await this.runWithLoadPending({
             message: "渲染缩略图",
             run: () => this.ensureRenderThumbnails(),
           });
-        } else if (this.thumbsRendered) {
+        } else {
           await this.ensureRenderThumbnails();
         }
         const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
@@ -130,22 +132,24 @@ export default {
     // 确保所有缩略图被渲染
     async ensureRenderThumbnails() {
       if (this.thumbsRendered || !this.totalPages) return;
+
+      // 标记开始渲染
       this.thumbsRendered = true;
       await this.$nextTick();
+
       // 优先根据容器高度直接计算缩略图 scale，让缩略图高度随容器自适应
       const availableHeight = this.getAvailableHeightFromContainer();
-      let scale;
-      if (availableHeight) {
-        scale = this.getScaleFromContainerHeight(availableHeight);
-      } else {
-        const cssWidth = this.getCssThumbWidth() || 120;
-        scale = this.getScaleFromWidth(cssWidth);
-      }
-      for (let p = 1; p <= this.totalPages; p += 1) {
+      const scale = await this.getScaleFromContainerHeight(availableHeight);
+
+      // 循环遍历每一页，渲染缩略图
+      for (let p = 1; p <= this.totalPages; p++) {
         const tmp = document.createElement("canvas");
         await this.renderThumbnail(p, tmp, { scale });
         const url = tmp.toDataURL("image/png");
+        // 将生成的 Data URL 存入 thumbSrcs
         this.$set(this.thumbSrcs, p, url);
+
+        // 释放 canvas 内存
         tmp.width = 0;
         tmp.height = 0;
       }
@@ -212,10 +216,10 @@ export default {
     }
 
     .thumb-media {
-      width: 100%;
       // 使用容器高度作为基准：媒体区域占满扣除页码文字后的高度，与 JS 中 labelReserve 保持一致
-      height: calc(100% - 24px);
-      // 仅作为占位比例，保证缩略图加载前有稳定宽高比和稳定高度，避免布局抖动
+      // margin + lineHeight
+      height: calc(100% - 34px - 16px);
+      // 通过这个比例来计算初始宽度, 当内容宽度比它大时, 会撑宽(保证缩略图加载前有稳定宽高比和稳定高度，避免布局抖动)
       aspect-ratio: 3 / 4;
 
       .thumb-img,
@@ -223,13 +227,16 @@ export default {
         display: block;
         width: 100%;
         height: 100%;
+      }
+
+      .thumb-ph {
         background: #f7f7f7;
-        border-radius: 4px;
       }
     }
 
     .thumb-label {
-      margin: 2px 0;
+      margin: 17px 0;
+      line-height: 16px;
       font-size: 14px;
       color: #000000;
       letter-spacing: 0;

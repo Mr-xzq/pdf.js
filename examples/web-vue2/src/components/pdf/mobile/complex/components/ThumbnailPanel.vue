@@ -136,12 +136,15 @@ export default {
     // 确保所有缩略图被渲染
     async ensureRenderThumbnails() {
       if (this.thumbsRendered || !this.totalPages) return;
+
       // 标记开始渲染
       this.thumbsRendered = true;
       await this.$nextTick();
+
       const cssWidth = this.getCssThumbWidth() || 120;
       // 计算缩放比例
       const scale = this.getScaleFromWidth(cssWidth);
+
       let rendered = 0;
       // 循环遍历每一页，渲染缩略图
       for (let p = 1; p <= this.totalPages; p += 1) {

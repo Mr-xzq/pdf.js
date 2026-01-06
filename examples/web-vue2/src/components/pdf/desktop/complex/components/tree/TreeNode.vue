@@ -219,12 +219,14 @@ export default {
   padding: 0 12px 0 8px;
   user-select: none;
   transition: background 120ms ease;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
 
   &--active {
     background: rgba(0, 0, 0, 0.06);
-  }
-  &:active {
-    background: rgba(0, 0, 0, 0.04);
   }
 }
 

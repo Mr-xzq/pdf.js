@@ -7,15 +7,13 @@
     @closed="$emit('closed')"
   >
     <div v-if="showHeader" class="thumbnail-wrapper__header">
-      <slot name="header">
-        <TouchIconButton
-          :src="closeIconUrl"
-          class="dialog-close-wrapper"
-          img-class="dialog-close-img"
-          :min-size="40"
-          @click="handleClose"
-        />
-      </slot>
+      <TouchIconButton
+        :src="closeIconUrl"
+        class="dialog-close-wrapper"
+        img-class="dialog-close-img"
+        :min-size="30"
+        @click="handleClose"
+      />
     </div>
 
     <div class="thumbnail-wrapper__body">
@@ -35,9 +33,6 @@ export default {
   },
   props: {
     isShow: { type: Boolean, default: true },
-    // 浮层标题
-    title: { type: String, default: "" },
-    // 是否展示头部标题 + 关闭按钮
     showHeader: { type: Boolean, default: true },
   },
   data() {
@@ -94,7 +89,7 @@ export default {
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-basis: 3.21rem;
+      flex-basis: 2.21rem;
       background: #fff;
 
       .dialog-close-wrapper {

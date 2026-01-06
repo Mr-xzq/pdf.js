@@ -1,24 +1,26 @@
 <template>
-  <div class="outline-panel">
-    <Tree
-      ref="tree"
-      :data="treeData"
-      :props="treeProps"
-      :active-key="activeKey"
-      :expanded-keys.sync="expandedKeys"
-      label-class-name="custom-label-content"
-      @select="onTreeSelect"
-    >
-      <template #switcher="{ expanded }">
-        <van-image v-show="!expanded" class="toggle-tool-item" :src="expandIconUrl"></van-image>
-        <van-image v-show="expanded" class="toggle-tool-item" :src="collapseIconUrl"></van-image>
-      </template>
-    </Tree>
+  <div class="outline-content">
+    <div class="outline-panel">
+      <Tree
+        ref="tree"
+        :data="treeData"
+        :props="treeProps"
+        :active-key="activeKey"
+        :expanded-keys.sync="expandedKeys"
+        label-class-name="custom-label-content"
+        @select="onTreeSelect"
+      >
+        <template #switcher="{ expanded }">
+          <el-image v-show="!expanded" class="toggle-tool-item" :src="expandIconUrl"></el-image>
+          <el-image v-show="expanded" class="toggle-tool-item" :src="collapseIconUrl"></el-image>
+        </template>
+      </Tree>
+    </div>
   </div>
 </template>
 
 <script>
-import Tree from "./tree/index.vue";
+import Tree from "../tree/index.vue";
 import { mapActions } from "vuex";
 import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
 
@@ -27,7 +29,7 @@ import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
 export default {
-  name: "OutlinePanel",
+  name: "OutlineContent",
   components: { Tree },
   props: {
     // 获取 PDF 大纲数据
@@ -227,6 +229,10 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.outline-content {
+  height: 100%;
+}
+
 .outline-panel {
   height: 100%;
 

@@ -1,6 +1,6 @@
 <template>
   <div class="touch-icon-button" :style="wrapperStyle" @click="$emit('click', $event)">
-    <van-image class="icon-img" :class="imgClass" :src="src" />
+    <el-image class="icon-img" :class="imgClass" :src="src" />
   </div>
 </template>
 

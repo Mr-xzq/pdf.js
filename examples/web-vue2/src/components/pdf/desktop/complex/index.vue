@@ -1,6 +1,5 @@
 <template>
   <div class="complex-pdf-reader">
-    <!-- 结构与 mobile/complex 一致，后续 Desktop 仅在此基础上演进样式与交互 -->
     <div class="content-area">
       <pdf-viewport
         ref="pdfReader"
@@ -93,22 +92,26 @@
       </div>
     </div>
 
-    <drawer :is-show.sync="isShowOutlineDrawer" title="目录" @closed="onOutlineDrawerClosed" @opened="onOutlineOpened">
-      <outline-panel
+    <!-- 目录（PC Drawer 实现） -->
+    <outline-wrapper
+      :is-show.sync="isShowOutlineDrawer"
+      title="目录"
+      @closed="onOutlineDrawerClosed"
+      @opened="onOutlineOpened"
+    >
+      <outline-content
         :key="pdfDocKey"
         ref="outlinePanel"
         :current-page="currentPage"
         :get-outline="getOutline"
         :navigate-to-destination="navigateToDestination"
         :resolve-dest-to-page-number="resolveDestToPageNumber"
-        @selected="closeOutlineDrawer"
       />
-    </drawer>
+    </outline-wrapper>
 
-    <!-- Desktop 缩略图：采用 Wrapper + Content 组合，内容单行左右滚动，不再区分列数 -->
+    <!-- 缩略图 -->
     <thumbnail-wrapper
       :is-show.sync="isShowThumbnailDrawer"
-      title="缩略图"
       @closed="onThumbnailDrawerClosed"
       @opened="onThumbnailOpened"
     >
@@ -126,10 +129,9 @@
 </template>
 
 <script>
-// Desktop 版本复用自身目录下的组件，实现与 mobile/complex 解耦
 import PdfViewport from "./components/pdfReaderCore/index.vue";
-import Drawer from "./components/Drawer.vue";
-import OutlinePanel from "./components/OutlinePanel.vue";
+import OutlineWrapper from "./components/Outline/OutlineWrapper.vue";
+import OutlineContent from "./components/Outline/OutlineContent.vue";
 import ThumbnailWrapper from "./components/Thumbnail/ThumbnailWrapper.vue";
 import ThumbnailContent from "./components/Thumbnail/ThumbnailContent.vue";
 import TouchIconButton from "./components/TouchIconButton.vue";
@@ -137,7 +139,6 @@ import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
 import { ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
 import { mapActions, mapMutations, mapGetters, mapState } from "vuex";
 
-// 静态资源：先直接复用移动端 Complex 的资源，后续 Desktop UI 统一替换
 import thumbnailIconUrl from "@/assets/images/complexPdfReader/thumbnail-2x.png";
 import outlineIconUrl from "@/assets/images/complexPdfReader/outline-2x.png";
 import firstPageIconUrl from "@/assets/images/complexPdfReader/firstPage-2x.png";
@@ -152,9 +153,9 @@ import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
 export default {
   name: "DesktopComplexPdfReader",
   components: {
-    Drawer,
     PdfViewport,
-    OutlinePanel,
+    OutlineWrapper,
+    OutlineContent,
     ThumbnailWrapper,
     ThumbnailContent,
     TouchIconButton,
@@ -198,7 +199,6 @@ export default {
       pdfReaderRef: {},
       pageInputRef: {},
 
-      // 图标与 UI 状态，与 mobile/complex 保持一致，后续 Desktop 可按需调整
       thumbnailIconUrl,
       outlineIconUrl,
       firstPageIconUrl,
@@ -306,7 +306,6 @@ export default {
     handleClickOutline() {
       this.isShowOutlineDrawer = true;
     },
-    // Desktop：缩略图浮层打开时，由 Wrapper 触发，转发给内容组件
     onThumbnailOpened() {
       this.$refs.thumbPanel?.onParentOpened?.();
     },
@@ -323,7 +322,6 @@ export default {
       this.isShowOutlineDrawer = false;
       this.$refs.outlinePanel?.onParentClosed();
     },
-    // Desktop：缩略图浮层关闭时，由 Wrapper 触发，转发给内容组件
     onThumbnailDrawerClosed() {
       this.$refs.thumbPanel?.onParentClosed?.();
     },

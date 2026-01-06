@@ -95,6 +95,8 @@ export async function renderPageToCanvas({ getPage, tasks, pageNumber, canvas, s
 
   const ctx = canvas.getContext("2d");
 
+  // pdfjs 源码中 display/api.js --> PDFPageProxy.render
+  const renderContextOptions = renderOptions.renderContextOptions ?? {};
   const renderContext = {
     canvasContext: ctx,
     viewport: renderViewport,
@@ -102,7 +104,7 @@ export async function renderPageToCanvas({ getPage, tasks, pageNumber, canvas, s
     // CanvasRenderingContext2D transform(a, b, c, d, e, f)
     // 当 b 和 c 为 0 时，a 和 d 控制上下文的水平和垂直缩放。
     transform: renderPixelRatio !== 1 ? [renderPixelRatio, 0, 0, renderPixelRatio, 0, 0] : null,
-    ...renderOptions,
+    ...renderContextOptions,
   };
 
   // 发起渲染并记录任务，方便取消
