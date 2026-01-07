@@ -27,7 +27,6 @@ import expandIconUrl from "@/assets/images/complexPdfReader/expand-2x.png";
 import collapseIconUrl from "@/assets/images/complexPdfReader/collapse-2x.png";
 
 export default {
-  name: "OutlineContent",
   components: { Tree },
   props: {
     // 获取 PDF 大纲数据

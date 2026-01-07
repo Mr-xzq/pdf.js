@@ -92,12 +92,7 @@
       </div>
     </div>
 
-    <outline-wrapper
-      :is-show.sync="isShowOutline"
-      title="目录"
-      @closed="onOutlineClosed"
-      @opened="onOutlineOpened"
-    >
+    <outline-wrapper :is-show.sync="isShowOutline" title="目录" @closed="onOutlineClosed" @opened="onOutlineOpened" width="30rem">
       <outline-content
         :key="pdfDocKey"
         ref="outlinePanel"
@@ -109,11 +104,7 @@
     </outline-wrapper>
 
     <!-- 缩略图 -->
-    <thumbnail-wrapper
-      :is-show.sync="isShowThumbnail"
-      @closed="onThumbnailClosed"
-      @opened="onThumbnailOpened"
-    >
+    <thumbnail-wrapper :is-show.sync="isShowThumbnail" @closed="onThumbnailClosed" @opened="onThumbnailOpened">
       <thumbnail-content
         :key="pdfDocKey"
         ref="thumbPanel"
@@ -269,7 +260,7 @@ export default {
     },
     contentAreaStyle() {
       return {
-        marginLeft: this.outlineLeftOffset + 'px',
+        marginLeft: this.outlineLeftOffset + "px",
       };
     },
   },
@@ -403,14 +394,16 @@ export default {
     // 计算目录抽屉实际占用的宽度（相对阅读器容器左侧），用于推开内容区域
     updateOutlineOffset() {
       this.$nextTick(() => {
-        const panel = this.$el.querySelector(".drawer__panel");
+        const root = this.$el;
+        const rootRect = root.getBoundingClientRect();
+        const panel = root.querySelector(".drawer-wrapper");
         const panelRect = panel.getBoundingClientRect();
-        console.log("panelRect: ", {
+        console.log("updateOutlineOffset: ", {
           panelRect,
-          left: panelRect.left,
-          width: panelRect.width,
+          rootRect,
         });
-        this.outlineLeftOffset = Math.max(0, panelRect.left + panelRect.width);
+        // 用「抽屉右边缘 - 组件左边缘」得到相对偏移
+        this.outlineLeftOffset = Math.max(0, panelRect.right - rootRect.left);
       });
     },
   },

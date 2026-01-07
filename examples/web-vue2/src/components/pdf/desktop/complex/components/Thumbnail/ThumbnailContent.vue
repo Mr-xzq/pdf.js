@@ -1,5 +1,5 @@
 <template>
-  <div class="thumbnail-panel">
+  <div class="thumbnail-content">
     <div v-if="totalPages" ref="thumbList" class="thumb-list">
       <div
         v-for="page in totalPages"
@@ -24,7 +24,6 @@ import { mapActions } from "vuex";
 import { isValidPageNumber } from "@/components/pdf/core/pdf-utils.js";
 
 export default {
-  name: "ThumbnailContent",
   props: {
     // 总页数
     totalPages: { type: Number, required: true },
@@ -156,9 +155,7 @@ export default {
     },
     // 滚动到指定页的缩略图
     async scrollToPage(page) {
-      const list = this.$refs.thumbList;
-      if (!list) return;
-      const item = list.querySelector('.thumb-item[data-page="' + page + '"]');
+      const item = this.$el?.querySelector('.thumb-item[data-page="' + page + '"]');
       item?.scrollIntoView({ behavior: "smooth" });
     },
     // 滚动到当前页的缩略图
@@ -172,7 +169,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.thumbnail-panel {
+.thumbnail-content {
   height: 100%;
   display: flex;
   align-items: center;

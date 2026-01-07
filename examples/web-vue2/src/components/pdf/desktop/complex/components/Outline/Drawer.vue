@@ -1,17 +1,17 @@
 <template>
   <transition name="drawer-slide" @after-enter="afterEnter" @after-leave="afterLeave">
-    <div v-show="isShow" class="drawer__panel" :style="{ width: sizePx }">
-      <div v-if="showHeader" class="drawer__header">
-        <div class="drawer__title">{{ title }}</div>
+    <div v-show="isShow" class="drawer-wrapper" :style="{ width: computedWidth }">
+      <div v-if="showHeader" class="drawer-header">
+        <div class="drawer-title">{{ title }}</div>
         <TouchIconButton
           :src="closeIconUrl"
-          class="drawer__close-btn"
-          img-class="drawer__close-img"
+          class="drawer-close-btn"
+          img-class="drawer-close-img"
           :min-size="30"
           @click="handleClose"
         />
       </div>
-      <div class="drawer__body" v-if="rendered">
+      <div class="drawer-body" v-if="rendered">
         <slot />
       </div>
     </div>
@@ -34,7 +34,7 @@ export default {
     // 是否展示头部区域
     showHeader: { type: Boolean, default: true },
     // 抽屉宽度
-    size: { type: [String, Number], default: "20rem" },
+    width: { type: [String, Number], default: "20rem" },
   },
   data() {
     return {
@@ -44,8 +44,8 @@ export default {
     };
   },
   computed: {
-    sizePx() {
-      return typeof this.size === "number" ? `${this.size}px` : this.size;
+    computedWidth() {
+      return typeof this.width === "number" ? `${this.width}px` : this.width;
     },
   },
   watch: {
@@ -71,7 +71,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.drawer__panel {
+.drawer-wrapper {
   position: absolute;
   top: 10px;
   left: 10px;
@@ -82,31 +82,31 @@ export default {
   background: #ffffff;
   box-shadow: 0 0.29rem 0.57rem 0 rgba(0, 0, 0, 0.15);
 
-  .drawer__header {
+  .drawer-header {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.57rem 0 1rem;
 
-    .drawer__title {
+    .drawer-title {
       font-size: 1.14rem;
       color: #000000;
       font-weight: 400;
     }
 
-    .drawer__close-btn {
+    .drawer-close-btn {
       position: absolute;
       right: 0.5rem;
     }
 
-    /deep/ .drawer__close-img {
+    /deep/ .drawer-close-img {
       width: 0.81rem;
       height: 0.83rem;
     }
   }
 
-  .drawer__body {
+  .drawer-body {
     flex: 1;
     min-height: 0;
     padding: 0 1.36rem;

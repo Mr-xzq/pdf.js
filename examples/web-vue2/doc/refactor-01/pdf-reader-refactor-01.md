@@ -30,10 +30,10 @@
   - Complex Reader 也已经完全通过 `pdfReaderCore` 的 state / getters / actions 以及 `core/pdf-utils` 中的工具（如 `renderPageToCanvas`、`isValidPageNumber`）来驱动视图。
   - Core 负责文档状态与导航/缩放逻辑，Complex 仅负责 UI 布局与交互（目录、缩略图、自动播放、翻页音效等）。
 - Desktop Reader 进展（DesktopComplexPdfReader + Desktop 版 PdfViewport）：
-  - `components/pdf/desktop/complex/index.vue` 已通过本地化子组件（`./components/pdfReaderCore/`、`./components/OutlinePanel.vue`、`./components/ThumbnailPanel.vue`、`./components/tree/*` 等）实现，与 `mobile/complex` 在结构与行为上基本同构，但在路径上完成了解耦。
+  - `components/pdf/desktop/complex/index.vue` 提供 `DesktopComplexPdfReader` 主组件：复用 `pdfReaderCore` 与 `core/pdf-utils`，在 props / 事件 / ref 方法层面与 `mobile/complex` 保持基本对齐，但在 UI 容器上基于 Element（如 `el-input`、`el-dialog` 等）重新组织了底部工具栏与抽屉布局，以适配 PC 端交互。
   - `components/pdf/desktop/complex/components/pdfReaderCore/index.vue` 提供 Desktop 版 `PdfViewport`：基于 `ResizeObserver` 监听容器尺寸变化，结合 `pdfReaderCore` 的 `getPage` / `setScale` / `setBaselineScale`，首版实现了「PC 端一屏一页」的自动适配缩放，并统一承接文档加载、目录获取、缩略图渲染与自动播放等逻辑。
-  - Desktop 版 Outline/Thumbnail 面板已在 Desktop 路径下落地：Outline 面板通过 `resolveDestToPageNumber` 构建页码 → 目录节点的映射，支持依据当前页自动高亮与就近匹配；Thumbnail 面板根据实际渲染宽度动态计算缩略图 `scale` 与网格列数，支持在 Drawer 中自适应展示与联动滚动。
-  - `DesktopComplexPdfReader` 通过 `page-changed`、`error`、`loading-start` / `loading-stop`、`document-loaded`、`update:autoPlayEnabled` 等事件，以及 `getOutline`、`renderThumbnail`、`navigateToDestination` 等 ref 方法，对外暴露的接口已与移动端 Complex Reader 基本对齐，可作为 Desktop 端首个可用版本（MVP）。
+  - Desktop 版 Outline/Thumbnail 组件已在 Desktop 路径下落地：Outline 使用 `components/Outline/OutlineWrapper.vue` + `components/Outline/OutlineContent.vue` 组合，实现与移动端 `OutlinePanel` 等价的「页码 → 目录节点」映射与就近高亮；Thumbnail 使用 `components/Thumbnail/ThumbnailWrapper.vue` + `components/Thumbnail/ThumbnailContent.vue`，采用底部 `el-dialog` + 横向滚动缩略图条，内部同样通过缩放参数计算缩略图渲染尺寸。
+  - `DesktopComplexPdfReader` 通过 `page-changed`、`error`、`loading-start` / `loading-stop`、`document-loaded`、`update:autoPlayEnabled` 等事件，以及 `getOutline`、`renderThumbnail`、`navigateToDestination` 等 ref 方法，对外暴露的接口已与移动端 Complex Reader 基本对齐，可作为 Desktop 端首个可用版本（MVP）；目前翻页 slider 与翻页音效仅在移动端 Complex Reader 中提供，Desktop 端暂不包含这些移动端增强交互。
 - 旧实现收敛情况：
   - 原 `components/pdf/simplePdfReader/` 与 `components/pdf/complexPdfReader/` 目录的能力已迁移到 `components/pdf/mobile/` 与 `components/pdf/core/` 下，不再作为对外入口使用。
   - 现有示例与后续业务建议统一通过 `components/pdf/index.js` 中的导出使用新路径与命名。
@@ -116,37 +116,46 @@
 
 当前实现：`components/pdf/mobile/simple/index.vue` 与 `components/pdf/mobile/complex/index.vue` 已按上述方案接入 `pdfReaderCore` 与 `core/pdf-utils`；后续 Desktop Reader 可直接复用同一 Core。
 
-### 3.3 阶段三：Desktop Reader（第一步：与 mobile/complex 同构的 DesktopComplexPdfReader）
+### 3.3 阶段三：Desktop Reader（第一步：DesktopComplexPdfReader MVP）
 
 **阶段三整体目标：** 在已有 Core 基础上，为 Desktop Reader 提供一套与 Mobile Reader 等价的能力，后续仅在 UI 布局与交互层演进，不再动 Core。
 
-**第一步（当前设计范围）：实现一个与 `mobile/complex` 结构同构的 `DesktopComplexPdfReader`，作为 Desktop 迁移的起点。**
+**当前状态：** 已在 `components/pdf/desktop/complex/` 下落地首个 `DesktopComplexPdfReader` MVP，实现了与 `mobile/complex` 在「能力层」（props / 事件 / ref 方法）上的基本对齐，UI 与交互根据 PC 端特性做了适配调整。
 
 1. 目录结构与命名
-   - 预留 Desktop UI 目录：
+   - Desktop UI 目录：
      - `components/pdf/desktop/complex/index.vue`：`DesktopComplexPdfReader` 主组件。
+     - `components/pdf/desktop/complex/components/pdfReaderCore/index.vue`：Desktop 版 `PdfViewport`。
+     - `components/pdf/desktop/complex/components/Outline/OutlineWrapper.vue`、`components/pdf/desktop/complex/components/Outline/OutlineContent.vue`：Desktop 版目录抽屉容器与内容。
+     - `components/pdf/desktop/complex/components/Thumbnail/ThumbnailWrapper.vue`、`components/pdf/desktop/complex/components/Thumbnail/ThumbnailContent.vue`：Desktop 版缩略图浮层容器与内容。
+     - `components/pdf/desktop/complex/components/tree/*`：与移动端共享实现的目录树组件。
    - 仍使用 `pdfReaderCore` 作为唯一 Core：
      - 通过 `mapState` / `mapGetters` / `mapActions` 使用 `pdfReaderCore` 的状态与能力；
-     - 渲染相关继续复用 `core/pdf-utils`（如 `renderPageToCanvas`、`cancelAllRenderTasks`）。
+     - 渲染相关继续复用 `core/pdf-utils`（如 `renderPageToCanvas`、`isValidPageNumber` 等）。
 
-2. 组件结构（与 `mobile/complex` 保持一致）
-   - 首个 Desktop 版本在 DOM 结构与 class 命名上与 `components/pdf/mobile/complex/index.vue` 保持 1:1 一致：
-     - 外层容器：`.complex-pdf-reader`；
-     - 内容区域：`.content-area` 中挂载 `PdfViewport`；
-     - 底部工具栏：`.bottom-toolbar` + `.page-nav` + `.bottom-toolbar-tool-list`；
-     - Drawer 与面板：`<drawer>` + `<outline-panel>` / `<thumbnail-panel>` 等。
-   - 复用已有子组件与资源：
-     - `PdfViewport`（可直接从 mobile 目录复用实现）；
-     - `Drawer`、`OutlinePanel`、`ThumbnailPanel`、`TouchIconButton`；
-     - 现有的图标资源与背景资源。
-   - 暂不调整这些结构与 class 名称，后续等 Desktop UI 设计稿确定后，再集中做布局与样式层面的演进。
+2. Desktop / Mobile Complex 对齐情况
+   - **两端共享的核心能力：**
+     - 使用同一 `pdfReaderCore` 模块（文档加载、错误 & loading 状态、页码/总页数、缩放状态等）；
+     - 页面导航：首页 / 末页 / 上一页 / 下一页 + 数字输入跳转（`gotoPageInput + isEditingPageInput` 逻辑一致）；
+     - 目录（Outline）：通过 `getOutline` + `resolveDestToPageNumber` 构建「页码 → 节点 key」映射，支持依据当前页自动高亮与就近前驱匹配，并在面板打开时自动滚动到激活节点；
+     - 缩略图（Thumbnail）：通过 `renderThumbnail` 渲染各页缩略图，支持点击跳页、跟随当前页高亮并滚动到可见位置；
+     - 缩放：支持点击放大到 `zoomTarget`，再通过“还原”按钮恢复放大前的缩放倍数；
+     - 自动播放：共用 `autoPlayEnabled / autoPlayIntervalMs` props 与 `update:autoPlayEnabled` / `auto-play-ended` 事件，对外语义一致。
+   - **当前仅在移动端提供的能力：**
+     - 底部 `slider` 翻页导航：`mobile/complex` 通过 `van-slider` 与 `sliderValue` 同步页码，Desktop 版暂未实现该 UI；
+     - 翻页音效：`mobile/complex` 通过 `Audio(sampleAudioUrl)` + 超时/错误处理实现翻页音效的预加载与播放，Desktop 版暂未接入该能力。
+   - **当前仅在 Desktop 提供或更强调的行为：**
+     - 目录抽屉会根据实际面板宽度动态推开内容区域（`outlineLeftOffset` + `contentAreaStyle.marginLeft`），突出 PC 端左右分栏布局；
+     - Desktop 版 `PdfViewport` 结合 `ResizeObserver` 与 `handleViewportResized`，在容器尺寸变化时自动重置手动缩放状态，保证「一屏一页」策略的稳定性；
+     - Desktop 缩略图当前采用底部 `el-dialog` + 横向滚动缩略图条，优先保证在宽屏场景下的横向浏览体验，而移动端则使用网格布局（基于列宽推导缩放）。
 
-3. 对外接口（与 `ComplexPdfReader` 对齐）
+3. 对外接口（与 `MobileComplexPdfReader` 对齐）
    - Props：
      - `src: string`：PDF 文档地址；
      - `initialPage: number = 1`：初始页；
      - `initialScale: number = 1`：初始缩放；
-     - `autoPlayEnabled: boolean = false`：是否开启自动播放（为保持接口兼容，Desktop 首版可先复用该 props，是否提供 UI 可按需求决定）；
+     - `zoomTarget: number = 1.5`：点击放大的目标倍数；
+     - `autoPlayEnabled: boolean = false`：是否开启自动播放（为保持接口兼容，Desktop 与 Mobile 共用该 props）；
      - `autoPlayIntervalMs: number = 1500`：自动翻页间隔。
    - Events（保持与 `mobile/complex` 一致）：
      - `document-loaded(e)`：文档加载完成；
@@ -162,13 +171,14 @@
 
 4. 行为与样式演进策略
    - 行为层：
-     - 初始 Desktop 实现直接复用 `mobile/complex` 的交互逻辑（包括底部工具栏、Drawer 行为、自动播放、翻页音效等）；
-     - 后续如需更“PC 化”的交互（例如键盘快捷键、滚轮缩放等），在 `DesktopComplexPdfReader` / `PdfViewport` 内部按平台定制，不改变 Core。
+     - 当前 Desktop 实现已经在「文档加载 / 导航 / 缩放 / 目录 / 缩略图 / 自动播放」等核心行为上与移动端对齐；
+     - 翻页 slider 与翻页音效暂时保持为移动端增强能力，后续如有 Desktop 需求，可以在不修改 Core 的前提下，按 PC 交互重新设计对应 UI；
+     - 如需引入更“PC 化”的行为（键盘快捷键、鼠标滚轮缩放、多窗格布局等），建议在 `DesktopComplexPdfReader` / Desktop 版 `PdfViewport` 中按平台定制。
    - 样式层：
-     - 首版可直接复制 `mobile/complex` 的 Less 作为基础，做少量针对桌面环境的调优（如字体、间距）；
-     - 等设计稿到位后，再针对 `.complex-pdf-reader` 及其子元素统一调整布局与视觉风格。
+     - 继续沿用 `.complex-pdf-reader` 及相关 class 作为 Desktop 布局基础，当前样式已针对 PC 端做了 Toolbar 高度、缩略图容器尺寸等初步调优；
+     - 等设计稿到位后，再统一调整 Desktop 的布局与视觉风格，保证在不破坏现有 API 的前提下，可以迭代出多个 Desktop 变体。
 
-> 小结：阶段三的第一步，是在保持 `mobile/complex` 结构与接口基本一致的前提下，快速落地一个 Desktop 版本的复杂 Reader。后续 Desktop 与 Mobile 的差异将主要体现在样式与交互层，Core 与组件对外 API 尽量保持一致，以降低维护成本与迁移成本。
+> 小结：当前 DesktopComplexPdfReader 已作为 Desktop 端复杂 Reader 的首个 MVP，与移动端 Complex 共享同一 Core 与大部分对外接口。后续 Desktop 与 Mobile 的差异将主要体现在样式与交互层，Core 与组件对外 API 尽量保持一致，以降低维护成本与迁移成本。
 
 ## 4. Roadmap（实施顺序 & 当前状态）
 
@@ -187,14 +197,13 @@
    - 删除/收敛 Simple 中重复的 pdf.js 逻辑；
    - （可选）补充/更新相关单元测试与示例。
 4. **[ ] Step 3：阶段三（Desktop 准备）**
-   - **[x] 在 `components/pdf/desktop/complex/index.vue` 中创建 `DesktopComplexPdfReader` 骨架组件：**
-     - 初始版本直接复用 `mobile/complex/index.vue` 的模板结构与大部分逻辑；
-     - 保持底部工具栏（`bottom-toolbar`、`page-nav`、`bottom-toolbar-tool-list`）与 Drawer 结构不变；
-     - 通过 `pdfReaderCore` 与 `core/pdf-utils` 驱动文档加载与渲染；
+   - **[x] 在 `components/pdf/desktop/complex/index.vue` 中实现 `DesktopComplexPdfReader` MVP 组件：**
+     - 复用 `pdfReaderCore` 与 `core/pdf-utils`，在 props / 事件 / ref 方法层面与 `mobile/complex/index.vue` 保持基本一致；
+     - 使用 Element 组件（如 `el-input`、`el-dialog`）重绘底部工具栏与 Outline/Thumbnail 容器布局，引入 PC 端特有的内容区域推开逻辑；
      - 已在 `components/pdf/index.js` 中导出 `DesktopComplexPdfReader`，并新增 `/desktop-complex-pdf-reader-demo` 路由与 `DesktopComplexReaderDemo` 页面用于基本验证；
-   - **[x] 将 Desktop 版 PdfViewport / OutlinePanel / ThumbnailPanel 下沉至 `components/pdf/desktop/complex/components/` 目录：**
+   - **[x] 将 Desktop 版 PdfViewport / Outline / Thumbnail 相关子组件下沉至 `components/pdf/desktop/complex/components/` 目录：**
      - PdfViewport 在 `components/pdf/desktop/complex/components/pdfReaderCore/index.vue` 中落地，基于 `ResizeObserver` + `fitPageOnce` 实现 PC 端「一屏一页」的首版缩放策略，并统一承接文档加载、目录与缩略图相关对外方法；
-     - OutlinePanel / ThumbnailPanel 以及 tree 组件在 Desktop 路径下提供与 mobile 版等价的目录与缩略图能力，实现与当前页的双向联动与 Drawer 内的自适应布局；
+     - OutlineWrapper / OutlineContent、ThumbnailWrapper / ThumbnailContent 以及 tree 组件在 Desktop 路径下提供与 mobile 版 OutlinePanel / ThumbnailPanel 等价的目录与缩略图能力，实现与当前页的双向联动与浮层/抽屉内的自适应布局；
    - **[ ] 验证多 UI 变体（Mobile + Desktop）共存时 Core 行为是否符合预期；**
    - **[ ] 在 UI 设计稿就绪后，再迭代 Desktop 的布局与样式，并按需要扩展 Desktop 专属高级功能（例如更丰富的键盘/鼠标交互、多窗格布局等）。**
 

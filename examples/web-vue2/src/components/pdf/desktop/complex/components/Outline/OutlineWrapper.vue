@@ -3,7 +3,7 @@
     :is-show.sync="innerVisible"
     :title="title"
     :show-header="showHeader"
-    :size="size"
+    :width="width"
     @opened="$emit('opened')"
     @closed="$emit('closed')"
   >
@@ -15,7 +15,6 @@
 import Drawer from "./Drawer.vue";
 
 export default {
-  name: "OutlineWrapper",
   components: {
     Drawer,
   },
@@ -27,7 +26,7 @@ export default {
     // 是否展示头部区域
     showHeader: { type: Boolean, default: true },
     // 抽屉宽度，支持 number 或 string
-    size: { type: [String, Number], default: "20rem" },
+    width: { type: [String, Number], default: "20rem" },
   },
   data() {
     return {

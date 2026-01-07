@@ -6,7 +6,7 @@
     @opened="$emit('opened')"
     @closed="$emit('closed')"
   >
-    <div v-if="showHeader" class="thumbnail-wrapper__header">
+    <div v-if="showHeader" class="thumbnail-wrapper-header">
       <TouchIconButton
         :src="closeIconUrl"
         class="dialog-close-wrapper"
@@ -16,7 +16,7 @@
       />
     </div>
 
-    <div class="thumbnail-wrapper__body">
+    <div class="thumbnail-wrapper-body">
       <slot />
     </div>
   </el-dialog>
@@ -27,7 +27,6 @@ import closeIconUrl from "@/assets/images/complexPdfReader/close-2x.png";
 import TouchIconButton from "../TouchIconButton.vue";
 
 export default {
-  name: "ThumbnailWrapper",
   components: {
     TouchIconButton,
   },
@@ -84,7 +83,7 @@ export default {
       padding: 0;
     }
 
-    .thumbnail-wrapper__header {
+    .thumbnail-wrapper-header {
       position: relative;
       display: flex;
       align-items: center;
@@ -104,7 +103,7 @@ export default {
       }
     }
 
-    .thumbnail-wrapper__body {
+    .thumbnail-wrapper-body {
       flex: 1;
       min-height: 0;
     }
