@@ -129,7 +129,7 @@
       </div>
     </div>
 
-    <drawer :is-show.sync="isShowOutlineDrawer" title="目录" @closed="onOutlineDrawerClosed" @opened="onOutlineOpened">
+    <drawer :is-show.sync="isShowOutline" title="目录" @closed="onOutlineDrawerClosed" @opened="onOutlineOpened">
       <outline-panel
         :key="pdfDocKey"
         ref="outlinePanel"
@@ -141,7 +141,7 @@
       />
     </drawer>
     <drawer
-      :is-show.sync="isShowThumbnailDrawer"
+      :is-show.sync="isShowThumbnail"
       title="缩略图"
       @closed="onThumbnailDrawerClosed"
       @opened="onThumbnailOpened"
@@ -272,8 +272,8 @@ export default {
       autoPlayIconUrl,
       // 暂停
       pauseIconUrl,
-      isShowOutlineDrawer: false,
-      isShowThumbnailDrawer: false,
+      isShowOutline: false,
+      isShowThumbnail: false,
       isEditingPageInput: false,
       isFlipSoundEnabled: true,
       // 自动播放相关（由 PdfReader 内部驱动）
@@ -391,11 +391,11 @@ export default {
 
     handleClickThumbnail() {
       console.log("open drawer: thumbnail");
-      this.isShowThumbnailDrawer = true;
+      this.isShowThumbnail = true;
     },
     handleClickOutline() {
       console.log("open drawer: outline");
-      this.isShowOutlineDrawer = true;
+      this.isShowOutline = true;
     },
     onThumbnailOpened() {
       console.log("opened drawer: thumbnail");
@@ -407,19 +407,17 @@ export default {
     },
     // Drawer 关闭（按面板分别关闭）
     closeOutlineDrawer() {
-      this.isShowOutlineDrawer = false;
+      this.isShowOutline = false;
     },
     closeThumbnailDrawer() {
-      this.isShowThumbnailDrawer = false;
+      this.isShowThumbnail = false;
     },
     onOutlineDrawerClosed() {
       console.log("closed drawer: outline");
-      this.isShowOutlineDrawer = false;
       this.$refs.outlinePanel?.onParentClosed();
     },
     onThumbnailDrawerClosed() {
       console.log("closed drawer: thumbnail");
-      this.isShowThumbnailDrawer = false;
       // 通知子组件更新可见状态
       this.$refs.thumbPanel?.onParentClosed();
     },

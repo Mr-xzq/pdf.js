@@ -360,7 +360,7 @@ export default {
         const paddingY = parseFloat(style.paddingTop || "0") + parseFloat(style.paddingBottom || "0");
 
         // 逻辑上的「上下留白」高度（不写在 CSS 里，只参与缩放计算），单位：px
-        const visualPaddingY = 0;
+        const visualPaddingY = 19;
 
         const availableWidth = rect.width - paddingX;
         const availableHeight = rect.height - paddingY - visualPaddingY;

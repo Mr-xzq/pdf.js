@@ -15,7 +15,6 @@
       :expanded-map="expandedMap"
       :active-key="activeKey"
       :indent="indent"
-      :item-height="itemHeight"
       :use-transition="useTransition"
       :props="props"
       :label-class-name="labelClassName"

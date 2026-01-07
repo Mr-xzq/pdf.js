@@ -57,7 +57,7 @@ function initializePdfJs() {
   if (!_libInitialized) {
     pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(
       new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
-      { type: "module" },
+      { type: "module" }
     );
     _libInitialized = true;
   }

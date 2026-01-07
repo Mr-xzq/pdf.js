@@ -45,4 +45,3 @@ export async function loadPdfDocument({ onProgress, getDocumentOptions = {} } = 
   const pdfDocument = await loadingTask.promise;
   return { pdfDocument };
 }
-

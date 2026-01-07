@@ -4,4 +4,3 @@
 export { pdfReaderModule as pdfReaderCoreModule } from "./store/index.js";
 export { pdfReaderModule } from "./store/index.js";
 export { pdfReaderModule as default } from "./store/index.js";
-

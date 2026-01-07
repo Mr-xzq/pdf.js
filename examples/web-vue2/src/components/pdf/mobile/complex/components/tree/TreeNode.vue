@@ -111,7 +111,7 @@ export default {
 
     // 渲染节点的主要内容区域 - label
     const contentSectionVnode = (
-      <div class="tree__content" onClick={this.select}>
+      <div class="tree__content">
         {this.$scopedSlots.label ? (
           this.$scopedSlots.label({
             node: this.node,
@@ -135,9 +135,11 @@ export default {
       style: {
         // 根据层级设置左侧缩进
         paddingLeft: (this.level - 1) * this.indent + "px",
-        height: this.itemHeight + "px",
       },
       attrs: { "data-key": this.getKey(this.node) },
+      on: {
+        click: this.select,
+      },
     };
 
     // 切换图标 + 内容区
@@ -216,7 +218,7 @@ export default {
 .tree__node {
   display: flex;
   align-items: center;
-  padding: 0 12px 0 8px;
+  padding: 8px 12px 8px 8px;
   user-select: none;
   transition: background 120ms ease;
 

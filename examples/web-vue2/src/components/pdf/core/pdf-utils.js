@@ -149,4 +149,3 @@ export function isValidPageNumber(pageNumber) {
 
   return pageNumberRes <= totalPagesRes;
 }
-

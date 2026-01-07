@@ -1,6 +1,6 @@
 <template>
   <div class="complex-pdf-reader">
-    <div class="content-area">
+    <div class="content-area" :style="contentAreaStyle">
       <pdf-viewport
         ref="pdfReader"
         :src="src"
@@ -26,11 +26,11 @@
               <TouchIconButton
                 :src="firstPageIconUrl"
                 img-class="nav-row-item first-page"
-                :min-size="30"
+                :min-size="40"
                 @click="goToPage(1)"
               />
 
-              <TouchIconButton :src="previousPageIconUrl" img-class="nav-row-item" :min-size="30" @click="prevPage" />
+              <TouchIconButton :src="previousPageIconUrl" img-class="nav-row-item" :min-size="40" @click="prevPage" />
 
               <el-input
                 ref="pageInput"
@@ -44,12 +44,12 @@
                 @keyup.enter.native="finishEditPage"
               />
 
-              <TouchIconButton :src="nextPageIconUrl" img-class="nav-row-item" :min-size="30" @click="nextPage" />
+              <TouchIconButton :src="nextPageIconUrl" img-class="nav-row-item" :min-size="40" @click="nextPage" />
 
               <TouchIconButton
                 :src="lastPageIconUrl"
                 img-class="nav-row-item last-page"
-                :min-size="30"
+                :min-size="40"
                 @click="goToPage(totalPages)"
               />
             </div>
@@ -92,11 +92,10 @@
       </div>
     </div>
 
-    <!-- 目录（PC Drawer 实现） -->
     <outline-wrapper
-      :is-show.sync="isShowOutlineDrawer"
+      :is-show.sync="isShowOutline"
       title="目录"
-      @closed="onOutlineDrawerClosed"
+      @closed="onOutlineClosed"
       @opened="onOutlineOpened"
     >
       <outline-content
@@ -111,8 +110,8 @@
 
     <!-- 缩略图 -->
     <thumbnail-wrapper
-      :is-show.sync="isShowThumbnailDrawer"
-      @closed="onThumbnailDrawerClosed"
+      :is-show.sync="isShowThumbnail"
+      @closed="onThumbnailClosed"
       @opened="onThumbnailOpened"
     >
       <thumbnail-content
@@ -209,13 +208,15 @@ export default {
       zoomOutIconUrl,
       autoPlayIconUrl,
       pauseIconUrl,
-      isShowOutlineDrawer: false,
-      isShowThumbnailDrawer: false,
+      isShowOutline: false,
+      isShowThumbnail: false,
       isEditingPageInput: false,
       // 自动播放相关（由 PdfReader 内部驱动）
       autoPlay: this.autoPlayEnabled,
       gotoPageInput: 1,
       lastScaleBeforeZoom: null,
+      // 目录抽屉实际占据的左侧宽度（px），用于动态推开 content 区域
+      outlineLeftOffset: 0,
 
       // 当前已加载文档的指纹，用于触发子组件重新挂载
       docFingerprint: null,
@@ -266,6 +267,11 @@ export default {
       const f = this.docFingerprint || "";
       return `${s}|${f}`;
     },
+    contentAreaStyle() {
+      return {
+        marginLeft: this.outlineLeftOffset + 'px',
+      };
+    },
   },
   methods: {
     ...mapMutations("pdfReaderCore", ["SET_ERROR"]),
@@ -301,28 +307,29 @@ export default {
       });
     },
     handleClickThumbnail() {
-      this.isShowThumbnailDrawer = true;
+      this.isShowThumbnail = true;
     },
     handleClickOutline() {
-      this.isShowOutlineDrawer = true;
+      this.isShowOutline = true;
     },
     onThumbnailOpened() {
       this.$refs.thumbPanel?.onParentOpened?.();
     },
     onOutlineOpened() {
       this.$refs.outlinePanel?.onParentOpened?.();
+      this.updateOutlineOffset();
     },
     closeOutlineDrawer() {
-      this.isShowOutlineDrawer = false;
+      this.isShowOutline = false;
     },
     closeThumbnailDrawer() {
-      this.isShowThumbnailDrawer = false;
+      this.isShowThumbnail = false;
     },
-    onOutlineDrawerClosed() {
-      this.isShowOutlineDrawer = false;
+    onOutlineClosed() {
       this.$refs.outlinePanel?.onParentClosed();
+      this.updateOutlineOffset();
     },
-    onThumbnailDrawerClosed() {
+    onThumbnailClosed() {
       this.$refs.thumbPanel?.onParentClosed?.();
     },
     goToPageByInput() {
@@ -392,6 +399,19 @@ export default {
       this.gotoPageInput = this.currentPage;
       this.docFingerprint = e?.info?.fingerprint || String(Date.now());
       this.$emit("document-loaded", e);
+    },
+    // 计算目录抽屉实际占用的宽度（相对阅读器容器左侧），用于推开内容区域
+    updateOutlineOffset() {
+      this.$nextTick(() => {
+        const panel = this.$el.querySelector(".drawer__panel");
+        const panelRect = panel.getBoundingClientRect();
+        console.log("panelRect: ", {
+          panelRect,
+          left: panelRect.left,
+          width: panelRect.width,
+        });
+        this.outlineLeftOffset = Math.max(0, panelRect.left + panelRect.width);
+      });
     },
   },
 };
@@ -500,7 +520,6 @@ export default {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.8rem;
 
             .nav-row-item {
               width: 0.7rem;
@@ -516,6 +535,7 @@ export default {
             .page-input {
               width: 7rem;
               height: 2rem;
+              margin: 0 1rem;
 
               .el-input__inner {
                 display: flex;

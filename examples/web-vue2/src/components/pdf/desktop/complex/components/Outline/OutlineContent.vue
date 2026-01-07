@@ -1,21 +1,19 @@
 <template>
   <div class="outline-content">
-    <div class="outline-panel">
-      <Tree
-        ref="tree"
-        :data="treeData"
-        :props="treeProps"
-        :active-key="activeKey"
-        :expanded-keys.sync="expandedKeys"
-        label-class-name="custom-label-content"
-        @select="onTreeSelect"
-      >
-        <template #switcher="{ expanded }">
-          <el-image v-show="!expanded" class="toggle-tool-item" :src="expandIconUrl"></el-image>
-          <el-image v-show="expanded" class="toggle-tool-item" :src="collapseIconUrl"></el-image>
-        </template>
-      </Tree>
-    </div>
+    <Tree
+      ref="tree"
+      :data="treeData"
+      :props="treeProps"
+      :active-key="activeKey"
+      :expanded-keys.sync="expandedKeys"
+      label-class-name="custom-label-content"
+      @select="onTreeSelect"
+    >
+      <template #switcher="{ expanded }">
+        <el-image v-show="!expanded" class="toggle-tool-item" :src="expandIconUrl"></el-image>
+        <el-image v-show="expanded" class="toggle-tool-item" :src="collapseIconUrl"></el-image>
+      </template>
+    </Tree>
   </div>
 </template>
 
@@ -231,10 +229,6 @@ export default {
 <style lang="less" scoped>
 .outline-content {
   height: 100%;
-}
-
-.outline-panel {
-  height: 100%;
 
   .toggle-tool-item {
     width: 1.36rem;
@@ -245,7 +239,6 @@ export default {
     font-size: 1rem;
     color: #000000;
     letter-spacing: 0;
-    line-height: 2rem;
     font-weight: 400;
   }
 }

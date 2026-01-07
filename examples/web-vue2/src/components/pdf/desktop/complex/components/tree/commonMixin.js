@@ -3,8 +3,6 @@ export default {
     labelClassName: String,
     // 每一层的缩进像素
     indent: { type: Number, default: 16 },
-    // 单个节点行高（影响滚动/过渡计算）
-    itemHeight: { type: Number, default: 44 },
     // 是否启用展开/折叠过渡动画
     useTransition: { type: Boolean, default: true },
     // 字段映射（用于兼容不同数据结构）
