@@ -15,12 +15,12 @@
     </div>
     <div class="bottom-toolbar">
       <div class="bottom-toolbar-tool-list">
-        <div class="toolbar-section toolbar-section--left">
+        <div class="toolbar-section toolbar-section-left">
           <TouchIconButton :src="thumbnailIconUrl" img-class="thumbnail-tool-item" @click="handleClickThumbnail" />
           <TouchIconButton :src="outlineIconUrl" img-class="outline-tool-item" @click="handleClickOutline" />
         </div>
 
-        <div class="toolbar-section toolbar-section--center">
+        <div class="toolbar-section toolbar-section-center">
           <div class="page-nav">
             <div class="nav-row">
               <TouchIconButton
@@ -56,7 +56,7 @@
           </div>
         </div>
 
-        <div class="toolbar-section toolbar-section--right">
+        <div class="toolbar-section toolbar-section-right">
           <!-- 缩放：切换按钮（依据是否存在 lastScaleBeforeZoom 来互斥显示） -->
           <template>
             <TouchIconButton
@@ -92,7 +92,7 @@
       </div>
     </div>
 
-    <outline-wrapper :is-show.sync="isShowOutline" title="目录" @closed="onOutlineClosed" @opened="onOutlineOpened" width="30rem">
+    <outline-wrapper :is-show.sync="isShowOutline" title="目录" @closed="onOutlineClosed" @opened="onOutlineOpened">
       <outline-content
         :key="pdfDocKey"
         ref="outlinePanel"
@@ -497,11 +497,11 @@ export default {
         align-items: center;
       }
 
-      .toolbar-section--left {
+      .toolbar-section-left {
         gap: 1.5rem;
       }
 
-      .toolbar-section--center {
+      .toolbar-section-center {
         flex: 1;
         justify-content: center;
 
@@ -549,7 +549,7 @@ export default {
         }
       }
 
-      .toolbar-section--right {
+      .toolbar-section-right {
         gap: 1.5rem;
       }
 
