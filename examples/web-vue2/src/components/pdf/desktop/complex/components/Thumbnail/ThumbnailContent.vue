@@ -4,14 +4,14 @@
       <div
         v-for="page in totalPages"
         :key="page"
-        class="thumb-item"
-        :class="{ 'is-current': currentPage === page }"
+        :class="['thumb-item', { 'is-current': currentPage === page }]"
         :data-page="page"
         @click="onSelect(page)"
       >
         <div class="thumb-media">
           <el-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="cover" />
-          <div v-else class="thumb-ph"></div>
+          <!-- 参考 el-skeleton 的样式 -->
+          <div v-else class="thumb-skeleton"></div>
         </div>
         <div class="thumb-label">{{ page }}</div>
       </div>
@@ -289,6 +289,8 @@ export default {
       items.forEach((el) => this.thumbObserver.observe(el));
 
       const cleanup = () => {
+        console.log("cleanup - ThumbObserver");
+
         this.thumbObserver?.disconnect();
         this.thumbObserver = null;
       };
@@ -297,7 +299,7 @@ export default {
         cleanup();
       });
     },
-    // 滚动到指定页的缩略图（同步滚动）
+    // 滚动到指定页的缩略图
     scrollToPage(page) {
       const item = this.$el?.querySelector('.thumb-item[data-page="' + page + '"]');
       item?.scrollIntoView({ behavior: "smooth" });
@@ -313,6 +315,15 @@ export default {
 </script>
 
 <style lang="less" scoped>
+@keyframes thumb-skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
 .thumbnail-content {
   height: 100%;
   display: flex;
@@ -364,14 +375,16 @@ export default {
       aspect-ratio: 3 / 4;
 
       .thumb-img,
-      .thumb-ph {
+      .thumb-skeleton {
         display: block;
         width: 100%;
         height: 100%;
       }
 
-      .thumb-ph {
-        background: #f7f7f7;
+      .thumb-skeleton {
+        background: linear-gradient(90deg, rgb(242, 242, 242) 25%, rgb(230, 230, 230) 37%, rgb(242, 242, 242) 63%) 0% 0% /
+          400% 100%;
+        animation: 1.4s ease 0s infinite normal none running thumb-skeleton-loading;
       }
     }
 
