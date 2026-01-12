@@ -36,14 +36,18 @@ export default {
   },
   data() {
     return {
-      // 标记缩略图是否已全部渲染
-      thumbsRendered: false,
+      // 标记缩略图懒加载是否已初始化完成（仅做一次初始化）
+      thumbsInitialized: false,
       // 浮层不可见时，待同步的页码
       pendingPage: null,
       // 存储缩略图的 Data URL，将 page 作为 key
       thumbSrcs: {},
       // 由父容器控制的可见性状态
       visible: false,
+      // 缓存缩略图渲染使用的 scale，避免重复计算
+      thumbScale: null,
+      // 懒加载缩略图可视区域监听器
+      thumbObserver: null,
     };
   },
   watch: {
@@ -56,13 +60,13 @@ export default {
         this.$nextTick(() => this.scrollCurrentIntoView());
       }
     },
-    // 总页数在浮层已打开且尚未渲染过时，触发一次渲染
+    // 这种是处理的用户在 pdf 还未加载完成时直接打开缩略图的情况
     totalPages(n) {
-      if (!n || this.thumbsRendered || !this.visible) return;
+      if (!n || this.thumbsInitialized || !this.visible) return;
       this.$nextTick(() => {
         this.runWithLoadPending({
           message: "渲染缩略图",
-          run: () => this.ensureRenderThumbnails(),
+          run: () => this.ensureThumbLazyInit(),
         });
       });
     },
@@ -169,6 +173,17 @@ export default {
       // 为了让其清晰些，我给了一个 1.5 倍精度渲染
       return scaleY * 1.5;
     },
+    // 确保只计算一次缩略图的 scale
+    async ensureThumbScale() {
+      if (this.thumbScale) return this.thumbScale;
+
+      const availableHeight = this.getAvailableHeightFromContainer();
+      if (!availableHeight) return null;
+      const scale = await this.getScaleFromContainerHeight(availableHeight);
+      this.thumbScale = scale;
+
+      return scale;
+    },
     // 缩略图点击事件
     onSelect(page) {
       this.goToPage(page);
@@ -178,17 +193,17 @@ export default {
     onParentOpened() {
       this.visible = true;
       this.$nextTick(async () => {
-        const needLoad = !this.thumbsRendered;
-        if (needLoad) {
+        // 首次打开时需要做缩略图懒加载的初始化
+        if (!this.thumbsInitialized) {
           await this.runWithLoadPending({
             message: "渲染缩略图",
-            run: () => this.ensureRenderThumbnails(),
+            run: () => this.ensureThumbLazyInit(),
           });
-        } else {
-          await this.ensureRenderThumbnails();
         }
         const target = this.pendingPage != null ? this.pendingPage : this.currentPage;
-        if (target != null) await this.scrollToPage(target);
+        if (target != null) {
+          this.scrollToPage(target);
+        }
         this.pendingPage = null;
       });
     },
@@ -196,33 +211,94 @@ export default {
     onParentClosed() {
       this.visible = false;
     },
-    // 确保所有缩略图被渲染
-    async ensureRenderThumbnails() {
-      if (this.thumbsRendered || !this.totalPages) return;
+    // 确保初始化缩略图懒加载（当前页附近优先 + 懒加载）
+    async ensureThumbLazyInit() {
+      if (this.thumbsInitialized || !this.totalPages) return;
 
-      // 标记开始渲染
-      this.thumbsRendered = true;
+      // 标记已完成缩略图懒加载初始化，避免重复执行
+      this.thumbsInitialized = true;
       await this.$nextTick();
 
-      // 优先根据容器高度直接计算缩略图 scale，让缩略图高度随容器自适应
-      const availableHeight = this.getAvailableHeightFromContainer();
-      const scale = await this.getScaleFromContainerHeight(availableHeight);
+      // 计算缩略图缩放比例（只算一次）
+      await this.ensureThumbScale();
 
-      // 循环遍历每一页，渲染缩略图
-      for (let p = 1; p <= this.totalPages; p++) {
-        const tmp = document.createElement("canvas");
-        await this.renderThumbnail(p, tmp, { scale });
-        const url = tmp.toDataURL("image/png");
-        // 将生成的 Data URL 存入 thumbSrcs
-        this.$set(this.thumbSrcs, p, url);
+      // 初始化 IntersectionObserver，用于滚动时按需加载缩略图
+      this.initThumbObserver();
 
-        // 释放 canvas 内存
-        tmp.width = 0;
-        tmp.height = 0;
+      // 优先渲染当前页附近的若干页（例如附近 3 页）
+      const center = isValidPageNumber(this.currentPage) ? this.currentPage : 1;
+      await this.preloadAroundPage(center);
+    },
+    // 渲染单页缩略图（按需调用）
+    async ensurePageThumb(page) {
+      if (!isValidPageNumber(page)) return;
+      if (this.thumbSrcs[page]) return;
+
+      const scale = (await this.ensureThumbScale()) || 0.2;
+      const canvas = document.createElement("canvas");
+      await this.renderThumbnail(page, canvas, { scale });
+      const url = canvas.toDataURL("image/png");
+      this.$set(this.thumbSrcs, page, url);
+
+      // 释放 canvas 占用内存
+      canvas.width = 0;
+      canvas.height = 0;
+    },
+    // 预加载某个页码附近的一小段缩略图
+    async preloadAroundPage(centerPage, radius = 3) {
+      if (!this.totalPages) return;
+
+      const tasks = [];
+      const center = centerPage || 1;
+      for (let p = center - radius; p <= center + radius; p++) {
+        tasks.push(this.ensurePageThumb(p));
+      }
+      if (tasks.length) {
+        await Promise.all(tasks);
       }
     },
-    // 滚动到指定页的缩略图
-    async scrollToPage(page) {
+    // 初始化 IntersectionObserver，滚动时懒加载缩略图
+    initThumbObserver() {
+      const list = this.$refs.thumbList;
+      if (!list) return;
+
+      if (this.thumbObserver) return;
+      if (typeof IntersectionObserver === "undefined") return;
+
+      this.thumbObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target;
+            const pageAttr = el.getAttribute("data-page");
+            const page = pageAttr ? Number(pageAttr) : NaN;
+            this.thumbObserver.unobserve(el);
+
+            // 按需渲染当前进入视口的缩略图（内部会自行校验页码和缓存）
+            this.ensurePageThumb(page);
+          });
+        },
+        {
+          root: list,
+          threshold: 0.1,
+        }
+      );
+
+      // 对现有列表项立即开始监听
+      const items = list.querySelectorAll(".thumb-item");
+      items.forEach((el) => this.thumbObserver.observe(el));
+
+      const cleanup = () => {
+        this.thumbObserver?.disconnect();
+        this.thumbObserver = null;
+      };
+
+      this.$on("hook:beforeDestroy", () => {
+        cleanup();
+      });
+    },
+    // 滚动到指定页的缩略图（同步滚动）
+    scrollToPage(page) {
       const item = this.$el?.querySelector('.thumb-item[data-page="' + page + '"]');
       item?.scrollIntoView({ behavior: "smooth" });
     },

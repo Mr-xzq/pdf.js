@@ -228,7 +228,7 @@ export default {
       this.goToPageAction(this.initialPage);
 
       console.log(
-        `[Desktop PdfViewport] PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，当前缩放: ${this.scale}`
+        `[Desktop PdfViewport] PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，当前缩放: ${this.scale}`,
       );
     },
 
@@ -253,8 +253,8 @@ export default {
           console.warn("renderThumbnail: 非法的 canvas 元素，已跳过", pageNumber, canvasEl);
           return;
         }
-        const opts = { scale: options.scale || 0.2, ...options };
-        const { scale, ...rest } = opts;
+        // scale 提供默认值 0.2，其余配置透传给 renderOptions
+        const { scale = 0.2, ...rest } = options;
         await renderPageToCanvas({
           getPage: (n) => this.getPageAction(n),
           tasks: this.thumbnailTasks,

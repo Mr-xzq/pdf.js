@@ -42,12 +42,11 @@ export async function resolveDestToPage({ pdfDocument, dest } = {}) {
 // 取消指定页的当前正在渲染的任务
 function cancelRenderTask({ tasks, pageNumber }) {
   if (!tasks) return;
-  console.log(`cancelRenderTask - 取消第 ${pageNumber} 页的渲染任务: `);
   const task = tasks[pageNumber];
-  if (task) {
-    task.cancel?.();
-    delete tasks[pageNumber];
-  }
+  if (!task) return;
+  console.log(`cancelRenderTask - 取消第 ${pageNumber} 页的渲染任务: `);
+  task.cancel?.();
+  delete tasks[pageNumber];
 }
 
 export function cancelAllRenderTasks({ tasks }) {
