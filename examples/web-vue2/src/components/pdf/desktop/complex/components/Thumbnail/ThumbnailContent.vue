@@ -67,8 +67,76 @@ export default {
       });
     },
   },
+  mounted() {
+    this.initHandleThumbWheel();
+  },
   methods: {
     ...mapActions("pdfReaderCore", ["runWithLoadPending", "getPage"]),
+    initHandleThumbWheel() {
+      const list = this.$refs.thumbList;
+      if (!list) return;
+
+      // PC 鼠标滚轮适配：在横向缩略图区域内，用纵向滚轮控制左右滚动
+      const onThumbWheel = (event) => {
+        // 如果没有横向滚动条，直接终止，提供 1 px 误差干扰
+        const hasHorizontalScroll = list.scrollWidth > list.clientWidth + 1;
+        if (!hasHorizontalScroll) return;
+
+        // 只处理以纵向为主的滚动（普通鼠标滚轮），避免干扰触控板的横向滚动
+        const { deltaX, deltaY } = event;
+        if (!deltaY || Math.abs(deltaY) < Math.abs(deltaX)) return;
+
+        const maxScrollLeft = list.scrollWidth - list.clientWidth;
+        // 容忍 1px 误差干扰，避免精度问题
+        const tolerance = 1;
+        const atLeft = list.scrollLeft <= tolerance;
+        const atRight = list.scrollLeft >= maxScrollLeft - tolerance;
+
+        // 如果已经在边缘并且继续往“外侧”滚，就放行给外层（不拦截）
+        if ((deltaY < 0 && atLeft) || (deltaY > 0 && atRight)) {
+          return;
+        }
+
+        const prev = list.scrollLeft;
+        const next = Math.min(maxScrollLeft, Math.max(0, prev + deltaY));
+        // 基本没有有效滚动空间时，也不拦截（防止边界抖动）
+        if (Math.abs(next - prev) < 0.5) {
+          return;
+        }
+
+        // 阻止页面整体滚动和事件冒泡，只在真正让缩略图区域滚动时才拦截
+        event.preventDefault();
+        event.stopPropagation();
+
+        list.scrollTo({
+          left: next,
+          behavior: "auto",
+        });
+
+        console.log("onThumbWheel: ", {
+          deltaX,
+          deltaY,
+          prev,
+          next,
+          atLeft,
+          atRight,
+        });
+      };
+
+      if (list) {
+        // 使用 passive: false，提高性能，同时以便在需要时调用 preventDefault 阻止页面整体滚动
+        list.addEventListener("wheel", onThumbWheel, { passive: false });
+      }
+
+      // 设置清理逻辑
+      const cleanup = () => {
+        console.log("cleanup - ThumbWheel Listener");
+
+        list.removeEventListener("wheel", onThumbWheel);
+      };
+
+      this.$on("hook:beforeDestroy", cleanup);
+    },
     // 根据容器高度，计算可用的缩略图高度
     getAvailableHeightFromContainer() {
       const list = this.$refs.thumbList;
