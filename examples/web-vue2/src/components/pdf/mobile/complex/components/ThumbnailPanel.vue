@@ -10,7 +10,7 @@
         @click="onSelect(page)"
       >
         <div class="thumb-media">
-          <van-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="contain" width="100%" />
+          <van-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="fill" />
           <div v-else class="thumb-ph"></div>
         </div>
         <div class="thumb-label">{{ page }}</div>
@@ -217,16 +217,9 @@ export default {
       .thumb-ph {
         display: block;
         width: 100%;
+        height: 100%;
         background: #f7f7f7;
         border-radius: 4px;
-      }
-
-      .thumb-img {
-        height: auto;
-      }
-
-      .thumb-ph {
-        height: 100%;
       }
     }
 

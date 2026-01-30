@@ -9,7 +9,7 @@
         @click="onSelect(page)"
       >
         <div class="thumb-media">
-          <el-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="cover" />
+          <el-image v-if="thumbSrcs[page]" class="thumb-img" :src="thumbSrcs[page]" fit="fill" />
           <!-- 参考 el-skeleton 的样式 -->
           <div v-else class="thumb-skeleton"></div>
         </div>
