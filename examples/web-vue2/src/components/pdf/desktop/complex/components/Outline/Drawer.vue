@@ -77,6 +77,9 @@ export default {
   left: 10px;
   bottom: calc(10px + var(--bottom-toolbar-height));
 
+  // 使用 css 变量控制抽屉层级，默认保障在侧边翻页按钮和内容之上
+  z-index: var(--z-outline-drawer);
+
   display: flex;
   flex-direction: column;
   background: #ffffff;

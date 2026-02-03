@@ -1,16 +1,34 @@
 <template>
   <div class="complex-pdf-reader">
-    <div class="content-area" :style="contentAreaStyle">
-      <pdf-viewport
-        ref="pdfReader"
-        :src="src"
-        :initial-page="initialPage"
-        :initial-scale="initialScale"
-        :auto-play-enabled="autoPlay"
-        :auto-play-interval-ms="autoPlayIntervalMs"
-        @document-loaded="onPdfLoaded"
-        @auto-play-ended="onAutoPlayEnded"
-        @container-resized="handleViewportResized"
+    <div class="content-area-wrapper">
+      <div class="content-area" :style="contentAreaStyle">
+        <pdf-viewport
+          ref="pdfReader"
+          :src="src"
+          :initial-page="initialPage"
+          :initial-scale="initialScale"
+          :auto-play-enabled="autoPlay"
+          :auto-play-interval-ms="autoPlayIntervalMs"
+          @document-loaded="onPdfLoaded"
+          @auto-play-ended="onAutoPlayEnded"
+          @container-resized="handleViewportResized"
+        />
+      </div>
+
+      <!-- 上一页 / 下一页按钮 -->
+      <TouchIconButton
+        v-show="canPrevPage"
+        :src="sidePagePreviousIconUrl"
+        :class="['side-page-nav', 'side-page-nav-left']"
+        img-class="side-page-nav-icon"
+        @click="prevPage"
+      />
+      <TouchIconButton
+        v-show="canNextPage"
+        :src="sidePageNextIconUrl"
+        :class="['side-page-nav', 'side-page-nav-right']"
+        img-class="side-page-nav-icon"
+        @click="nextPage"
       />
     </div>
     <div class="bottom-toolbar">
@@ -139,6 +157,8 @@ import zoomInIconUrl from "@/assets/images/complexPdfReader/zoom-in-2x.png";
 import zoomOutIconUrl from "@/assets/images/complexPdfReader/zoom-out-2x.png";
 import autoPlayIconUrl from "@/assets/images/complexPdfReader/auto-play-2x.png";
 import pauseIconUrl from "@/assets/images/complexPdfReader/pause-2x.png";
+import sidePagePreviousIconUrl from "@/assets/images/complexPdfReader/side-page-previous-2x.png";
+import sidePageNextIconUrl from "@/assets/images/complexPdfReader/side-page-next-2x.png";
 
 export default {
   name: "DesktopComplexPdfReader",
@@ -199,6 +219,8 @@ export default {
       zoomOutIconUrl,
       autoPlayIconUrl,
       pauseIconUrl,
+      sidePagePreviousIconUrl,
+      sidePageNextIconUrl,
       isShowOutline: false,
       isShowThumbnail: false,
       isEditingPageInput: false,
@@ -249,6 +271,12 @@ export default {
     },
     totalPages() {
       return this.navigationState?.totalPages || 0;
+    },
+    canPrevPage() {
+      return this.navigationState?.canGoPrev;
+    },
+    canNextPage() {
+      return this.navigationState?.canGoNext;
     },
     pageFieldDisplay() {
       return `${this.currentPage}/${this.totalPages}`;
@@ -416,8 +444,14 @@ export default {
   --bottom-toolbar-height: 4.14rem;
 
   // z-index 不同层的渲染
+  // 注释层，比如目录点击页
   --z-annot: 2;
+  // 底部工具栏
   --z-bottom-toolbar-tool-list: 10;
+  // 左右翻页按钮
+  --z-side-page-nav: 5;
+  // 目录抽屉
+  --z-outline-drawer: 20;
 
   position: relative;
   box-sizing: border-box;
@@ -468,8 +502,51 @@ export default {
     }
   }
 
-  .content-area {
+  .content-area-wrapper::v-deep {
+    position: relative;
     height: 100%;
+
+    .content-area {
+      height: 100%;
+    }
+
+    .side-page-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: var(--z-side-page-nav);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 4.93rem;
+      height: 4.93rem;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.3);
+      transition: all 0.15s ease;
+
+      &.side-page-nav-left {
+        left: 8%;
+      }
+
+      &.side-page-nav-right {
+        right: 8%;
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 1);
+        box-shadow: 0 0.29rem 0.57rem rgba(0, 0, 0, 0.16);
+        transform: translateY(-50%) scale(1.02);
+      }
+
+      &:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+
+      .side-page-nav-icon {
+        width: 1.14rem;
+        height: 2.25rem;
+      }
+    }
   }
 
   .bottom-toolbar {
