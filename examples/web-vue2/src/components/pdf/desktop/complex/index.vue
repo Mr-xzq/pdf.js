@@ -310,16 +310,16 @@ export default {
       });
     },
     async nextPage() {
-      const next = (this.currentPage || 0) + 1;
-      if (!isValidPageNumber(next)) return;
+      if (!this.canNextPage) return;
+
       await this.runWithLoadPending({
         message: "下一页",
         run: () => this.nextPageAction(),
       });
     },
     async prevPage() {
-      const prev = (this.currentPage || 0) - 1;
-      if (!isValidPageNumber(prev)) return;
+      if (!this.canPrevPage) return;
+
       await this.runWithLoadPending({
         message: "上一页",
         run: () => this.prevPageAction(),

@@ -15,6 +15,8 @@
 </template>
 
 <script>
+import { throttle } from "lodash";
+
 export default {
   name: "GestureContainer",
   props: {
@@ -24,13 +26,8 @@ export default {
     contentSelector: { type: String, required: true, default: "" },
     // 拖拽触发阈值（单位：像素），鼠标移动超过该距离才会开始真正平移
     panThreshold: { type: Number, default: 6 },
-
-    // 是否启用左右拖拽翻页（由父组件根据 pdf 是否处于放大状态来控制）
-    swipeEnabled: { type: Boolean, default: true },
-    // 水平位移超过该值视为一次有效的翻页拖拽（像素）
-    swipeThreshold: { type: Number, default: 50 },
-    // 允许的垂直偏移比例（|dy| <= |dx| * ratio）
-    swipeMaxYRatio: { type: Number, default: 0.5 },
+    // 滚轮触发阈值，防止滚轮的轻微抖动导致的翻页，只有 |deltaY| 超过该阈值才会触发一次翻页
+    wheelDeltaThreshold: { type: Number, default: 10 },
   },
   data() {
     return {
@@ -49,10 +46,6 @@ export default {
       panAtStartY: 0,
       // 标志位，表示当前是否正处于拖拽状态
       isPanning: false,
-
-      // 标志位：当前这一轮拖拽手势是否已经识别并触发过翻页
-      // 用于防止一次拖拽过程中因为 mouseleave + mouseup 等多次触发 onPanEnd 而导致翻多页
-      swipeHandled: false,
 
       // 内容节点的宽度
       contentWidth: 0,
@@ -84,6 +77,7 @@ export default {
 
   mounted() {
     this.initSizeObservers();
+    this.initHandleFlipPageWheel();
   },
 
   methods: {
@@ -149,6 +143,52 @@ export default {
       };
       this.$on("hook:beforeDestroy", cleanup);
     },
+    // 初始化翻页滚轮监听
+    initHandleFlipPageWheel() {
+      const containerEl = this.$refs.container;
+      if (!containerEl) return;
+
+      const handleWheelInner = (event) => {
+        if (!this.gesturesEnabled) return;
+        if (!event) return;
+        const deltaY = event.deltaY || 0;
+        if (Math.abs(deltaY) < this.wheelDeltaThreshold) {
+          return;
+        }
+
+        // 向下滚（deltaY > 0）通常表示用户希望查看下一页；向上滚则为上一页
+        if (deltaY > 0) {
+          this.$emit("next-page");
+        } else {
+          this.$emit("prev-page");
+        }
+
+        // 容器本身没有滚动条，这里阻止默认行为以避免个别浏览器触发页面滚动/回弹
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+      };
+
+      // 将滚轮事件处理函数做节流，避免一次滚动触发多次翻页
+      // leading: true 确保第一次滚动立刻翻页；trailing: false 避免结束后再补一次
+      const handleWheelThrottled = throttle(handleWheelInner, 400, {
+        leading: true,
+        trailing: false,
+      });
+
+      containerEl.addEventListener("wheel", handleWheelThrottled);
+
+      // 设置清理逻辑
+      const cleanup = () => {
+        console.log("cleanup - HandleFilpPageWheel");
+
+        // 组件销毁前取消节流回调，避免持有无效的组件引用
+        handleWheelThrottled.cancel?.();
+        containerEl.removeEventListener("wheel", handleWheelThrottled);
+      };
+
+      this.$on("hook:beforeDestroy", cleanup);
+    },
 
     /**
      * 计算某一条轴向（X 或 Y）的平移边界
@@ -208,7 +248,6 @@ export default {
 
       // 记录起始信息，但不立即进入“拖拽中”状态
       this.isPanning = false;
-      this.swipeHandled = false;
       this.panStartX = e.clientX;
       this.panStartY = e.clientY;
       this.panAtStartX = this.panX;
@@ -248,50 +287,10 @@ export default {
       this.clampPan();
     },
 
-    onPanEnd(e) {
+    onPanEnd() {
       if (!this.gesturesEnabled) return;
-
-      // 防御：同一轮拖拽已经识别并触发过翻页时，忽略后续的 onPanEnd 调用，避免翻多页
-      if (this.swipeHandled) {
-        this.isPanning = false;
-        return;
-      }
-
-      // 在 mouseup 上识别左右拖拽，行为与 mobile 版 detectSwipe 一致
-      if (e) {
-        const dx = e.clientX - this.panStartX;
-        const dy = e.clientY - this.panStartY;
-        const dir = this.detectSwipe({ dx, dy });
-        if (dir) {
-          if (e.cancelable) {
-            e.preventDefault();
-          }
-          if (dir === "left") {
-            this.$emit("next-page");
-          } else {
-            this.$emit("prev-page");
-          }
-
-          this.swipeHandled = true;
-          this.isPanning = false;
-          return;
-        }
-      }
-
+      // 桌面端仅保留拖拽平移能力，不再通过拖拽触发翻页
       this.isPanning = false;
-    },
-
-    /**
-     * 在 mouseup 上识别左右拖拽方向
-     * 返回 'left' | 'right' | undefined
-     */
-    detectSwipe({ dx, dy }) {
-      if (!this.swipeEnabled) return;
-      const absX = Math.abs(dx);
-      const absY = Math.abs(dy);
-      if (absX < this.swipeThreshold) return;
-      if (absY > absX * this.swipeMaxYRatio) return;
-      return dx < 0 ? "left" : "right";
     },
   },
 };

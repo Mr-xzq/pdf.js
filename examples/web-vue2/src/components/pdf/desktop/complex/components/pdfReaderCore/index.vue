@@ -3,10 +3,9 @@
     <div v-if="documentLoaded" class="pdf-viewer-core__content" ref="content">
       <gesture-container
         :gestures-enabled="gesturesEnabled"
-        :swipe-enabled="!zoomState.isZoomed"
         content-selector=".pdf-page-container"
-        @prev-page="onSwipePrev"
-        @next-page="onSwipeNext"
+        @prev-page="prevPage"
+        @next-page="nextPage"
       >
         <pdf-page :page-number="page" :scale="scale" :annotations-enabled="true" />
       </gesture-container>
@@ -77,6 +76,12 @@ export default {
       page: "currentPage",
       scale: "scale",
     }),
+    canPrevPage() {
+      return this.navigationState?.canGoPrev;
+    },
+    canNextPage() {
+      return this.navigationState?.canGoNext;
+    },
   },
 
   watch: {
@@ -228,7 +233,7 @@ export default {
       this.goToPageAction(this.initialPage);
 
       console.log(
-        `[Desktop PdfViewport] PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，当前缩放: ${this.scale}`,
+        `[Desktop PdfViewport] PDF 文档加载完成，共 ${event?.info?.numPages || "unknown"} 页，当前缩放: ${this.scale}`
       );
     },
 
@@ -285,41 +290,35 @@ export default {
       }
     },
 
-    // 手势翻页（与 mobile 版行为保持一致）
-    async onSwipePrev() {
-      await this.runWithLoadPending({
-        message: "上一页",
-        run: () => this.prevPageAction(),
-      });
-    },
-    async onSwipeNext() {
+    async nextPage() {
+      if (!this.canNextPage) return;
+
       await this.runWithLoadPending({
         message: "下一页",
         run: () => this.nextPageAction(),
+      });
+    },
+    async prevPage() {
+      if (!this.canPrevPage) return;
+
+      await this.runWithLoadPending({
+        message: "上一页",
+        run: () => this.prevPageAction(),
       });
     },
 
     async startAutoPlay() {
       if (this.autoPlaying || !this.documentLoaded) return;
       this.autoPlaying = true;
-      const nav = this.navigationState || {};
-      if (nav.currentPage < (nav.totalPages || 0)) {
-        await this.runWithLoadPending({
-          message: "下一页",
-          run: () => this.nextPageAction(),
-        });
-      }
+
+      await this.nextPage();
+
       this.autoPlayTimer = setInterval(async () => {
-        const s = this.navigationState || {};
-        const canGoNext = (s.currentPage || 0) < (s.totalPages || 0);
-        if (!canGoNext) {
+        if (!this.canNextPage) {
           this.stopAutoPlay(false);
           return;
         }
-        await this.runWithLoadPending({
-          message: "下一页",
-          run: () => this.nextPageAction(),
-        });
+        await this.nextPage();
       }, this.autoPlayIntervalMs);
     },
 
