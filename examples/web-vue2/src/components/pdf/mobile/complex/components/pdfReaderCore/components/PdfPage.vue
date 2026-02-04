@@ -84,6 +84,13 @@ export default {
       const doc = this.pdfDocument;
       if (!doc) return;
 
+      // 在单 canvas 架构下，必须先取消所有正在进行的渲染任务，目前的 renderPageToCanvas 只会取消当前页码的渲染任务
+      // 避免快速翻页时多个 page.render() 同时竞争同一个 canvas
+
+      // 你遇到的问题本质上是：单 canvas + 快速翻页 → 旧 renderTask 没有被 cancel → 同一画布并发渲染 → 随机残影 / 倒转 / 背景丢失 --> 渲染异常。
+      // 现有的 renderPageToCanvas 设计是“按页码取消”，更适合“多页多 canvas”的场景（比如 mobile simple），但在桌面“单页复用 canvas”模式下需要在组件层统一取消所有旧任务。
+      cancelAllRenderTasks({ tasks: this.renderTasks });
+
       // 同步取消 Layer 渲染，防止重叠
       this.cancelLayers?.();
 
