@@ -133,3 +133,4 @@ export class AnnotationLayerBuilder {
     this._isRendered = false;
   }
 }
+

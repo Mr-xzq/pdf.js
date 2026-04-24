@@ -15,7 +15,7 @@
 </template>
 
 <script>
-import PdfPage from "./components/PdfPage.vue";
+import PdfPage from "@/components/pdf/core/components/PdfPage.vue";
 import GestureContainer from "./components/GestureContainer.vue";
 import { renderPageToCanvas } from "@/components/pdf/core/pdf-utils.js";
 import { ZOOM_EPS, ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
@@ -211,8 +211,8 @@ export default {
           console.warn("renderThumbnail: 非法的 canvas 元素，已跳过", pageNumber, canvasEl);
           return;
         }
-        const opts = { scale: options.scale || 0.2, ...options };
-        const { scale, ...rest } = opts;
+        // scale 提供默认值 0.2，其余配置透传给 renderOptions
+        const { scale = 0.2, ...rest } = options;
         await renderPageToCanvas({
           getPage: (n) => this.getPageAction(n),
           tasks: this.thumbnailTasks,

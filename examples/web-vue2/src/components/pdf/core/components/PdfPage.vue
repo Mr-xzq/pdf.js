@@ -16,7 +16,7 @@
 <script>
 import { cancelAllRenderTasks, renderPageToCanvas } from "@/components/pdf/core/pdf-utils.js";
 import { ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
-import { AnnotationLayerBuilder } from "../utils/layers/AnnotationLayerBuilder.js";
+import { AnnotationLayerBuilder } from "@/components/pdf/core/utils/layers/AnnotationLayerBuilder.js";
 
 // 引入第三方库
 import { mapState, mapActions, mapMutations } from "vuex";
@@ -250,6 +250,7 @@ export default {
 <style lang="less" scoped>
 .pdf-page-container {
   position: relative;
+  display: inline-block;
   background: transparent;
   box-shadow: none;
   margin: 0;

@@ -14,7 +14,7 @@
 </template>
 
 <script>
-import PdfPage from "./components/PdfPage.vue";
+import PdfPage from "@/components/pdf/core/components/PdfPage.vue";
 import { renderPageToCanvas } from "@/components/pdf/core/pdf-utils.js";
 import { ZOOM_EPS, ERROR_TYPES } from "@/components/pdf/core/pdf-config.js";
 import { mapState, mapMutations, mapGetters, mapActions } from "vuex";
